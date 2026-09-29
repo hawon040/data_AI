@@ -27,6 +27,17 @@ VITE_KAKAO_MAP_KEY=발급받은_키
 
 키가 없으면 지도 대신 지역 좌표 목록이 표시된다(폴백).
 
+관광지 상세 패널(관광지 이름을 클릭하면 뜸)에서 실제 주소·전화번호까지
+보려면, 같은 카카오 앱의 **REST API 키**를 추가로 발급받아 넣는다:
+
+```
+VITE_KAKAO_REST_API_KEY=발급받은_REST_키
+```
+
+REST 키가 없어도 "길찾기"·"카카오맵에서 보기" 버튼은 좌표만으로 항상
+동작한다(카카오맵 웹 링크라 API 키가 필요 없다) — 주소·전화번호만 REST
+키가 있을 때 추가로 뜬다.
+
 ## 화면 구성
 
 - `/` — 랜딩 페이지 (`src/pages/Landing.tsx`). 서비스 소개, 검증된 수치, 4대
@@ -42,6 +53,11 @@ VITE_KAKAO_MAP_KEY=발급받은_키
 병천순대거리가 위로). 추천이 나오면 1위 지역이 자동으로 선택돼 지도에
 그 지역의 실제 관광지 이름표가 바로 뜨고(클릭 없이도), 지도가 없는 환경에서는
 목록 폴백에도 지역명이 아니라 그 지역의 실제 관광지 이름이 표시된다.
+
+관광지 이름(지도 마커나 카드의 칩, 폴백 목록 어디서든)을 클릭하면 상세 패널이
+뜬다 — `VITE_KAKAO_REST_API_KEY`를 설정했으면 카카오 로컬 API로 실제 주소·
+전화번호를 가져오고, 어느 쪽이든 "길찾기"(카카오맵 길안내)와 "카카오맵에서
+보기" 버튼으로 실제 위치를 찾아갈 수 있다 (`lib/kakaoLocal.ts`).
 
 디자인은 다크 배경 + 블루(`#4f7fff`)/틸(`#00e5c3`) 그라데이션 액센트를 쓰는
 단일 테마로 통일했다 (`src/theme.css`에 토큰 정의).
@@ -59,14 +75,16 @@ src/
 │   ├── types.ts               # Person, Region, Attraction, SafetyIndex 등 도메인 타입
 │   ├── indices.ts             # LQ·특화점수·그룹점수 (문서 4.2, 4.4)
 │   ├── attractionAffinity.ts  # 연령대별 관광지 태그 선호 가중치 (문서 4.3 2단계 추천)
+│   ├── kakaoLocal.ts          # 카카오 로컬 API 실제 장소 조회 + 길찾기/장소 링크
 │   ├── recommend.ts           # 동행자 교집합 추천 + 관광지 매치 점수 + 탐색 추천(4.8)
 │   └── safetyPriority.ts      # 동행 구성별 안전 지표 표시 순서 (문서 4.5)
 ├── data/sampleRegions.ts  # 시범 권역 샘플 데이터
 └── components/
     ├── CompanionForm.tsx      # 성별·연령대·동행자·필터 입력
-    ├── RecommendationList.tsx # 추천 + 탐색 추천 카드
+    ├── RecommendationList.tsx # 추천 + 탐색 추천 카드 (관광지 칩 클릭 가능)
     ├── SafetyPanel.tsx        # 선택 지역의 안전 등급·지표
-    └── MapView.tsx            # 카카오맵 (키 없으면 목록 폴백)
+    ├── AttractionDetail.tsx   # 선택 관광지의 실제 주소·전화번호·길찾기
+    └── MapView.tsx            # 카카오맵 (키 없으면 실제 관광지 이름 목록 폴백)
 ```
 
 ## 실데이터 연동 시 해야 할 일

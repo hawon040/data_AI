@@ -254,6 +254,22 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px 8px 3px 10px;
+  cursor: pointer;
+}
+.attraction-chip:hover {
+  border-color: var(--teal);
+  color: var(--text-primary);
+}
+
+.fallback-attraction-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--teal);
+  text-decoration: underline;
+  cursor: pointer;
 }
 .attraction-score {
   font-size: 10px;
@@ -364,4 +380,55 @@
 .disclaimer {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.attraction-detail {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}
+.ad-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.ad-head h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+.ad-category {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ad-info p,
+.ad-loading,
+.ad-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 6px;
+}
+.ad-hint code {
+  color: var(--teal);
+}
+.ad-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pill-mini {
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  background: var(--gradient-accent);
+  color: #fff;
+}
+.pill-mini.ghost {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
 }

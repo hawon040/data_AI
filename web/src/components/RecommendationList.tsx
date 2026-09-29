@@ -1,4 +1,4 @@
-import type { RecommendationItem, Region } from "../lib/types";
+import type { Attraction, RecommendationItem, Region } from "../lib/types";
 
 const GRADE_LABEL: Record<number, string> = {
   1: "매우 안전",
@@ -16,18 +16,24 @@ function RecommendationCard({
   item,
   rank,
   onSelect,
+  onSelectAttraction,
   selected,
 }: {
   item: RecommendationItem;
   rank?: number;
   onSelect: (r: Region) => void;
+  onSelectAttraction: (a: Attraction) => void;
   selected: boolean;
 }) {
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       className={`recommendation-card${selected ? " selected" : ""}`}
       onClick={() => onSelect(item.region)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onSelect(item.region);
+      }}
     >
       <div className="card-head">
         {rank != null && <span className="rank">{rank}</span>}
@@ -46,14 +52,23 @@ function RecommendationCard({
       {item.topAttractions.length > 0 && (
         <div className="attraction-chips">
           {item.topAttractions.map(({ attraction, matchScore }) => (
-            <span key={attraction.name} className="attraction-chip">
+            <button
+              key={attraction.name}
+              type="button"
+              className="attraction-chip"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(item.region);
+                onSelectAttraction(attraction);
+              }}
+            >
               {attraction.name}
               <span className="attraction-score">{Math.round(matchScore)}</span>
-            </span>
+            </button>
           ))}
         </div>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -61,11 +76,13 @@ export function RecommendationList({
   items,
   exploreItems,
   onSelect,
+  onSelectAttraction,
   selectedCode,
 }: {
   items: RecommendationItem[];
   exploreItems: RecommendationItem[];
   onSelect: (r: Region) => void;
+  onSelectAttraction: (a: Attraction) => void;
   selectedCode?: string;
 }) {
   if (items.length === 0) {
@@ -80,6 +97,7 @@ export function RecommendationList({
           item={item}
           rank={i + 1}
           onSelect={onSelect}
+          onSelectAttraction={onSelectAttraction}
           selected={selectedCode === item.region.code}
         />
       ))}
@@ -92,6 +110,7 @@ export function RecommendationList({
               key={item.region.code}
               item={item}
               onSelect={onSelect}
+              onSelectAttraction={onSelectAttraction}
               selected={selectedCode === item.region.code}
             />
           ))}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
 import { MapView } from "../components/MapView";
 import { RecommendationList } from "../components/RecommendationList";
@@ -7,7 +8,7 @@ import { SafetyPanel } from "../components/SafetyPanel";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { getExploreRecommendations, getRecommendations, topAttractionsOf } from "../lib/recommend";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
-import type { Person, RecommendationItem, Region } from "../lib/types";
+import type { Attraction, Person, RecommendationItem, Region } from "../lib/types";
 import "./AppPage.css";
 
 export function AppPage() {
@@ -18,6 +19,7 @@ export function AppPage() {
     nightPlan: false,
   });
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+  const [selectedAttraction, setSelectedAttraction] = useState<Attraction | null>(null);
 
   const recommendations: RecommendationItem[] = useMemo(() => {
     if (people == null) return [];
@@ -75,12 +77,17 @@ export function AppPage() {
               setPeople(p);
               setSafetyFilters(filters);
               setSelectedRegion(null);
+              setSelectedAttraction(null);
             }}
           />
           <RecommendationList
             items={recommendations}
             exploreItems={exploreRecommendations}
-            onSelect={setSelectedRegion}
+            onSelect={(region) => {
+              setSelectedRegion(region);
+              setSelectedAttraction(null);
+            }}
+            onSelectAttraction={setSelectedAttraction}
             selectedCode={selectedRegion?.code}
           />
         </aside>
@@ -90,9 +97,14 @@ export function AppPage() {
             regions={SAMPLE_REGIONS}
             highlightedCodes={highlightedCodes}
             selectedCode={selectedRegion?.code}
-            onSelectRegion={setSelectedRegion}
+            onSelectRegion={(region) => {
+              setSelectedRegion(region);
+              setSelectedAttraction(null);
+            }}
+            onSelectAttraction={setSelectedAttraction}
             people={people ?? []}
           />
+          {selectedAttraction && <AttractionDetail attraction={selectedAttraction} />}
           {selectedRegion && <SafetyPanel region={selectedRegion} filters={safetyFilters} />}
         </section>
       </main>

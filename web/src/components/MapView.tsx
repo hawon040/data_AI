@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { topAttractionsOf } from "../lib/recommend";
-import type { Person, Region } from "../lib/types";
+import type { Attraction, Person, Region } from "../lib/types";
 
 const KAKAO_KEY = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
 
@@ -24,12 +24,14 @@ export function MapView({
   highlightedCodes,
   selectedCode,
   onSelectRegion,
+  onSelectAttraction,
   people = [],
 }: {
   regions: Region[];
   highlightedCodes: Set<string>;
   selectedCode?: string;
   onSelectRegion: (r: Region) => void;
+  onSelectAttraction: (a: Attraction) => void;
   /** 동행자 정보 — 지역 안 관광지 순위에도 연령대 선호도를 반영하기 위해 받는다. */
   people?: Person[];
 }) {
@@ -38,7 +40,6 @@ export function MapView({
   const markersRef = useRef<Map<string, any>>(new Map());
   const attractionMarkersRef = useRef<any[]>([]);
   const attractionLabelsRef = useRef<any[]>([]);
-  const infoWindowRef = useRef<any>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "no-key" | "error">(
     KAKAO_KEY ? "loading" : "no-key",
   );
@@ -96,16 +97,11 @@ export function MapView({
     attractionMarkersRef.current = [];
     attractionLabelsRef.current.forEach((o) => o.setMap(null));
     attractionLabelsRef.current = [];
-    infoWindowRef.current?.close();
 
     const region = selectedCode ? regions.find((r) => r.code === selectedCode) : undefined;
     if (!region) return;
 
-    if (!infoWindowRef.current) {
-      infoWindowRef.current = new window.kakao.maps.InfoWindow({ removable: true });
-    }
-
-    topAttractionsOf(region, people, 5).forEach(({ attraction, matchScore }, i) => {
+    topAttractionsOf(region, people, 5).forEach(({ attraction }, i) => {
       const position = new window.kakao.maps.LatLng(attraction.lat, attraction.lng);
       const marker = new window.kakao.maps.Marker({
         position,
@@ -128,15 +124,10 @@ export function MapView({
       label.setMap(mapRef.current);
       attractionLabelsRef.current.push(label);
 
-      window.kakao.maps.event.addListener(marker, "click", () => {
-        infoWindowRef.current.setContent(
-          `<div style="padding:6px 10px;font-size:12px;">${attraction.name} (${attraction.category}) · 매치 점수 ${Math.round(matchScore)}</div>`,
-        );
-        infoWindowRef.current.open(mapRef.current, marker);
-      });
+      window.kakao.maps.event.addListener(marker, "click", () => onSelectAttraction(attraction));
       attractionMarkersRef.current.push(marker);
     });
-  }, [status, selectedCode, regions, people]);
+  }, [status, selectedCode, regions, people, onSelectAttraction]);
 
   if (status === "no-key" || status === "error") {
     const shown = highlightedCodes.size > 0 ? regions.filter((r) => highlightedCodes.has(r.code)) : regions;
@@ -159,7 +150,23 @@ export function MapView({
             return (
               <li key={r.code}>
                 <strong>{r.name}</strong>
-                {top.length > 0 && ` — ${top.map(({ attraction }) => attraction.name).join(", ")}`}
+                {top.length > 0 && (
+                  <>
+                    {" — "}
+                    {top.map(({ attraction }, i) => (
+                      <span key={attraction.name}>
+                        {i > 0 && ", "}
+                        <button
+                          type="button"
+                          className="fallback-attraction-link"
+                          onClick={() => onSelectAttraction(attraction)}
+                        >
+                          {attraction.name}
+                        </button>
+                      </span>
+                    ))}
+                  </>
+                )}
               </li>
             );
           })}
