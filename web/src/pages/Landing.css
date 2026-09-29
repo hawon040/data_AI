@@ -81,6 +81,20 @@
   padding: 10px 22px;
   font-size: 13px;
 }
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pill-button.ghost {
+  text-decoration: none;
+  display: inline-block;
+}
+@media (max-width: 520px) {
+  .nav-actions .pill-button.ghost {
+    display: none;
+  }
+}
 @media (max-width: 720px) {
   .nav-links {
     display: none;

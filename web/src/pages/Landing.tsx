@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./Landing.css";
 
 const NAV_LINKS = ["서비스", "방법론", "검증 결과"];
@@ -56,9 +56,14 @@ export function Landing() {
             </a>
           ))}
         </div>
-        <button className="pill-button primary compact" onClick={() => navigate("/app")}>
-          추천받으러 가기
-        </button>
+        <div className="nav-actions">
+          <Link to="/about" className="pill-button ghost compact">
+            구현 방식 &amp; 신뢰성
+          </Link>
+          <button className="pill-button primary compact" onClick={() => navigate("/app")}>
+            추천받으러 가기
+          </button>
+        </div>
       </nav>
 
       <section className="hero">
