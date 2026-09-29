@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CompanionForm } from "../components/CompanionForm";
 import { MapView } from "../components/MapView";
@@ -31,7 +31,7 @@ export function AppPage() {
           score: Math.log(region.totalVisitors),
           perPersonLQ: [],
           evidence: [`전체 방문자 수 ${region.totalVisitors.toLocaleString()}명`],
-          topAttractions: topAttractionsOf(region),
+          topAttractions: topAttractionsOf(region, []),
         }));
     }
     return getRecommendations(people, SAMPLE_REGIONS, 5);
@@ -47,6 +47,14 @@ export function AppPage() {
     () => new Set([...recommendations, ...exploreRecommendations].map((r) => r.region.code)),
     [recommendations, exploreRecommendations],
   );
+
+  // 추천이 나오면 1위 지역을 자동으로 선택해 지도에 관광지 핀과 안전 정보를
+  // 바로 보여준다 — 카드를 눌러야만 지도가 움직이면 지도를 안 쓰게 된다.
+  useEffect(() => {
+    if (recommendations.length > 0 && selectedRegion == null) {
+      setSelectedRegion(recommendations[0].region);
+    }
+  }, [recommendations, selectedRegion]);
 
   return (
     <div className="app-shell">
@@ -83,6 +91,7 @@ export function AppPage() {
             highlightedCodes={highlightedCodes}
             selectedCode={selectedRegion?.code}
             onSelectRegion={setSelectedRegion}
+            people={people ?? []}
           />
           {selectedRegion && <SafetyPanel region={selectedRegion} filters={safetyFilters} />}
         </section>

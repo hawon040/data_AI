@@ -47,16 +47,34 @@ export interface SafetyIndex {
   sub: SafetySubIndicators;
 }
 
-/** 관광지 단위 데이터 (문서 4.3: 지역 다음 2단계로 관광지를 정렬한다).
- * 성·연령 분포가 없는 단위라, 인기 지표(popularityScore)만으로 지역 안에서
- * 순위를 매긴다 — 실제 연동 시 TourAPI 목록 + 데이터랩 목적지 검색량으로 교체한다.
+/** 관광지 성격 태그 — 연령대별 선호도 계산에 쓰는 분류 (문서 4.3, 9.3).
+ * 공공데이터는 관광지 단위 성·연령 분포를 제공하지 않으므로, 실제 서비스에서도
+ * "이 유형을 이 연령대가 얼마나 선호하는가"라는 보조 가중치로 태그를 쓴다 —
+ * 이후 앱 내 사용자 기록이 쌓이면 이 가중치를 실측치로 교체한다(문서 4.3).
  */
+export type AttractionTag =
+  | "history"
+  | "nature"
+  | "activity"
+  | "food"
+  | "cafe"
+  | "shopping"
+  | "culture"
+  | "theme_park"
+  | "resort"
+  | "view";
+
+/** 관광지 단위 데이터 (문서 4.3: 지역 다음 2단계로 관광지를 정렬한다). */
 export interface Attraction {
   name: string;
   category: string;
+  tags: AttractionTag[];
   lat: number;
   lng: number;
-  /** 관광지 단위 인기 지표 (0~100). TourAPI·목적지 검색량 등을 정규화한 값. */
+  /** 관광지 단위 기저 인기 지표 (0~100). TourAPI·목적지 검색량 등을 정규화한 값.
+   * 최종 추천 순위는 이 값에 동행자 연령대별 태그 선호도를 곱해서 정한다
+   * (아래 RecommendationItem.topAttractions 참고) — 인기도 하나만으로 매기지 않는다.
+   */
   popularityScore: number;
 }
 
@@ -86,6 +104,8 @@ export interface RecommendationItem {
   perPersonLQ: { person: Person; lq: number }[];
   /** 근거 문장 (문서 4.7: 광고 없는 추천 원칙 — 숫자 근거를 함께 보여준다) */
   evidence: string[];
-  /** 이 지역 안에서 인기 지표순으로 정렬한 상위 관광지 (문서 4.3 2단계 추천) */
-  topAttractions: Attraction[];
+  /** 이 지역 안에서 동행자 연령대 선호도까지 반영해 정렬한 상위 관광지
+   * (문서 4.3 2단계 추천). matchScore는 popularityScore x 연령대 선호 가중치.
+   */
+  topAttractions: { attraction: Attraction; matchScore: number }[];
 }

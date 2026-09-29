@@ -312,10 +312,16 @@
   color: var(--teal);
 }
 .fallback-region-list {
-  columns: 2;
   font-size: 12px;
   margin: 0;
+  padding-left: 18px;
   color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fallback-region-list strong {
+  color: var(--text-secondary);
 }
 
 .safety-panel h3 {

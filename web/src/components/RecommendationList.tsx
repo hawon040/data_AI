@@ -45,10 +45,10 @@ function RecommendationCard({
       </ul>
       {item.topAttractions.length > 0 && (
         <div className="attraction-chips">
-          {item.topAttractions.map((a) => (
-            <span key={a.name} className="attraction-chip">
-              {a.name}
-              <span className="attraction-score">{a.popularityScore}</span>
+          {item.topAttractions.map(({ attraction, matchScore }) => (
+            <span key={attraction.name} className="attraction-chip">
+              {attraction.name}
+              <span className="attraction-score">{Math.round(matchScore)}</span>
             </span>
           ))}
         </div>

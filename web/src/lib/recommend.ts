@@ -1,8 +1,9 @@
 /**
  * 동행자 교집합 추천 (문서 4.4) + 필터 버블을 막는 탐색 추천 (문서 4.8).
  */
+import { attractionMatchScore } from "./attractionAffinity";
 import { groupScore, locationQuotient, nationalShares, specializationScore } from "./indices";
-import { AGE_GROUP_LABELS, groupKey, type Attraction, type Person, type Region, type RecommendationItem } from "./types";
+import { AGE_GROUP_LABELS, groupKey, type Person, type Region, type RecommendationItem } from "./types";
 
 function personLabel(p: Person): string {
   const gender = p.gender === "F" ? "여성" : "남성";
@@ -14,11 +15,18 @@ function evidenceSentence(person: Person, lq: number): string {
 }
 
 /**
- * 지역 안에서 관광지를 인기 지표순으로 정렬해 상위 n개를 뽑는다 (문서 4.3의
- * 2단계 추천: 1단계는 지역, 2단계는 그 지역 안의 관광지를 인기 지표로 정렬).
+ * 지역 안에서 관광지를 동행자 연령대 선호도까지 반영한 매치 점수로 정렬해
+ * 상위 n개를 뽑는다 (문서 4.3의 2단계 추천: 1단계는 지역을, 2단계는 그 지역
+ * 안의 관광지를 고른다). people이 비어 있으면 기저 인기 지표만으로 정렬한다.
  */
-export function topAttractionsOf(region: Region, n = 3): Attraction[] {
-  return region.attractions.slice().sort((a, b) => b.popularityScore - a.popularityScore).slice(0, n);
+export function topAttractionsOf(region: Region, people: Person[], n = 3) {
+  return region.attractions
+    .map((attraction) => ({
+      attraction,
+      matchScore: attractionMatchScore(attraction.popularityScore, attraction.tags, people),
+    }))
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, n);
 }
 
 /**
@@ -55,7 +63,7 @@ export function getRecommendations(
       .sort((a, b) => a.lq - b.lq) // 가장 덜 만족하는 동행자부터 보여준다
       .map(({ person, lq }) => evidenceSentence(person, lq));
 
-    return { region, score, perPersonLQ, evidence, topAttractions: topAttractionsOf(region) };
+    return { region, score, perPersonLQ, evidence, topAttractions: topAttractionsOf(region, people) };
   });
 
   return items.sort((a, b) => b.score - a.score).slice(0, topN);
@@ -103,6 +111,6 @@ export function getExploreRecommendations(
     score: groupScore(perPersonLQ.map((x) => x.lq), region.totalVisitors),
     perPersonLQ,
     evidence: perPersonLQ.map(({ person, lq }) => evidenceSentence(person, lq)),
-    topAttractions: topAttractionsOf(region),
+    topAttractions: topAttractionsOf(region, people),
   }));
 }
