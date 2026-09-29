@@ -34,6 +34,11 @@ VITE_KAKAO_MAP_KEY=발급받은_키
 - `/app` — 실제 추천 도구 (`src/pages/AppPage.tsx`). 동행자 입력 → 추천 목록 →
   지도·안전 패널. 상단 "← TrueTrip"으로 랜딩 페이지로 돌아간다.
 
+추천은 2단계로 이루어진다 (문서 4.3): 1단계는 지역을 동행자 교집합 점수로
+고르고, 2단계는 그 지역 안의 관광지를 인기 지표로 정렬해 카드에 칩으로
+보여준다. 지역을 선택하면 지도에도 그 지역의 관광지가 작은 점으로 따로
+표시된다.
+
 디자인은 다크 배경 + 블루(`#4f7fff`)/틸(`#00e5c3`) 그라데이션 액센트를 쓰는
 단일 테마로 통일했다 (`src/theme.css`에 토큰 정의).
 
@@ -47,9 +52,9 @@ src/
 │   ├── Landing.tsx + .css   # 마케팅 랜딩 페이지
 │   └── AppPage.tsx + .css   # 실제 추천 도구 화면
 ├── lib/
-│   ├── types.ts           # Person, Region, SafetyIndex 등 도메인 타입
+│   ├── types.ts           # Person, Region, Attraction, SafetyIndex 등 도메인 타입
 │   ├── indices.ts         # LQ·특화점수·그룹점수 (문서 4.2, 4.4)
-│   ├── recommend.ts       # 동행자 교집합 추천 + 탐색 추천 (문서 4.4, 4.8)
+│   ├── recommend.ts       # 동행자 교집합 추천 + 지역 안 관광지 정렬(4.3) + 탐색 추천(4.8)
 │   └── safetyPriority.ts  # 동행 구성별 안전 지표 표시 순서 (문서 4.5)
 ├── data/sampleRegions.ts  # 시범 권역 샘플 데이터
 └── components/

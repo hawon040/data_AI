@@ -47,6 +47,19 @@ export interface SafetyIndex {
   sub: SafetySubIndicators;
 }
 
+/** 관광지 단위 데이터 (문서 4.3: 지역 다음 2단계로 관광지를 정렬한다).
+ * 성·연령 분포가 없는 단위라, 인기 지표(popularityScore)만으로 지역 안에서
+ * 순위를 매긴다 — 실제 연동 시 TourAPI 목록 + 데이터랩 목적지 검색량으로 교체한다.
+ */
+export interface Attraction {
+  name: string;
+  category: string;
+  lat: number;
+  lng: number;
+  /** 관광지 단위 인기 지표 (0~100). TourAPI·목적지 검색량 등을 정규화한 값. */
+  popularityScore: number;
+}
+
 export interface Region {
   code: string;
   name: string;
@@ -63,6 +76,8 @@ export interface Region {
   safety: SafetyIndex;
   /** 시연/데모용 한 줄 소개 */
   highlight: string;
+  /** 지역 안의 관광지 목록 (문서 4.3 2단계 추천) */
+  attractions: Attraction[];
 }
 
 export interface RecommendationItem {
@@ -71,4 +86,6 @@ export interface RecommendationItem {
   perPersonLQ: { person: Person; lq: number }[];
   /** 근거 문장 (문서 4.7: 광고 없는 추천 원칙 — 숫자 근거를 함께 보여준다) */
   evidence: string[];
+  /** 이 지역 안에서 인기 지표순으로 정렬한 상위 관광지 (문서 4.3 2단계 추천) */
+  topAttractions: Attraction[];
 }

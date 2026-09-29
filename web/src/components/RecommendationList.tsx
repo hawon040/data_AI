@@ -43,6 +43,16 @@ function RecommendationCard({
           <li key={i}>{e}</li>
         ))}
       </ul>
+      {item.topAttractions.length > 0 && (
+        <div className="attraction-chips">
+          {item.topAttractions.map((a) => (
+            <span key={a.name} className="attraction-chip">
+              {a.name}
+              <span className="attraction-score">{a.popularityScore}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </button>
   );
 }

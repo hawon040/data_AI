@@ -5,7 +5,7 @@ import { MapView } from "../components/MapView";
 import { RecommendationList } from "../components/RecommendationList";
 import { SafetyPanel } from "../components/SafetyPanel";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
-import { getExploreRecommendations, getRecommendations } from "../lib/recommend";
+import { getExploreRecommendations, getRecommendations, topAttractionsOf } from "../lib/recommend";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import type { Person, RecommendationItem, Region } from "../lib/types";
 import "./AppPage.css";
@@ -31,6 +31,7 @@ export function AppPage() {
           score: Math.log(region.totalVisitors),
           perPersonLQ: [],
           evidence: [`전체 방문자 수 ${region.totalVisitors.toLocaleString()}명`],
+          topAttractions: topAttractionsOf(region),
         }));
     }
     return getRecommendations(people, SAMPLE_REGIONS, 5);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { topAttractionsOf } from "../lib/recommend";
 import type { Region } from "../lib/types";
 
 const KAKAO_KEY = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
@@ -32,6 +33,8 @@ export function MapView({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
+  const attractionMarkersRef = useRef<any[]>([]);
+  const infoWindowRef = useRef<any>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "no-key" | "error">(
     KAKAO_KEY ? "loading" : "no-key",
   );
@@ -72,10 +75,49 @@ export function MapView({
   }, [status, regions, highlightedCodes, onSelectRegion]);
 
   useEffect(() => {
-    if (status !== "ready" || !selectedCode || !mapRef.current) return;
-    const region = regions.find((r) => r.code === selectedCode);
+    if (status !== "ready" || !mapRef.current) return;
+    const region = selectedCode ? regions.find((r) => r.code === selectedCode) : undefined;
     if (!region) return;
     mapRef.current.panTo(new window.kakao.maps.LatLng(region.lat, region.lng));
+    mapRef.current.setLevel(7);
+  }, [status, selectedCode, regions]);
+
+  // 선택된 지역 안의 관광지 마커 — 문서 4.3의 2단계 추천(지역 -> 관광지)을 지도에서 보여준다.
+  useEffect(() => {
+    if (status !== "ready" || !mapRef.current) return;
+
+    attractionMarkersRef.current.forEach((m) => m.setMap(null));
+    attractionMarkersRef.current = [];
+    infoWindowRef.current?.close();
+
+    const region = selectedCode ? regions.find((r) => r.code === selectedCode) : undefined;
+    if (!region) return;
+
+    if (!infoWindowRef.current) {
+      infoWindowRef.current = new window.kakao.maps.InfoWindow({ removable: true });
+    }
+
+    topAttractionsOf(region, 5).forEach((attraction) => {
+      const position = new window.kakao.maps.LatLng(attraction.lat, attraction.lng);
+      const marker = new window.kakao.maps.Marker({
+        position,
+        map: mapRef.current,
+        image: new window.kakao.maps.MarkerImage(
+          "data:image/svg+xml;charset=UTF-8," +
+            encodeURIComponent(
+              '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="8" cy="8" r="6" fill="%2300e5c3" stroke="%230a0a0a" stroke-width="2"/></svg>',
+            ),
+          new window.kakao.maps.Size(16, 16),
+        ),
+      });
+      window.kakao.maps.event.addListener(marker, "click", () => {
+        infoWindowRef.current.setContent(
+          `<div style="padding:6px 10px;font-size:12px;">${attraction.name} · 인기도 ${attraction.popularityScore}</div>`,
+        );
+        infoWindowRef.current.open(mapRef.current, marker);
+      });
+      attractionMarkersRef.current.push(marker);
+    });
   }, [status, selectedCode, regions]);
 
   if (status === "no-key") {
