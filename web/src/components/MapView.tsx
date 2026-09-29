@@ -97,8 +97,17 @@ export function MapView({
   }
 
   if (status === "error") {
-    return <div className="map-fallback">카카오맵을 불러오지 못했습니다. API 키를 확인하세요.</div>;
+    return (
+      <div className="map-fallback">
+        카카오맵을 불러오지 못했습니다. API 키와 플랫폼(Web) 도메인 등록을 확인하세요.
+      </div>
+    );
   }
 
-  return <div ref={containerRef} className="map-view" />;
+  return (
+    <div className="map-view-wrap">
+      <div ref={containerRef} className="map-view" />
+      {status === "loading" && <div className="map-loading">지도를 불러오는 중…</div>}
+    </div>
+  );
 }

@@ -27,10 +27,25 @@ VITE_KAKAO_MAP_KEY=발급받은_키
 
 키가 없으면 지도 대신 지역 좌표 목록이 표시된다(폴백).
 
+## 화면 구성
+
+- `/` — 랜딩 페이지 (`src/pages/Landing.tsx`). 서비스 소개, 검증된 수치, 4대
+  기능 카드, 방법론 요약. 실제 도구는 여기서 "추천받으러 가기" 버튼으로 넘어간다.
+- `/app` — 실제 추천 도구 (`src/pages/AppPage.tsx`). 동행자 입력 → 추천 목록 →
+  지도·안전 패널. 상단 "← TrueTrip"으로 랜딩 페이지로 돌아간다.
+
+디자인은 다크 배경 + 블루(`#4f7fff`)/틸(`#00e5c3`) 그라데이션 액센트를 쓰는
+단일 테마로 통일했다 (`src/theme.css`에 토큰 정의).
+
 ## 구조
 
 ```
 src/
+├── theme.css               # 다크 테마 공통 토큰 (색상, 필 버튼)
+├── App.tsx                  # 라우터 (/ → Landing, /app → AppPage)
+├── pages/
+│   ├── Landing.tsx + .css   # 마케팅 랜딩 페이지
+│   └── AppPage.tsx + .css   # 실제 추천 도구 화면
 ├── lib/
 │   ├── types.ts           # Person, Region, SafetyIndex 등 도메인 타입
 │   ├── indices.ts         # LQ·특화점수·그룹점수 (문서 4.2, 4.4)

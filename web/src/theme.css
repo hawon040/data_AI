@@ -1,0 +1,80 @@
+/* 다크 테마 공통 토큰 — 업로드된 참고 디자인(딥블랙 + 블루/틸 그라데이션)을 따른다. */
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface-raised: #161616;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --text-primary: #f0f0f0;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.35);
+
+  --blue: #4f7fff;
+  --blue-hover: #6b93ff;
+  --teal: #00e5c3;
+  --gradient-accent: linear-gradient(135deg, var(--blue), var(--teal));
+
+  --grade-1: #17b083;
+  --grade-2: #4fae4f;
+  --grade-3: #d9a441;
+  --grade-4: #e07a3a;
+  --grade-5: #e2504f;
+
+  --font-sans: "Pretendard", "Noto Sans KR", "DM Sans", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+.pill-button {
+  padding: 14px 32px;
+  border-radius: 100px;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.pill-button.primary {
+  background: var(--gradient-accent);
+  color: #fff;
+  box-shadow: 0 8px 32px rgba(79, 127, 255, 0.35);
+}
+.pill-button.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(79, 127, 255, 0.5);
+}
+.pill-button.ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.85);
+}
+.pill-button.ghost:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #fff;
+}
