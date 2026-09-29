@@ -1,6 +1,6 @@
 .about-hero {
   padding: 100px 48px 64px;
-  max-width: 760px;
+  max-width: 820px;
 }
 .about-hero h1 {
   font-size: clamp(28px, 4.5vw, 48px);
@@ -13,48 +13,67 @@
   max-width: 100%;
 }
 
-.about-feature-list {
-  display: flex;
-  flex-direction: column;
+.about-section {
+  padding: 64px 48px;
 }
-.about-feature-row {
-  padding: 28px 0;
-  border-top: 1px solid var(--border);
-}
-.about-feature-list .about-feature-row:last-child {
-  border-bottom: 1px solid var(--border);
-}
-.about-feature-row h3 {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 0 0 10px;
-}
-.about-feature-row p {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.8;
-  font-weight: 300;
-  margin: 0;
-  max-width: 760px;
+.about-section.problems {
+  padding-top: 0;
 }
 
-.caveats {
-  padding: 0 48px 100px;
+/* ── 01 문제 발견 ── */
+.finding-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.finding-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.finding-value {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, #fff 60%, var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.finding-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.finding-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.85;
+  font-weight: 300;
+  max-width: 820px;
+  margin: 0;
+}
+
+/* ── 02 문제 정의 / 05 한계 (공용 problem-list) ── */
+.problem-list {
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  max-width: 880px;
+  gap: 18px;
+  max-width: 820px;
 }
-.caveat-row {
+.problem-row {
   display: flex;
-  gap: 20px;
+  gap: 16px;
+  align-items: flex-start;
 }
-.caveat-num {
+.problem-num {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   background: var(--surface);
   border: 1px solid var(--border);
   display: flex;
@@ -62,27 +81,210 @@
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
+  color: var(--blue);
+  font-family: "DM Sans", sans-serif;
+  margin-top: 2px;
+}
+.problem-row p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  font-weight: 300;
+  margin: 0;
+}
+.problem-row strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+/* ── 03 해결 방법 : solution cards ── */
+.solution-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.solution-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+}
+.solution-head {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+.solution-num {
+  font-size: 13px;
+  font-weight: 700;
   color: var(--teal);
   font-family: "DM Sans", sans-serif;
+  flex-shrink: 0;
 }
-.caveat-row h3 {
-  font-size: 15px;
-  font-weight: 700;
-  margin: 4px 0 8px;
+.solution-head h3 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
 }
-.caveat-row p {
+.solution-tagline {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.solution-problem {
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.75;
   font-weight: 300;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 0 0 22px;
+}
+.solution-problem strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.solution-block {
+  margin-bottom: 20px;
+}
+.solution-block:last-child {
+  margin-bottom: 0;
+}
+.solution-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.solution-block > p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  font-weight: 300;
   margin: 0;
+}
+
+.source-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.source-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.source-list strong {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 3px;
+}
+.source-list p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  font-weight: 300;
+  margin: 0;
+}
+.source-status {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+.status-live {
+  background: rgba(0, 229, 195, 0.15);
+  color: var(--teal);
+}
+.status-sample {
+  background: rgba(79, 127, 255, 0.15);
+  color: var(--blue-hover);
+}
+.status-planned {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.formula-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: "DM Sans", ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--teal);
+  line-height: 1.9;
+  overflow-x: auto;
+  margin: 0 0 12px;
+  white-space: pre;
+}
+
+/* ── 04 검증 결과 표 ── */
+.validation-table-wrap {
+  padding: 0 48px 100px;
+  overflow-x: auto;
+}
+.validation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+}
+.validation-table th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 16px 12px 0;
+  border-bottom: 1px solid var(--border-strong);
+  font-weight: 700;
+}
+.validation-table td {
+  padding: 16px 16px 16px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 300;
+  vertical-align: top;
+}
+.validation-table td:first-child {
+  color: var(--text-primary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.validation-table td:nth-child(2) {
+  color: var(--teal);
+  font-weight: 600;
 }
 
 @media (max-width: 720px) {
   .about-hero {
     padding: 72px 20px 40px;
   }
-  .caveats {
+  .about-section {
+    padding: 48px 20px;
+  }
+  .validation-table-wrap {
     padding: 0 20px 64px;
+  }
+  .finding-grid {
+    grid-template-columns: 1fr;
+  }
+  .solution-card {
+    padding: 22px;
   }
 }
