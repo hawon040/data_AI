@@ -69,7 +69,6 @@ export function Landing() {
       <section className="hero">
         <div className="hero-glow glow-blue" />
         <div className="hero-glow glow-teal" />
-        <div className="hero-eyebrow">SINCE 2026 · 충청·강원 시범 서비스</div>
         <h1>
           같이 가는 모두가 만족할 여행지를,
           <br />
