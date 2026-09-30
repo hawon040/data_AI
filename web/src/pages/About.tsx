@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArchitectureDiagram } from "../components/ArchitectureDiagram";
 import "./Landing.css";
 import "./About.css";
 
@@ -12,6 +14,7 @@ interface Solution {
   num: string;
   title: string;
   tagline: string;
+  highlight: string;
   problem: string;
   sources: DataSource[];
   why: string;
@@ -20,6 +23,24 @@ interface Solution {
   result: string;
   errorFix: string;
 }
+
+const TOC_ITEMS: { id: string; label: string; color: string }[] = [
+  { id: "finding", label: "문제 발견", color: "var(--blue)" },
+  { id: "problems", label: "문제 정의", color: "var(--blue)" },
+  { id: "architecture", label: "시스템 구조", color: "#a68eea" },
+  { id: "solutions", label: "해결 방법", color: "var(--blue)" },
+  { id: "stack", label: "기술 스택", color: "var(--teal)" },
+  { id: "validation", label: "검증 결과", color: "var(--teal)" },
+  { id: "fixes", label: "문제 해결 기록", color: "#e07a3a" },
+  { id: "limits", label: "한계", color: "var(--text-muted)" },
+];
+
+const HEADLINE_STATS = [
+  { value: "2.5배", label: "인기도 단독 대비 추천 정밀도" },
+  { value: "82%↓", label: "서로 다른 집단 간 추천 중복률" },
+  { value: "53%↓", label: "안전지수 전체 RMSE 개선" },
+  { value: "3종", label: "카카오맵 실시간 연동 기능" },
+];
 
 const STATUS_LABEL: Record<DataSource["status"], string> = {
   live: "실연동",
@@ -32,6 +53,7 @@ const SOLUTIONS: Solution[] = [
     num: "01",
     title: "동행자 교집합 추천",
     tagline: "성별·연령이 다른 동행자 모두가 평균 이상으로 찾는 지역만 고른다",
+    highlight: "정밀도 2.5배 ↑ · 중복 추천 82%↓",
     problem:
       "50대 부모와 20대 자녀, 20대 커플, 30대 부부와 60대 부모처럼 성·연령이 섞인 여행은 흔하다. 기존 추천은 한 사람 기준이라 누군가는 양보해야 했다.",
     sources: [
@@ -58,6 +80,7 @@ const SOLUTIONS: Solution[] = [
     num: "02",
     title: "관광지 2단계 추천",
     tagline: "지역을 고른 다음, 그 지역 '안'의 실제 관광지까지 순서를 매긴다",
+    highlight: "같은 지역도 연령대별로 1위 관광지가 달라짐",
     problem:
       "공공데이터의 성·연령 분포는 지역(시군구) 단위까지만 있다. 관광지 하나하나에 '20대가 몇 명 왔는지'는 어떤 공공데이터에도 없다.",
     sources: [
@@ -88,6 +111,7 @@ const SOLUTIONS: Solution[] = [
     num: "03",
     title: "여행자 관점 안전지수",
     tagline: "거주 인구가 아니라 관광객 체류를 반영해 안전도를 다시 계산한다",
+    highlight: "RMSE 8.8 → 4.1 (소규모 지역 14.7 → 6.8)",
     problem:
       "행정안전부 지역안전지수 같은 기존 지표는 거주민 관점이다. 거주 인구를 분모로 쓰면 관광객이 몰리는 지역은 실제 체류 인구보다 훨씬 적은 수로 나눠져 위험이 부풀려진다.",
     sources: [
@@ -124,6 +148,7 @@ const SOLUTIONS: Solution[] = [
     num: "04",
     title: "실제 장소 연동 & 길찾기",
     tagline: "추천 관광지를 실제 지도 위 좌표·주소·길안내로 바로 연결한다",
+    highlight: "카카오맵 SDK·로컬 API·길찾기 링크 3종 실연동",
     problem:
       "관광지 이름과 대략적인 좌표만 있으면 추천은 되지만, 사용자가 실제로 거기에 '찾아갈' 수는 없다.",
     sources: [
@@ -159,6 +184,7 @@ const SOLUTIONS: Solution[] = [
     num: "05",
     title: "필터 버블 방지 탐색 추천",
     tagline: "같은 집단에게 항상 같은 곳만 추천되는 것을 막는다",
+    highlight: "메인 추천과 겹치지 않는 '숨은 명소' 자동 발굴",
     problem:
       "특화지수 상위 지역만 계속 보여주면, 그 집단이 원래 자주 가던 곳만 강화되고 새로운 선택지가 드러나지 않는다.",
     sources: [
@@ -184,6 +210,7 @@ const SOLUTIONS: Solution[] = [
     num: "06",
     title: "지도 자동 반영",
     tagline: "클릭하지 않아도 1위 추천지가 지도에 바로 뜬다",
+    highlight: "추천 즉시 지도가 스스로 반응",
     problem:
       "추천 목록만 텍스트로 나열하면 지도는 장식이 되고, 사용자가 매번 카드를 눌러야 지도가 움직인다 — 지도를 쓸 이유가 줄어든다.",
     sources: [
@@ -198,6 +225,52 @@ const SOLUTIONS: Solution[] = [
     errorFix:
       "자동 선택과 사용자 선택이 충돌하지 않도록 상태를 하나로 통일하고, 새 검색(폼 재제출) 시에는 이전 선택을 명시적으로 초기화해 오래된 관광지 상세 패널이 새 지역 위에 남아있는 버그를 막았다.",
   },
+];
+
+const STACK = [
+  ["화면", "React 19 + TypeScript", "컴포넌트로 화면을 나누고 타입으로 실수를 줄인다", "web/src/"],
+  ["라우팅", "React Router", "랜딩 · 추천 도구 · 구현 방식을 별도 URL로 분리", "web/src/App.tsx"],
+  ["빌드 도구", "Vite", "개발 서버와 배포용 정적 파일을 만든다", "web/"],
+  ["지도", "카카오맵 JavaScript SDK", "지도 렌더링, 지역·관광지 마커와 이름표", "components/MapView.tsx"],
+  ["실제 장소 조회", "카카오 로컬 API (REST)", "실제 주소·전화번호·상세페이지 링크 조회", "lib/kakaoLocal.ts"],
+  ["추천 · 안전지수 로직", "TypeScript (브라우저 내 계산)", "LQ·그룹점수·관광지 매치·안전지수를 클라이언트에서 직접 계산", "lib/indices.ts, lib/recommend.ts"],
+  ["검증 패키지", "Python + NumPy + SciPy", "같은 수식을 독립적으로 재현해 몬테카를로로 검증", "tourism_platform/"],
+  ["테스트", "pytest", "23개 단위 테스트로 수식의 경계 조건을 확인", "tourism_platform/tests/"],
+  ["프론트 배포", "Vercel", "GitHub push 시 자동 빌드·배포", "web-tawny-nine-15.vercel.app"],
+  ["버전 관리", "Git + GitHub", "웹앱과 파이썬 패키지를 한 저장소에서 관리", "hawon040/data_AI"],
+];
+
+const FIXLOG = [
+  [
+    "경험적 베이즈 축소가 전혀 효과 없음",
+    "안전지수 계산에서 인구를 '10만 명 단위'로 맞추지 않고 원래 규모(수만~수백만)를 그대로 넘겨, 축소 가중치가 항상 1에 가까워짐",
+    "rate 계산에 쓴 것과 같은 단위(유효인구/100,000)로 맞춰 전달하도록 수정",
+  ],
+  [
+    "3개년 평균+베이즈 축소가 단순 3개년 평균보다도 나쁨",
+    "3개년 평균의 표집분산을 단년 분산 그대로 써서 지역 간 참분산(σ²)이 과소 추정됨",
+    "표집분산을 연도 수(3)로 나눠 3개년 평균에 맞는 분산으로 스케일 조정",
+  ],
+  [
+    "수정한 유효인구 방식이 거주 인구만 쓴 것보다 처음엔 더 나쁨",
+    "데이터랩 방문자 수가 이미 '방문자·일' 단위인데 체류일수를 또 곱해 이중 계산",
+    "체류시간 비율(h̄/24)만 곱하도록 수식을 고치고 몬테카를로로 개선을 재확인",
+  ],
+  [
+    "카카오 로컬 API 실제 응답을 이 환경에서 검증 불가",
+    "개발 환경의 네트워크 정책이 카카오 서버로 나가는 요청 자체를 차단",
+    "API 문서 스펙대로 구현하고, README에 로컬 환경에서 REST 키로 재확인이 필요하다는 한계를 명시",
+  ],
+  [
+    "git push가 거절됨 (fetch first)",
+    "같은 브랜치에 다른 세션에서 이미 커밋이 올라가 있었음",
+    "git fetch로 원격 변경 내용을 먼저 확인한 뒤 충돌 없이 merge하고 다시 push",
+  ],
+  [
+    "기본 Vite 템플릿 CSS가 새 레이아웃과 충돌",
+    "index.css가 가운데 정렬·고정 폭(1126px)·큰 제목 크기를 기본값으로 깔고 있었음",
+    "index.css를 최소 리셋으로 교체하고 모든 페이지 스타일을 새로 작성",
+  ],
 ];
 
 const VALIDATION_SUMMARY = [
@@ -219,6 +292,7 @@ function SolutionCard({ s }: { s: Solution }) {
           <h3>{s.title}</h3>
           <p className="solution-tagline">{s.tagline}</p>
         </div>
+        <span className="solution-highlight">{s.highlight}</span>
       </div>
 
       <p className="solution-problem">
@@ -266,6 +340,27 @@ function SolutionCard({ s }: { s: Solution }) {
 }
 
 export function About() {
+  const [activeId, setActiveId] = useState<string>(TOC_ITEMS[0].id);
+
+  useEffect(() => {
+    const sections = TOC_ITEMS.map((item) => document.getElementById(item.id)).filter(
+      (el): el is HTMLElement => el !== null,
+    );
+    if (sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length === 0) return;
+        const top = visible.reduce((a, b) => (a.boundingClientRect.top < b.boundingClientRect.top ? a : b));
+        setActiveId(top.target.id);
+      },
+      { rootMargin: "-15% 0px -70% 0px", threshold: 0 },
+    );
+    sections.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="landing about-page">
       <nav className="landing-nav">
@@ -293,163 +388,269 @@ export function About() {
           아이디어명부터 문제 발견, 각 기능이 실제로 어떤 데이터·API를 어떤 방식으로 조합해
           결과를 냈고 그 오차를 어떻게 줄였는지까지 — 숨기지 않고 전부 정리했다.
         </p>
-      </header>
-
-      <section className="about-section">
-        <div className="section-head">
-          <div className="eyebrow">01 · 문제 발견</div>
-          <h2>왜 이 서비스가 필요한가</h2>
-        </div>
-        <div className="finding-grid">
-          <div className="finding-card">
-            <div className="finding-value">3억 90만 회</div>
-            <div className="finding-label">2025년 국내여행 횟수 (전년比 +3.1%)</div>
-          </div>
-          <div className="finding-card">
-            <div className="finding-value">39조 5000억 원</div>
-            <div className="finding-label">2025년 국내여행 지출액 (전년比 +7.3%)</div>
-          </div>
-          <div className="finding-card">
-            <div className="finding-value">1,894만 명</div>
-            <div className="finding-label">2025년 방한 외래관광객 (전년比 +15.7%)</div>
-          </div>
-        </div>
-        <p className="finding-text">
-          수치 출처: 2025년 국민여행조사, 한국관광공사 방한관광객 통계. 여행 수요는 커지고
-          있지만, 빅데이터학과 수업에서 관광 공공데이터를 분석하며 두 가지 간극을 발견했다.
-          첫째, 한국관광 데이터랩은 지역별 성·연령 방문 분포를 보여주지만 이 정보는 통계
-          화면에만 머물 뿐 여행자의 실제 목적지 선택에는 쓰이지 않는다 — 그래서 기존 서비스는
-          20대 여성과 60대 남성에게 똑같은 추천 목록을 준다. 둘째, 여행자가 참고할 안전
-          정보는 경찰청·도로교통공단·소방청·국립중앙의료원·지자체에 흩어져 있어 추천 결과와
-          나란히 비교할 방법이 없다.
-        </p>
-      </section>
-
-      <section className="about-section problems">
-        <div className="section-head">
-          <div className="eyebrow">02 · 문제 정의</div>
-          <h2>구체적으로 누구의 어떤 문제인가</h2>
-        </div>
-        <div className="problem-list">
-          <div className="problem-row">
-            <span className="problem-num">1</span>
-            <p>
-              <strong>동행자 간 취향 충돌</strong> — 50대 부모와 20대 자녀처럼 성·연령이 섞인
-              여행에서, 한 사람 기준 추천은 누군가의 양보를 전제한다.
-            </p>
-          </div>
-          <div className="problem-row">
-            <span className="problem-num">2</span>
-            <p>
-              <strong>획일적 추천</strong> — 전체 인기도로 정렬하면 대형 관광지가 모든 집단에게
-              똑같이 상위에 오르고, 특정 집단이 유독 즐겨 찾는 곳은 드러나지 않는다.
-            </p>
-          </div>
-          <div className="problem-row">
-            <span className="problem-num">3</span>
-            <p>
-              <strong>추천 근거에 대한 불신</strong> — 리뷰·블로그는 체험단과 광고로 왜곡될 수
-              있어 여행자가 무엇을 믿어야 할지 판단하기 어렵다.
-            </p>
-          </div>
-          <div className="problem-row">
-            <span className="problem-num">4</span>
-            <p>
-              <strong>안전 정보의 분리</strong> — 여행지를 고르는 화면과 안전 정보를 확인하는
-              곳이 따로 있어, 추천받은 뒤 안전을 별도로 찾아봐야 한다.
-            </p>
-          </div>
-          <div className="problem-row">
-            <span className="problem-num">5</span>
-            <p>
-              <strong>계획 후 끝나는 사용</strong> — 여행 앱은 대부분 계획할 때 한 번 쓰고
-              끝난다. 여행 중 '지금 근처 어디로 갈지'를 알려주는 정보는 없다.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="about-section">
-        <div className="section-head">
-          <div className="eyebrow">03 · 해결 방법</div>
-          <h2>기능마다 — 데이터, 이유, 조합, 결과, 오차 감소</h2>
-        </div>
-        <div className="solution-list">
-          {SOLUTIONS.map((s) => (
-            <SolutionCard key={s.num} s={s} />
+        <div className="headline-stats" aria-label="핵심 검증 결과 요약">
+          {HEADLINE_STATS.map((stat) => (
+            <div className="headline-stat" key={stat.label}>
+              <div className="headline-stat-value">{stat.value}</div>
+              <div className="headline-stat-label">{stat.label}</div>
+            </div>
           ))}
         </div>
-      </section>
+      </header>
 
-      <section className="methodology">
-        <div className="methodology-glow" />
-        <div className="methodology-inner">
-          <div className="eyebrow teal">04 · 검증 결과 총정리</div>
-          <h2>
-            숫자로 다시 확인한
-            <br />
-            방법론의 효과
-          </h2>
-          <p>
-            모두 참값을 아는 가상 지역·가상 동행자로 측정한 몬테카를로 시뮬레이션 결과다.
-            실제 지역의 결과가 아니라 &ldquo;이 계산 방식이 대안보다 낫다&rdquo;는 방법론
-            검증이며, tourism_platform 파이썬 패키지에서 재현해 동일한 방향의 결론을 다시
-            확인했다.
-          </p>
-        </div>
-      </section>
-
-      <section className="validation-table-wrap">
-        <table className="validation-table">
-          <thead>
-            <tr>
-              <th>지표</th>
-              <th>비교값</th>
-              <th>의미</th>
-            </tr>
-          </thead>
-          <tbody>
-            {VALIDATION_SUMMARY.map((row) => (
-              <tr key={row.metric}>
-                <td>{row.metric}</td>
-                <td>{row.values}</td>
-                <td>{row.note}</td>
-              </tr>
+      <div className="about-layout">
+        <aside className="about-toc">
+          <nav aria-label="구현 방식 목차">
+            {TOC_ITEMS.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className={activeId === item.id ? "active" : undefined}
+              >
+                <span className="toc-dot" style={{ background: item.color }} />
+                {item.label}
+              </a>
             ))}
-          </tbody>
-        </table>
-      </section>
+          </nav>
+        </aside>
 
-      <section className="about-section">
-        <div className="section-head">
-          <div className="eyebrow">05 · 한계와 다음 단계</div>
-          <h2>지금 이 데모가 못 하는 것</h2>
+        <div className="about-main">
+          <section className="about-section" id="finding">
+            <div className="section-head">
+              <div className="eyebrow">01 · 문제 발견</div>
+              <h2>왜 이 서비스가 필요한가</h2>
+            </div>
+            <div className="finding-grid">
+              <div className="finding-card">
+                <div className="finding-value">3억 90만 회</div>
+                <div className="finding-label">2025년 국내여행 횟수 (전년比 +3.1%)</div>
+              </div>
+              <div className="finding-card">
+                <div className="finding-value">39조 5000억 원</div>
+                <div className="finding-label">2025년 국내여행 지출액 (전년比 +7.3%)</div>
+              </div>
+              <div className="finding-card">
+                <div className="finding-value">1,894만 명</div>
+                <div className="finding-label">2025년 방한 외래관광객 (전년比 +15.7%)</div>
+              </div>
+            </div>
+            <p className="finding-text">
+              수치 출처: 2025년 국민여행조사, 한국관광공사 방한관광객 통계. 여행 수요는 커지고
+              있지만, 빅데이터학과 수업에서 관광 공공데이터를 분석하며 두 가지 간극을 발견했다.
+              첫째, 한국관광 데이터랩은 지역별 성·연령 방문 분포를 보여주지만 이 정보는 통계
+              화면에만 머물 뿐 여행자의 실제 목적지 선택에는 쓰이지 않는다 — 그래서 기존 서비스는
+              20대 여성과 60대 남성에게 똑같은 추천 목록을 준다. 둘째, 여행자가 참고할 안전
+              정보는 경찰청·도로교통공단·소방청·국립중앙의료원·지자체에 흩어져 있어 추천 결과와
+              나란히 비교할 방법이 없다.
+            </p>
+          </section>
+
+          <section className="about-section problems" id="problems">
+            <div className="section-head">
+              <div className="eyebrow">02 · 문제 정의</div>
+              <h2>구체적으로 누구의 어떤 문제인가</h2>
+            </div>
+            <div className="problem-list">
+              <div className="problem-row">
+                <span className="problem-num">1</span>
+                <p>
+                  <strong>동행자 간 취향 충돌</strong> — 50대 부모와 20대 자녀처럼 성·연령이 섞인
+                  여행에서, 한 사람 기준 추천은 누군가의 양보를 전제한다.
+                </p>
+              </div>
+              <div className="problem-row">
+                <span className="problem-num">2</span>
+                <p>
+                  <strong>획일적 추천</strong> — 전체 인기도로 정렬하면 대형 관광지가 모든 집단에게
+                  똑같이 상위에 오르고, 특정 집단이 유독 즐겨 찾는 곳은 드러나지 않는다.
+                </p>
+              </div>
+              <div className="problem-row">
+                <span className="problem-num">3</span>
+                <p>
+                  <strong>추천 근거에 대한 불신</strong> — 리뷰·블로그는 체험단과 광고로 왜곡될 수
+                  있어 여행자가 무엇을 믿어야 할지 판단하기 어렵다.
+                </p>
+              </div>
+              <div className="problem-row">
+                <span className="problem-num">4</span>
+                <p>
+                  <strong>안전 정보의 분리</strong> — 여행지를 고르는 화면과 안전 정보를 확인하는
+                  곳이 따로 있어, 추천받은 뒤 안전을 별도로 찾아봐야 한다.
+                </p>
+              </div>
+              <div className="problem-row">
+                <span className="problem-num">5</span>
+                <p>
+                  <strong>계획 후 끝나는 사용</strong> — 여행 앱은 대부분 계획할 때 한 번 쓰고
+                  끝난다. 여행 중 '지금 근처 어디로 갈지'를 알려주는 정보는 없다.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="about-section" id="architecture">
+            <div className="section-head">
+              <div className="eyebrow">03 · 시스템 구조</div>
+              <h2>요청이 화면에서 실제 API까지 가는 길</h2>
+            </div>
+          </section>
+          <div className="diagram-wrap">
+            <div className="diagram-card">
+              <ArchitectureDiagram />
+              <div className="diagram-legend">
+                <span><i style={{ borderColor: "var(--blue)" }} />실시간 연동</span>
+                <span><i style={{ borderColor: "var(--text-muted)", borderTopStyle: "dashed" }} />연동 예정 · 참고용</span>
+              </div>
+            </div>
+            <p className="finding-text" style={{ marginTop: 16 }}>
+              추천·안전지수 계산은 서버 없이 <strong style={{ color: "var(--text-primary)" }}>브라우저 안에서</strong>{" "}
+              바로 실행된다 — 별도 백엔드 API를 두지 않고, React 앱이 코드에 내장된 샘플 데이터를 읽어
+              그 자리에서 수식을 계산한다. 지도·실제 위치 조회만 카카오 서버와 실시간으로 통신한다.
+              tourism_platform(파이썬)은 이 웹앱과 별개로 GitHub에서 실행되는 검증 전용 패키지로,
+              같은 수식을 독립적으로 재현해 몬테카를로 시뮬레이션으로 맞는지 확인하는 역할만 한다.
+            </p>
+          </div>
+
+          <section className="about-section" id="solutions">
+            <div className="section-head">
+              <div className="eyebrow">04 · 해결 방법</div>
+              <h2>기능마다 — 데이터, 이유, 조합, 결과, 오차 감소</h2>
+            </div>
+            <div className="solution-list">
+              {SOLUTIONS.map((s) => (
+                <SolutionCard key={s.num} s={s} />
+              ))}
+            </div>
+          </section>
+
+          <section className="about-section" id="stack">
+            <div className="section-head">
+              <div className="eyebrow">05 · 기술 스택</div>
+              <h2>무엇으로 만들었나</h2>
+            </div>
+          </section>
+          <div className="validation-table-wrap">
+            <table className="validation-table">
+              <thead>
+                <tr>
+                  <th>층</th>
+                  <th>기술</th>
+                  <th>맡은 역할</th>
+                  <th>위치</th>
+                </tr>
+              </thead>
+              <tbody>
+                {STACK.map((row) => (
+                  <tr key={row[0]}>
+                    <td>{row[0]}</td>
+                    <td>{row[1]}</td>
+                    <td>{row[2]}</td>
+                    <td>{row[3]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <section className="methodology" id="validation">
+            <div className="methodology-glow" />
+            <div className="methodology-inner">
+              <div className="eyebrow teal">06 · 검증 결과 총정리</div>
+              <h2>
+                숫자로 다시 확인한
+                <br />
+                방법론의 효과
+              </h2>
+              <p>
+                모두 참값을 아는 가상 지역·가상 동행자로 측정한 몬테카를로 시뮬레이션 결과다.
+                실제 지역의 결과가 아니라 &ldquo;이 계산 방식이 대안보다 낫다&rdquo;는 방법론
+                검증이며, tourism_platform 파이썬 패키지에서 재현해 동일한 방향의 결론을 다시
+                확인했다.
+              </p>
+            </div>
+          </section>
+
+          <div className="validation-table-wrap">
+            <table className="validation-table">
+              <thead>
+                <tr>
+                  <th>지표</th>
+                  <th>비교값</th>
+                  <th>의미</th>
+                </tr>
+              </thead>
+              <tbody>
+                {VALIDATION_SUMMARY.map((row) => (
+                  <tr key={row.metric}>
+                    <td>{row.metric}</td>
+                    <td>{row.values}</td>
+                    <td>{row.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <section className="about-section" id="fixes">
+            <div className="section-head">
+              <div className="eyebrow">07 · 문제 해결 기록</div>
+              <h2>개발하면서 실제로 겪은 문제와 해결</h2>
+            </div>
+          </section>
+          <div className="validation-table-wrap">
+            <table className="validation-table">
+              <thead>
+                <tr>
+                  <th>증상</th>
+                  <th>원인</th>
+                  <th>해결</th>
+                </tr>
+              </thead>
+              <tbody>
+                {FIXLOG.map((row) => (
+                  <tr key={row[0]}>
+                    <td>{row[0]}</td>
+                    <td>{row[1]}</td>
+                    <td>{row[2]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <section className="about-section" id="limits">
+            <div className="section-head">
+              <div className="eyebrow">08 · 한계와 다음 단계</div>
+              <h2>지금 이 데모가 못 하는 것</h2>
+            </div>
+            <div className="problem-list">
+              <div className="problem-row">
+                <span className="problem-num">·</span>
+                <p>
+                  위 표의 &ldquo;연동 예정&rdquo; 데이터(데이터랩 실데이터, 경찰청 통계, TourAPI)는
+                  아직 샘플로 대체돼 있다 — 공간 단위·연령 구간 제공 범위를 원자료로 확인하는 절차가
+                  남아 있다.
+                </p>
+              </div>
+              <div className="problem-row">
+                <span className="problem-num">·</span>
+                <p>
+                  카카오 로컬 API 실제 호출은 이 개발 환경의 네트워크 제한으로 라이브 검증을 못
+                  했다 — 로컬 환경에서 REST 키로 한 번 더 확인이 필요하다.
+                </p>
+              </div>
+              <div className="problem-row">
+                <span className="problem-num">·</span>
+                <p>
+                  관광지 연령대 선호 가중치는 실측이 아닌 가정이다 — 실사용자 데이터가 쌓이면
+                  교체해야 한다.
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
-        <div className="problem-list">
-          <div className="problem-row">
-            <span className="problem-num">·</span>
-            <p>
-              위 표의 &ldquo;연동 예정&rdquo; 데이터(데이터랩 실데이터, 경찰청 통계, TourAPI)는
-              아직 샘플로 대체돼 있다 — 공간 단위·연령 구간 제공 범위를 원자료로 확인하는 절차가
-              남아 있다.
-            </p>
-          </div>
-          <div className="problem-row">
-            <span className="problem-num">·</span>
-            <p>
-              카카오 로컬 API 실제 호출은 이 개발 환경의 네트워크 제한으로 라이브 검증을 못
-              했다 — 로컬 환경에서 REST 키로 한 번 더 확인이 필요하다.
-            </p>
-          </div>
-          <div className="problem-row">
-            <span className="problem-num">·</span>
-            <p>
-              관광지 연령대 선호 가중치는 실측이 아닌 가정이다 — 실사용자 데이터가 쌓이면
-              교체해야 한다.
-            </p>
-          </div>
-        </div>
-      </section>
+      </div>
 
       <section className="cta-band">
         <div className="cta-glow" />
