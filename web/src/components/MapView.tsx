@@ -26,6 +26,7 @@ export function MapView({
   onSelectRegion,
   onSelectAttraction,
   people = [],
+  liveAttractions = [],
 }: {
   regions: Region[];
   highlightedCodes: Set<string>;
@@ -34,12 +35,16 @@ export function MapView({
   onSelectAttraction: (a: Attraction) => void;
   /** 동행자 정보 — 지역 안 관광지 순위에도 연령대 선호도를 반영하기 위해 받는다. */
   people?: Person[];
+  /** 카카오 카테고리 검색으로 실시간으로 찾은 주변 장소 — 큐레이션 마커와 다른
+   * 색으로 지도에 함께 찍어 "지도에 더 다양한 값"을 보여준다. */
+  liveAttractions?: Attraction[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
   const attractionMarkersRef = useRef<any[]>([]);
   const attractionLabelsRef = useRef<any[]>([]);
+  const liveMarkersRef = useRef<any[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "no-key" | "error">(
     KAKAO_KEY ? "loading" : "no-key",
   );
@@ -128,6 +133,32 @@ export function MapView({
       attractionMarkersRef.current.push(marker);
     });
   }, [status, selectedCode, regions, people, onSelectAttraction]);
+
+  // 카카오 카테고리 검색으로 실시간으로 찾은 주변 장소 — 큐레이션 마커(파랑/틸)와
+  // 구분되는 주황 점으로 찍어 지도 위 관광지 데이터의 다양성을 넓힌다.
+  useEffect(() => {
+    if (status !== "ready" || !mapRef.current) return;
+
+    liveMarkersRef.current.forEach((m) => m.setMap(null));
+    liveMarkersRef.current = [];
+
+    liveAttractions.forEach((attraction) => {
+      const position = new window.kakao.maps.LatLng(attraction.lat, attraction.lng);
+      const marker = new window.kakao.maps.Marker({
+        position,
+        map: mapRef.current,
+        image: new window.kakao.maps.MarkerImage(
+          "data:image/svg+xml;charset=UTF-8," +
+            encodeURIComponent(
+              `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"><circle cx="7" cy="7" r="5.5" fill="%23e07a3a" stroke="%230a0a0a" stroke-width="1.5"/></svg>`,
+            ),
+          new window.kakao.maps.Size(14, 14),
+        ),
+      });
+      window.kakao.maps.event.addListener(marker, "click", () => onSelectAttraction(attraction));
+      liveMarkersRef.current.push(marker);
+    });
+  }, [status, liveAttractions, onSelectAttraction]);
 
   if (status === "no-key" || status === "error") {
     const shown = highlightedCodes.size > 0 ? regions.filter((r) => highlightedCodes.has(r.code)) : regions;

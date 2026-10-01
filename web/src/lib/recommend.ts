@@ -3,7 +3,7 @@
  */
 import { attractionMatchScore } from "./attractionAffinity";
 import { groupScore, locationQuotient, nationalShares, specializationScore } from "./indices";
-import { AGE_GROUP_LABELS, groupKey, type Person, type Region, type RecommendationItem } from "./types";
+import { AGE_GROUP_LABELS, groupKey, type Attraction, type Person, type Region, type RecommendationItem } from "./types";
 
 function personLabel(p: Person): string {
   const gender = p.gender === "F" ? "여성" : "남성";
@@ -15,18 +15,29 @@ function evidenceSentence(person: Person, lq: number): string {
 }
 
 /**
- * 지역 안에서 관광지를 동행자 연령대 선호도까지 반영한 매치 점수로 정렬해
- * 상위 n개를 뽑는다 (문서 4.3의 2단계 추천: 1단계는 지역을, 2단계는 그 지역
- * 안의 관광지를 고른다). people이 비어 있으면 기저 인기 지표만으로 정렬한다.
+ * 관광지 목록을 동행자 연령대 선호도까지 반영한 매치 점수로 정렬해 상위 n개를
+ * 뽑는다. 큐레이션한 지역 소속 관광지뿐 아니라, 카카오 카테고리 검색으로 찾은
+ * 주변 실제 장소(lib/kakaoLocal.ts의 findNearbyAttractions) 순위에도 그대로
+ * 재사용한다 — 출처가 달라도 같은 한 가지 기준(인기 지표 x 선호 가중치)으로
+ * 매긴다.
  */
-export function topAttractionsOf(region: Region, people: Person[], n = 3) {
-  return region.attractions
+export function rankAttractions(attractions: Attraction[], people: Person[], n = 3) {
+  return attractions
     .map((attraction) => ({
       attraction,
       matchScore: attractionMatchScore(attraction.popularityScore, attraction.tags, people),
     }))
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, n);
+}
+
+/**
+ * 지역 안에서 큐레이션한 관광지를 매치 점수로 정렬해 상위 n개를 뽑는다
+ * (문서 4.3의 2단계 추천: 1단계는 지역을, 2단계는 그 지역 안의 관광지를
+ * 고른다). people이 비어 있으면 기저 인기 지표만으로 정렬한다.
+ */
+export function topAttractionsOf(region: Region, people: Person[], n = 3) {
+  return rankAttractions(region.attractions, people, n);
 }
 
 /**

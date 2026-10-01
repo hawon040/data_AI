@@ -76,6 +76,9 @@ export interface Attraction {
    * (아래 RecommendationItem.topAttractions 참고) — 인기도 하나만으로 매기지 않는다.
    */
   popularityScore: number;
+  /** 큐레이션한 관광지("curated")인지 카카오 카테고리 검색으로 실시간으로 찾은
+   * 주변 장소("kakao")인지 — 화면에서 둘을 구분해 보여주기 위한 출처 표시. */
+  source?: "curated" | "kakao";
 }
 
 export interface Region {

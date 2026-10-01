@@ -9,7 +9,7 @@
  *    카카오맵 상세페이지 링크를 가져온다. REST API 키가 있을 때만 동작하고,
  *    없거나 호출이 실패하면 null을 반환해 위 두 링크만으로 대체한다.
  */
-import type { Attraction } from "./types";
+import type { Attraction, AttractionTag } from "./types";
 
 const REST_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY as string | undefined;
 
@@ -95,4 +95,60 @@ export async function findRealPlace(attraction: Pick<Attraction, "name" | "lat" 
     cache.set(cacheKey, null);
     return null;
   }
+}
+
+/**
+ * 지역 안 관광지를 10개 안팎으로 직접 큐레이션해둔 것만으로는 다양성이
+ * 부족하다는 피드백에 따라, 카카오 로컬 API의 카테고리 검색(장소 이름을
+ * 몰라도 좌표 반경 안의 실제 장소를 가져옴)으로 관광명소·문화시설·음식점·
+ * 카페를 추가로 찾아온다.
+ *
+ * 카카오 카테고리 검색은 방문자 수 같은 인기 지표를 주지 않으므로, 검색
+ * 정확도(accuracy) 순위를 근사 인기 점수로 대신 쓴다 — 실측치가 아니라는
+ * 한계를 호출부에서 "실시간 · 참고용"으로 표시해 숨기지 않는다.
+ */
+const CATEGORY_INFO: Record<string, { tags: AttractionTag[]; label: string }> = {
+  AT4: { tags: ["view", "culture"], label: "관광명소" },
+  CT1: { tags: ["culture"], label: "문화시설" },
+  FD6: { tags: ["food"], label: "음식점" },
+  CE7: { tags: ["cafe"], label: "카페" },
+};
+
+export async function findNearbyAttractions(lat: number, lng: number, radius = 5000): Promise<Attraction[]> {
+  if (!REST_KEY) return [];
+
+  const perCategory = await Promise.all(
+    Object.entries(CATEGORY_INFO).map(async ([code, info]) => {
+      const url = new URL("https://dapi.kakao.com/v2/local/search/category.json");
+      url.searchParams.set("category_group_code", code);
+      url.searchParams.set("x", String(lng));
+      url.searchParams.set("y", String(lat));
+      url.searchParams.set("radius", String(radius));
+      url.searchParams.set("sort", "accuracy");
+      url.searchParams.set("size", "5");
+
+      try {
+        const res = await fetch(url.toString(), { headers: { Authorization: `KakaoAK ${REST_KEY}` } });
+        if (!res.ok) return [];
+        const data = await res.json();
+        const docs = (data.documents ?? []) as Array<{ place_name: string; x: string; y: string }>;
+        return docs.map(
+          (d, i): Attraction => ({
+            name: d.place_name,
+            category: info.label,
+            tags: info.tags,
+            lat: Number(d.y),
+            lng: Number(d.x),
+            popularityScore: Math.max(40, 95 - i * 12), // 검색 순위 기반 근사치
+            source: "kakao",
+          }),
+        );
+      } catch {
+        // 네트워크 오류·CORS 차단 등 — 이 카테고리만 빈 목록으로 넘어간다.
+        return [];
+      }
+    }),
+  );
+
+  return perCategory.flat();
 }
