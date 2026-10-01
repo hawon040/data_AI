@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
+import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
 import { MapView } from "../components/MapView";
 import { RecommendationList } from "../components/RecommendationList";
 import { SafetyPanel } from "../components/SafetyPanel";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
-import { getExploreRecommendations, getRecommendations, topAttractionsOf } from "../lib/recommend";
+import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
+import { getExploreRecommendations, getRecommendations, rankAttractions, topAttractionsOf } from "../lib/recommend";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import type { Attraction, Person, RecommendationItem, Region } from "../lib/types";
 import "./AppPage.css";
@@ -20,6 +22,8 @@ export function AppPage() {
   });
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [selectedAttraction, setSelectedAttraction] = useState<Attraction | null>(null);
+  const [liveAttractions, setLiveAttractions] = useState<{ attraction: Attraction; matchScore: number }[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
 
   const recommendations: RecommendationItem[] = useMemo(() => {
     if (people == null) return [];
@@ -57,6 +61,34 @@ export function AppPage() {
       setSelectedRegion(recommendations[0].region);
     }
   }, [recommendations, selectedRegion]);
+
+  // 지도에 더 다양한 관광지 데이터를 보여달라는 요청(사용자 피드백)에 따라,
+  // 선택된 지역 주변을 카카오 카테고리 검색으로 실시간으로 더 찾아와서
+  // 큐레이션 목록과 별도로 보여준다. REST 키가 없으면 조용히 건너뛴다.
+  useEffect(() => {
+    if (!selectedRegion || !hasKakaoRestKey()) {
+      setLiveAttractions([]);
+      return;
+    }
+    let cancelled = false;
+    setLiveLoading(true);
+    findNearbyAttractions(selectedRegion.lat, selectedRegion.lng)
+      .then((places) => {
+        if (cancelled) return;
+        const curatedNames = new Set(selectedRegion.attractions.map((a) => a.name));
+        const deduped = places.filter((p) => !curatedNames.has(p.name));
+        setLiveAttractions(rankAttractions(deduped, people ?? [], 6));
+      })
+      .catch(() => {
+        if (!cancelled) setLiveAttractions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLiveLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRegion, people]);
 
   return (
     <div className="app-shell">
@@ -103,8 +135,16 @@ export function AppPage() {
             }}
             onSelectAttraction={setSelectedAttraction}
             people={people ?? []}
+            liveAttractions={liveAttractions.map((x) => x.attraction)}
           />
           {selectedAttraction && <AttractionDetail attraction={selectedAttraction} />}
+          {selectedRegion && (
+            <LiveAttractionsPanel
+              loading={liveLoading}
+              items={liveAttractions}
+              onSelectAttraction={setSelectedAttraction}
+            />
+          )}
           {selectedRegion && <SafetyPanel region={selectedRegion} filters={safetyFilters} />}
         </section>
       </main>
