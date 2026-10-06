@@ -21,7 +21,7 @@ function evidenceSentence(person: Person, lq: number): string {
  * 재사용한다 — 출처가 달라도 같은 한 가지 기준(인기 지표 x 선호 가중치)으로
  * 매긴다.
  */
-export function rankAttractions(attractions: Attraction[], people: Person[], n = 3) {
+export function rankAttractions(attractions: Attraction[], people: Person[], n = 4) {
   return attractions
     .map((attraction) => ({
       attraction,
@@ -36,7 +36,7 @@ export function rankAttractions(attractions: Attraction[], people: Person[], n =
  * (문서 4.3의 2단계 추천: 1단계는 지역을, 2단계는 그 지역 안의 관광지를
  * 고른다). people이 비어 있으면 기저 인기 지표만으로 정렬한다.
  */
-export function topAttractionsOf(region: Region, people: Person[], n = 3) {
+export function topAttractionsOf(region: Region, people: Person[], n = 4) {
   return rankAttractions(region.attractions, people, n);
 }
 

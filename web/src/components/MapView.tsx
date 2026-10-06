@@ -106,7 +106,7 @@ export function MapView({
     const region = selectedCode ? regions.find((r) => r.code === selectedCode) : undefined;
     if (!region) return;
 
-    topAttractionsOf(region, people, 5).forEach(({ attraction }, i) => {
+    topAttractionsOf(region, people, 6).forEach(({ attraction }, i) => {
       const position = new window.kakao.maps.LatLng(attraction.lat, attraction.lng);
       const marker = new window.kakao.maps.Marker({
         position,
@@ -177,7 +177,7 @@ export function MapView({
         </p>
         <ul className="fallback-region-list">
           {shown.map((r) => {
-            const top = topAttractionsOf(r, people, 3);
+            const top = topAttractionsOf(r, people, 4);
             return (
               <li key={r.code}>
                 <strong>{r.name}</strong>
