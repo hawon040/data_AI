@@ -38,14 +38,16 @@ export interface SafetySubIndicators {
 }
 
 export interface SafetyIndex {
-  /** 1(가장 안전)~5(주의) 등급 — 문서 4.5: 단일 순위 대신 5단계 등급 */
-  grade: 1 | 2 | 3 | 4 | 5;
+  /** 1(가장 안전)~5(각별한 주의) 등급 — 문서 4.5: 단일 순위 대신 5단계 등급 */
+  grade: SafetyGrade;
   /** 유효인구 10만 명당 위해지수(경험적 베이즈 축소 적용 후) */
   ratePer100k: number;
   confidenceIntervalLow: number;
   confidenceIntervalHigh: number;
   sub: SafetySubIndicators;
 }
+
+export type SafetyGrade = 1 | 2 | 3 | 4 | 5;
 
 /** 관광지 성격 태그 — 연령대별 선호도 계산에 쓰는 분류 (문서 4.3, 9.3).
  * 공공데이터는 관광지 단위 성·연령 분포를 제공하지 않으므로, 실제 서비스에서도

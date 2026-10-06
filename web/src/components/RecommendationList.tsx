@@ -1,15 +1,11 @@
 import type { Attraction, RecommendationItem, Region } from "../lib/types";
-
-const GRADE_LABEL: Record<number, string> = {
-  1: "매우 안전",
-  2: "안전",
-  3: "보통",
-  4: "주의",
-  5: "각별한 주의",
-};
+import { isSafetyGrade, safetyGradeLabel } from "../lib/safetyGrades";
 
 function SafetyBadge({ grade }: { grade: number }) {
-  return <span className={`safety-badge grade-${grade}`}>{GRADE_LABEL[grade] ?? "평가 불가"}</span>;
+  if (!isSafetyGrade(grade)) {
+    return <span className="safety-badge">평가 불가</span>;
+  }
+  return <span className={`safety-badge grade-${grade}`}>{safetyGradeLabel(grade)}</span>;
 }
 
 function RecommendationCard({
@@ -41,7 +37,10 @@ function RecommendationCard({
           <div className="region-name">{item.region.name}</div>
           <div className="region-province">{item.region.province}</div>
         </div>
-        <SafetyBadge grade={item.region.safety.grade} />
+        <div className="safety-reference">
+          <span>안전 참고</span>
+          <SafetyBadge grade={item.region.safety.grade} />
+        </div>
       </div>
       <p className="highlight">{item.region.highlight}</p>
       <ul className="evidence-list">
@@ -78,15 +77,17 @@ export function RecommendationList({
   onSelect,
   onSelectAttraction,
   selectedCode,
+  emptyMessage,
 }: {
   items: RecommendationItem[];
   exploreItems: RecommendationItem[];
   onSelect: (r: Region) => void;
   onSelectAttraction: (a: Attraction) => void;
   selectedCode?: string;
+  emptyMessage: string;
 }) {
   if (items.length === 0) {
-    return <p className="empty-state">동행자 정보를 입력하고 추천받기를 눌러보세요.</p>;
+    return <p className="empty-state">{emptyMessage}</p>;
   }
   return (
     <div className="recommendation-list">

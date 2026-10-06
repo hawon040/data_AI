@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  GRADE_LABEL,
   buildCandidatePool,
   candidateKey,
   pickFresh,
-  projectToBoard,
+  projectToKoreaMap,
   tripReason,
   type TripCandidate,
 } from "../lib/randomTrip";
+import { safetyGradeLabel } from "../lib/safetyGrades";
 import type { Attraction, Person, Region } from "../lib/types";
 import "./RandomTripPicker.css";
 
@@ -31,8 +31,6 @@ export function RandomTripPicker({
   /** 뽑힌 결과를 지도·상세 패널에 반영하기 위한 콜백. */
   onPick: (region: Region, attraction: Attraction) => void;
 }) {
-  const [maxGrade, setMaxGrade] = useState(2);
-  const [province, setProvince] = useState("all");
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<TripCandidate | null>(null);
   const [seen, setSeen] = useState<Set<string>>(new Set());
@@ -40,19 +38,7 @@ export function RandomTripPicker({
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const provinces = useMemo(() => [...new Set(regions.map((r) => r.province))], [regions]);
-  const pool = useMemo(
-    () => buildCandidatePool(regions, people, { maxGrade, province }),
-    [regions, people, maxGrade, province],
-  );
-  const positions = useMemo(() => projectToBoard(pool), [pool]);
-
-  const resetResult = () => {
-    window.clearTimeout(timer.current);
-    setPhase("idle");
-    setResult(null);
-    setSeen(new Set());
-  };
+  const pool = useMemo(() => buildCandidatePool(regions, people), [regions, people]);
 
   const throwPen = () => {
     if (phase === "throwing") return;
@@ -67,66 +53,35 @@ export function RandomTripPicker({
     }, throwDuration());
   };
 
-  const target = result ? positions.get(candidateKey(result)) : undefined;
-  const penStyle =
-    phase === "idle" || !target
-      ? { left: "92%", top: "112%", transform: "rotate(-35deg)" }
-      : { left: `${target.x}%`, top: `${target.y}%`, transform: "rotate(-55deg)" };
-
   return (
     <section className="random-trip" aria-label="랜덤 여행">
       <h3>랜덤 여행 · 펜 던지기</h3>
-      <p className="rt-note">안전 등급 조건을 통과한 관광지 중에서 운에 맡겨 한 곳을 뽑아요.</p>
+      <p className="rt-note">
+        시범 지역의 관광지 중 한 곳을 무작위로 뽑아요. 안전 정보는 뽑힌 여행지에서 확인할 수 있어요.
+      </p>
 
-      <div className="rt-filters">
-        <label>
-          <span className="field-label">안전 등급</span>
-          <select
-            value={maxGrade}
-            onChange={(e) => {
-              setMaxGrade(Number(e.target.value));
-              resetResult();
-            }}
-          >
-            {[1, 2, 3, 4, 5].map((g) => (
-              <option key={g} value={g}>
-                {g}등급 이내 ({GRADE_LABEL[g]})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="field-label">지역</span>
-          <select
-            value={province}
-            onChange={(e) => {
-              setProvince(e.target.value);
-              resetResult();
-            }}
-          >
-            <option value="all">전체</option>
-            {provinces.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="rt-board" aria-hidden="true">
-        {pool.map((c) => {
-          const pos = positions.get(candidateKey(c));
-          if (!pos) return null;
-          return <span key={candidateKey(c)} className="rt-pin" style={{ left: `${pos.x}%`, top: `${pos.y}%` }} />;
-        })}
-        <span className={`rt-pen ${phase}`} style={penStyle} />
+      <div className="rt-board" role="img" aria-label={`대한민국 지도에 후보 관광지 ${pool.length}곳을 표시했습니다`}>
+        <div className="rt-map-canvas">
+          <img className="rt-map-image" src="/korea-map.svg" alt="" />
+          {pool.map((c) => {
+            const pos = projectToKoreaMap(c.attraction.lat, c.attraction.lng);
+            const selected = result != null && candidateKey(result) === candidateKey(c);
+            return (
+              <span
+                key={candidateKey(c)}
+                className={`rt-pin${selected ? " selected" : ""}`}
+                style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+              />
+            );
+          })}
+        </div>
+        <span className="rt-map-credit">대한민국 지도 · 후보 관광지</span>
       </div>
 
       <p className="rt-count" aria-live="polite">
         {pool.length > 0
-          ? `후보 ${pool.length}곳${people.length === 0 ? " · 동행자를 입력하면 연령대 선호가 반영돼요" : ""}`
-          : "조건에 맞는 관광지가 없어요. 안전 등급 범위를 넓히거나 지역을 바꿔 보세요."}
+          ? `전국 시범 지역 후보 ${pool.length}곳${people.length === 0 ? " · 동행자를 입력하면 연령대 선호가 반영돼요" : ""}`
+          : "추천할 관광지가 없어요."}
       </p>
 
       <button type="button" className="submit-btn" onClick={throwPen} disabled={pool.length === 0 || phase === "throwing"}>
@@ -138,7 +93,7 @@ export function RandomTripPicker({
           <div className="rt-result-head">
             <strong>{result.attraction.name}</strong>
             <span className={`safety-badge grade-${result.region.safety.grade}`}>
-              {GRADE_LABEL[result.region.safety.grade]}
+              {safetyGradeLabel(result.region.safety.grade)}
             </span>
           </div>
           <div className="rt-result-meta">

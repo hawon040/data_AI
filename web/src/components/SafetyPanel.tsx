@@ -1,4 +1,5 @@
 import { orderedSafetyIndicators, type SafetyDisplayFilters } from "../lib/safetyPriority";
+import { safetyGradeLabel } from "../lib/safetyGrades";
 import type { Region } from "../lib/types";
 
 export function SafetyPanel({
@@ -12,9 +13,11 @@ export function SafetyPanel({
 
   return (
     <div className="safety-panel">
-      <h3>{region.name} 안전 정보</h3>
+      <h3>{region.name} 안전 정보 <span className="safety-reference-note">· 참고용</span></h3>
       <div className="grade-row">
-        <span className={`safety-badge grade-${region.safety.grade}`}>등급 {region.safety.grade}</span>
+        <span className={`safety-badge grade-${region.safety.grade}`}>
+          {safetyGradeLabel(region.safety.grade)}
+        </span>
         <span className="rate">
           위해지수 {region.safety.ratePer100k.toFixed(1)}
           <span className="ci">

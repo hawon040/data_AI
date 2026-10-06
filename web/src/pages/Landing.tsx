@@ -1,186 +1,195 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { SEASONAL_DESTINATIONS } from "../lib/seasonalDestinations";
+import { getSeason } from "../lib/tripPreferences";
 import "./Landing.css";
 
-const NAV_LINKS = ["서비스", "방법론", "검증 결과"];
+const NAV_LINKS = [
+  { path: "/service", label: "서비스" },
+  { path: "/methodology", label: "방법론" },
+  { path: "/validation", label: "검증 결과" },
+] as const;
+const SEASONAL_SLIDES = Object.values(SEASONAL_DESTINATIONS).flat();
 
-const STATS = [
-  { value: "2.5배", label: "추천 정확도 (인기도 단독 대비)" },
-  { value: "68.3%", label: "동행자 전원 만족 비율" },
-  { value: "22%", label: "안전지수 오차 감소" },
-  { value: "10개", label: "시범 권역 (충청·강원)" },
-];
+export function LandingNav() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLElement>(null);
 
-const FEATURES = [
-  {
-    num: "01",
-    title: "동행자 교집합 추천",
-    desc: "동행자 각각의 특화지수 중 최솟값을 기준으로, 모두가 평균 이상으로 만족하는 여행지만 골라낸다.",
-    tag: "COMPANION MATCH",
-  },
-  {
-    num: "02",
-    title: "여행자 관점 안전지수",
-    desc: "거주 인구가 아닌 관광객 체류를 반영한 유효인구로 보정 — 5단계 등급과 신뢰구간으로 투명하게 공개한다.",
-    tag: "SAFETY INDEX",
-  },
-  {
-    num: "03",
-    title: "여행 중 실시간 모드",
-    desc: "현재 위치 기준으로 지금 근처의 추천과 시간대별 안전 정보, 기상특보를 함께 띄운다.",
-    tag: "IN-TRIP (예정)",
-  },
-  {
-    num: "04",
-    title: "광고 없는 추천 원칙",
-    desc: "리뷰나 협찬이 아니라 통신 데이터로 집계한 실제 이동만을 근거로 한다. 돈으로 순위를 바꿀 수 없다.",
-    tag: "NO ADS",
-  },
-];
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeMenuOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    const closeMenuOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeMenuOutside);
+    window.addEventListener("keydown", closeMenuOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenuOutside);
+      window.removeEventListener("keydown", closeMenuOnEscape);
+    };
+  }, [menuOpen]);
+
+  return (
+    <nav className="landing-nav" ref={menuRef}>
+      <div className="nav-start">
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
+          aria-expanded={menuOpen}
+          aria-controls="landing-section-menu"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <Link to="/" className="brand">
+          <span className="brand-mark">T</span>
+          <span className="brand-name">TrueTrip</span>
+        </Link>
+      </div>
+      <Link to="/methodology" className="nav-safety-link">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 3 19 6v5c0 4.6-2.9 8.1-7 10-4.1-1.9-7-5.4-7-10V6l7-3Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        안전지수 안내
+      </Link>
+      {menuOpen && (
+        <div className="section-menu" id="landing-section-menu">
+          <p className="section-menu-heading">페이지 안내</p>
+          {NAV_LINKS.map(({ path, label }, index) => (
+            <Link
+              className="section-menu-item"
+              key={path}
+              to={path}
+              onClick={() => setMenuOpen(false)}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <span>{label}</span>
+            </Link>
+          ))}
+          <div className="section-menu-divider" />
+          <Link
+            className="section-menu-item section-menu-about"
+            to="/about"
+            onClick={() => setMenuOpen(false)}
+          >
+            <span>정보</span>
+            <span>구현 방식 &amp; 신뢰성</span>
+          </Link>
+        </div>
+      )}
+    </nav>
+  );
+}
 
 export function Landing() {
   const navigate = useNavigate();
-  const [activeFeature, setActiveFeature] = useState<number | null>(null);
+  const [launching, setLaunching] = useState(false);
+  const [slideState, setSlideState] = useState(() => {
+    const currentSeason = getSeason(new Date().getMonth() + 1);
+    const index = SEASONAL_SLIDES.findIndex((destination) => destination.season === currentSeason);
+    return { active: Math.max(index, 0), outgoing: null as number | null };
+  });
+  const { active: activeSlide, outgoing: outgoingSlide } = slideState;
+  const destination = SEASONAL_SLIDES[activeSlide];
+
+  useEffect(() => {
+    if (!launching) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => navigate("/app"), reducedMotion ? 0 : 720);
+    return () => window.clearTimeout(timer);
+  }, [launching, navigate]);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => {
+      setSlideState((current) => ({
+        active: (current.active + 1) % SEASONAL_SLIDES.length,
+        outgoing: current.active,
+      }));
+    }, 9000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (outgoingSlide === null) return;
+    const timer = window.setTimeout(() => {
+      setSlideState((current) =>
+        current.outgoing === outgoingSlide ? { ...current, outgoing: null } : current,
+      );
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [outgoingSlide]);
 
   return (
     <div className="landing">
-      <nav className="landing-nav">
-        <div className="brand">
-          <div className="brand-mark">T</div>
-          <span className="brand-name">TrueTrip</span>
-        </div>
-        <div className="nav-links">
-          {NAV_LINKS.map((link) => (
-            <a key={link} href={`#${link}`}>
-              {link}
-            </a>
-          ))}
-        </div>
-        <div className="nav-actions">
-          <Link to="/about" className="pill-button ghost compact">
-            구현 방식 &amp; 신뢰성
-          </Link>
-          <button className="pill-button primary compact" onClick={() => navigate("/app")}>
-            추천받으러 가기
-          </button>
-        </div>
-      </nav>
+      <LandingNav />
 
-      <section className="hero">
-        <div className="hero-glow glow-blue" />
-        <div className="hero-glow glow-teal" />
+      <section className="hero" data-season={destination.season}>
+        {outgoingSlide !== null && (
+          <img
+            key={SEASONAL_SLIDES[outgoingSlide].id}
+            className="hero-seasonal-photo outgoing"
+            src={SEASONAL_SLIDES[outgoingSlide].image}
+            alt=""
+            aria-hidden="true"
+          />
+        )}
+        <img
+          key={destination.id}
+          className="hero-seasonal-photo"
+          src={destination.image}
+          alt=""
+          aria-hidden="true"
+        />
+        <div className="hero-seasonal-wash" aria-hidden="true" />
         <h1>
-          같이 가는 모두가 만족할 여행지를,
+          가고 싶은 관광지,
           <br />
-          <span className="gradient-text">진짜 이동 데이터</span>로 찾는다
+          <span className="gradient-text">안전까지 확인하다</span>
         </h1>
-        <p className="hero-sub">
-          성별·연령이 다른 동행자도 모두 평균 이상으로 찾는 곳만 추천하고,
-          <br />
-          여행 중엔 지금 필요한 안전 정보까지 함께 보여준다.
-        </p>
-        <div className="hero-actions">
-          <button className="pill-button primary" onClick={() => navigate("/app")}>
-            지금 추천받기
+        <div className={`hero-actions${launching ? " is-launching" : ""}`}>
+          <button
+            className="pill-button primary trip-launch-button"
+            onClick={() => setLaunching(true)}
+            disabled={launching}
+            aria-busy={launching}
+          >
+            관광지 추천받기
           </button>
-          <a className="pill-button ghost" href="#방법론">
-            방법론 알아보기
-          </a>
+          <button
+            className="trip-car-button"
+            type="button"
+            onClick={() => setLaunching(true)}
+            disabled={launching}
+            aria-label="자동차로 관광지 추천받기"
+            aria-busy={launching}
+          >
+            <svg className="trip-car" viewBox="0 0 48 40" aria-hidden="true" focusable="false">
+              <path className="trip-car-body" d="M7 25.5h34v7H7zM10 23l4.5-9h16l7.5 9v3H10z" />
+              <path className="trip-car-window" d="m16.2 16-3.5 7h9v-7zm7.7 0v7h11.1l-5.8-7z" />
+              <path className="trip-car-detail" d="M5 26h3m32 0h3" />
+              <circle className="trip-car-wheel" cx="15" cy="33" r="4.2" />
+              <circle className="trip-car-wheel" cx="34" cy="33" r="4.2" />
+              <circle className="trip-car-wheel-core" cx="15" cy="33" r="1.5" />
+              <circle className="trip-car-wheel-core" cx="34" cy="33" r="1.5" />
+            </svg>
+          </button>
         </div>
-      </section>
-
-      <section className="stats-band">
-        {STATS.map((s, i) => (
-          <div key={s.label} className="stat-cell" style={{ borderRight: i < 3 ? "1px solid var(--border)" : "none" }}>
-            <div className="stat-value">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
-          </div>
-        ))}
-        <p className="stats-caveat">
-          참값을 아는 가상 지역으로 측정한 방법론 검증 수치입니다 (몬테카를로 시뮬레이션). 실제 지역 결과가 아닙니다.
-        </p>
-      </section>
-
-      <section id="서비스" className="features">
-        <div className="section-head">
-          <div className="eyebrow">OUR APPROACH</div>
-          <h2>네 가지 핵심 기능</h2>
+        <div className="hero-seasonal-credit" aria-live="polite">
+            <span>{destination.location} · {destination.title}</span>
+            <span>
+              사진: {destination.creator} ·{" "}
+              <a href={destination.sourceUrl} target="_blank" rel="noreferrer">{destination.license}</a>
+            </span>
         </div>
-        <div className="feature-grid">
-          {FEATURES.map((f, i) => (
-            <div
-              key={f.num}
-              className={`feature-card${activeFeature === i ? " active" : ""}`}
-              onMouseEnter={() => setActiveFeature(i)}
-              onMouseLeave={() => setActiveFeature(null)}
-            >
-              <div className="feature-accent" />
-              <div className="feature-head">
-                <span className="feature-tag">{f.tag}</span>
-                <span className="feature-num">{f.num}</span>
-              </div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="방법론" className="methodology">
-        <div className="methodology-glow" />
-        <div className="methodology-inner">
-          <div className="eyebrow teal">METHODOLOGY</div>
-          <h2>
-            안전도 산출의
-            <br />
-            새로운 기준
-          </h2>
-          <p>
-            거주 인구를 분모로 쓰면 관광객이 몰리는 지역의 위험이 과대평가된다. 관광객 체류를
-            반영한 유효인구, 범죄 심각도·노출도 결합, 경험적 베이즈 축소까지 — 세 가지 보정을
-            거쳐야 여행자 관점의 안전도가 된다.
-          </p>
-          <a className="pill-button teal-btn" href="#검증 결과">
-            검증 결과 보기 →
-          </a>
-        </div>
-      </section>
-
-      <section id="검증 결과" className="validation">
-        <div className="section-head">
-          <div className="eyebrow">VALIDATED BY SIMULATION</div>
-          <h2>오차 검증 요약</h2>
-        </div>
-        <div className="validation-rows">
-          {[
-            { title: "추천 방식", detail: "특화지수 × 로그 규모 결합", result: "정밀도 0.842 (인기도 단독 0.333)" },
-            { title: "동행자 교집합", detail: "최솟값 방식", result: "동행자 전원 만족 68.3% (대표자 1인 24.5%)" },
-            { title: "안전도 분모", detail: "수정 유효인구", result: "RMSE 7.8 (거주인구만 10.2, 이전 이중계산 19.1)" },
-            { title: "3개년 평균 + 베이즈 축소", detail: "소규모 지역 보정", result: "소규모 지역 RMSE 약 15%p 추가 감소" },
-          ].map((row, i) => (
-            <div key={row.title} className="validation-row">
-              <span className="v-num">0{i + 1}</span>
-              <h3>{row.title}</h3>
-              <span className="v-detail">{row.detail}</span>
-              <span className="v-result">{row.result}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="cta-band">
-        <div className="cta-glow" />
-        <div>
-          <h2>
-            내 동행에 맞는 여행지,
-            <br />
-            지금 찾아볼까요?
-          </h2>
-          <p>성별·연령대만 입력하면 바로 확인할 수 있습니다.</p>
-        </div>
-        <button className="pill-button primary" onClick={() => navigate("/app")}>
-          추천받으러 가기
-        </button>
       </section>
 
       <footer className="landing-footer">
@@ -191,6 +200,8 @@ export function Landing() {
               <span className="brand-name">TrueTrip</span>
             </div>
             <p className="footer-desc">
+              맞춤 관광지 추천부터 여행자 관점의 안전 정보까지.
+              <br />
               성·연령 방문 데이터 기반 맞춤 관광지 추천 플랫폼
               <br />
               관광 노출 보정 안전지수 — 창업 도전 프로젝트
@@ -202,6 +213,7 @@ export function Landing() {
           <span>DATA-DRIVEN · NO ADS</span>
         </div>
       </footer>
+
     </div>
   );
 }
