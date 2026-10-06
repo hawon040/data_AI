@@ -16,3 +16,9 @@
 실제 데이터로 교체하려면 `data/` 폴더의 CSV 값을 수정하거나, `dashboard.html` 안의
 `months`, `revenue2025`, `revenue2024`, `categories`, `regions` 값을 실제 데이터로
 바꾸면 됩니다.
+
+## 공개 링크
+
+GitHub Pages 배포가 완료되면 다음 링크에서 대시보드를 확인하고 공유할 수 있습니다.
+
+https://hawon040.github.io/data_AI/dashboard.html
