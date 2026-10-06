@@ -56,3 +56,30 @@ python -m tourism_platform.validation.validate_rank_uncertainty      # 10.7
 `data/raw/README.md`의 "제출 전 반드시 확인할 것" 항목부터 처리한다 —
 특히 경찰청 범죄 통계의 군 지역 제공 여부와 데이터랩 성·연령 분포의
 공간 단위 확인이 핵심 기술의 실현 가능성을 좌우한다.
+
+## 실제 API 연동 (data.go.kr Open API)
+
+아직 어느 데이터셋도 API 키를 발급받지 않은 상태라, 당장 호출되는 실제 연동은
+없다. 대신 키를 받는 즉시 바로 동작하도록 연동 뼈대만 먼저 만들어 뒀다:
+
+- `data/datagokr_client.py` — data.go.kr의 공통 요청 규약(serviceKey·
+  pageNo·type=json)을 구현한 클라이언트. 엔드포인트/Operation을 추측해
+  하드코딩하지 않고, 설정 안 됐으면 `DatasetNotConfiguredError`로 뭘 채워야
+  하는지 알려준다.
+- `data/datasets.py` — 연동해야 할 데이터셋 7개(데이터랩 방문자, TourAPI
+  관광지, 경찰청 범죄 2종, 도로교통공단·소방청·국립중앙의료원)의 설정 레지스트리.
+  `endpoint`/`operation`이 `None`인 항목은 아직 미설정.
+- `data/fetch_live.py` — 설정된 데이터셋을 전부 호출해 `data/live/`에
+  저장하는 CLI (`python -m tourism_platform.data.fetch_live`). 일부만
+  설정돼 있어도 나머지는 "미설정"으로 건너뛰고 계속 진행한다.
+
+실제로 연결하려면:
+
+1. [data.go.kr](https://www.data.go.kr)에서 `datasets.py`에 나열된 데이터셋을
+   활용신청 → 승인
+2. 마이페이지 > 개발계정에서 발급받은 인증키를 `DATA_GO_KR_SERVICE_KEY`
+   환경변수로 설정
+3. 승인된 API 상세페이지의 "참고문서"를 보고 `datasets.py`의 해당
+   `endpoint`/`operation`을 채운다 (API마다 다르고 개편으로 바뀔 수 있어서
+   여기서 미리 추측해 넣지 않았다)
+4. `python -m tourism_platform.data.fetch_live` 실행
