@@ -141,6 +141,9 @@
   cursor: pointer;
   padding: 0 4px;
 }
+.remove-btn:hover {
+  color: var(--danger);
+}
 
 .add-companion {
   border: 1px dashed var(--border-strong);
@@ -151,6 +154,10 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
+}
+.add-companion:hover:not(:disabled) {
+  background: var(--surface-raised);
+  border-color: var(--blue);
 }
 
 .checkboxes {
@@ -169,7 +176,7 @@
 .auto-badge {
   font-size: 11px;
   color: var(--teal);
-  background: rgba(0, 229, 195, 0.12);
+  background: rgba(8, 127, 117, 0.1);
   padding: 3px 10px;
   border-radius: 999px;
 }
@@ -184,12 +191,12 @@
   color: #fff;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(79, 127, 255, 0.3);
+  box-shadow: 0 8px 24px rgba(53, 99, 217, 0.22);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 10px 28px rgba(79, 127, 255, 0.4);
+  box-shadow: 0 10px 28px rgba(53, 99, 217, 0.3);
 }
 .submit-btn:disabled {
   opacity: 0.4;

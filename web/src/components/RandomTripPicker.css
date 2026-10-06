@@ -1,0 +1,122 @@
+.random-trip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}
+.random-trip h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.rt-note {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.rt-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.rt-filters label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rt-filters select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+/* 지도 대신 후보 관광지를 위경도 비율로 흩뿌린 "던지기 판" */
+.rt-board {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background-color: var(--surface-raised);
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.rt-pin {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--teal);
+  opacity: 0.55;
+}
+.rt-pen {
+  position: absolute;
+  width: 56px;
+  height: 6px;
+  margin: -3px 0 0 -28px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #fff 0 70%, var(--blue) 70%);
+  box-shadow: 0 0 0 1px rgba(23, 32, 51, 0.2);
+  transition:
+    left 0.8s cubic-bezier(0.2, 0.8, 0.3, 1),
+    top 0.8s cubic-bezier(0.2, 0.8, 0.3, 1),
+    transform 0.8s ease-out;
+}
+.rt-pen.done {
+  box-shadow: 0 0 0 2px var(--blue), 0 0 14px rgba(53, 99, 217, 0.35);
+}
+
+.rt-count {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rt-result {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--blue);
+  box-shadow: 0 0 0 1px var(--blue);
+  background: var(--surface-raised);
+}
+.rt-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rt-result-head strong {
+  font-size: 16px;
+  font-weight: 800;
+}
+.rt-result-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.rt-result-reason {
+  margin: 10px 0 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.rt-result-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-pen {
+    transition: none;
+  }
+}

@@ -4,6 +4,7 @@ import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
 import { MapView } from "../components/MapView";
+import { RandomTripPicker } from "../components/RandomTripPicker";
 import { RecommendationList } from "../components/RecommendationList";
 import { SafetyPanel } from "../components/SafetyPanel";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
@@ -110,6 +111,14 @@ export function AppPage() {
               setSafetyFilters(filters);
               setSelectedRegion(null);
               setSelectedAttraction(null);
+            }}
+          />
+          <RandomTripPicker
+            regions={SAMPLE_REGIONS}
+            people={people ?? []}
+            onPick={(region, attraction) => {
+              setSelectedRegion(region);
+              setSelectedAttraction(attraction);
             }}
           />
           <RecommendationList
