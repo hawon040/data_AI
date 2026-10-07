@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { LandingNav } from "./Landing";
+import { SAFETY_GRADES, SAFETY_GRADE_LABELS } from "../lib/safetyGrades";
 import "./Landing.css";
 
 const STATS = [
@@ -104,7 +105,7 @@ export function LandingInfo({ section }: { section: LandingInfoSection }) {
                 <span>02</span>
                 <div>
                   <strong>지역 안전 정보</strong>
-                  <p>여행자 체류를 고려한 지역 안전 지표와 5단계 등급을 보여줍니다.</p>
+                  <p>여행자 체류를 고려한 지역 안전 지표와 5단계 등급을 보여줍니다. 1등급이 가장 안전하고, 5등급은 안전하지 않음을 뜻합니다.</p>
                 </div>
               </li>
               <li>
@@ -115,6 +116,23 @@ export function LandingInfo({ section }: { section: LandingInfoSection }) {
                 </div>
               </li>
             </ol>
+            <section className="safety-grade-guide" aria-labelledby="safety-grade-guide-title">
+              <div className="safety-grade-guide-heading">
+                <h2 id="safety-grade-guide-title">안전등급 기준</h2>
+                <span aria-label="위로 갈수록 안전">↑ 위로 갈수록 안전</span>
+              </div>
+              <ol className="safety-grade-pyramid" aria-label="안전등급은 위로 갈수록 더 안전합니다">
+                {SAFETY_GRADES.map((grade) => (
+                  <li className={`safety-grade-level safety-grade-level-${grade}`} key={grade}>
+                    <strong>{grade}등급</strong>
+                    <span>{SAFETY_GRADE_LABELS[grade]}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="safety-grade-caveat">
+                등급은 지역 단위 지표를 바탕으로 한 참고 정보이며, 특정 장소나 개인의 안전을 보장하지 않습니다.
+              </p>
+            </section>
             <p className="methodology-note">현재 방문·안전 지표는 시범용 샘플 데이터입니다.</p>
           </div>
         )}

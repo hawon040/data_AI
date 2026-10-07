@@ -7,7 +7,7 @@ export const SAFETY_GRADE_LABELS: Record<SafetyGrade, string> = {
   2: "안전",
   3: "보통",
   4: "주의",
-  5: "각별한 주의",
+  5: "안전하지 않음",
 };
 
 export function isSafetyGrade(grade: number): grade is SafetyGrade {

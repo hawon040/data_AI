@@ -38,7 +38,7 @@ export interface SafetySubIndicators {
 }
 
 export interface SafetyIndex {
-  /** 1(가장 안전)~5(각별한 주의) 등급 — 문서 4.5: 단일 순위 대신 5단계 등급 */
+  /** 1(가장 안전)~5(안전하지 않음) 등급 — 문서 4.5: 단일 순위 대신 5단계 등급 */
   grade: SafetyGrade;
   /** 유효인구 10만 명당 위해지수(경험적 베이즈 축소 적용 후) */
   ratePer100k: number;
