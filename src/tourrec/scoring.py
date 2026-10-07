@@ -62,6 +62,9 @@ def build_features(t: dict[str, pd.DataFrame], theta: float = C.VISITOR_PRESENCE
     attr["raw_traffic_elder"] = I.hotspot_exposure(attr, hs, radius_km, C.ELDER_ACC_TYPES)
     for k in ["traffic_spot", "traffic_child", "traffic_elder"]:
         attr[f"r_{k}"] = robust_minmax(attr[f"raw_{k}"])
+    attr["n_spot"] = I.hotspot_count(attr, hs, radius_km)
+    attr["n_spot_child"] = I.hotspot_count(attr, hs, radius_km, C.CHILD_ACC_TYPES)
+    attr["n_spot_elder"] = I.hotspot_count(attr, hs, radius_km, C.ELDER_ACC_TYPES)
 
     for k in ["crime_rate", "traffic_area"]:
         attr[f"raw_{k}"] = attr["sgg_code"].map(sgg_raw[k])

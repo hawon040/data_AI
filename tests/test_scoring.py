@@ -164,3 +164,22 @@ def test_rank_combine_equalizes_spread(fx):
     for x in ["S", "F", "P"]:
         assert el[f"q_{x}"].mean() == pytest.approx(0.5)
         assert el[f"q_{x}"].between(0, 1).all()
+
+
+def test_explanations_are_grounded(fx):
+    from tourrec.explain import explain
+    s = score(fx, "70대 이상", "가족(고령 부모 동반)", 8)
+    rec = recommend(s, 10)
+    w = s.attrs["weights"]
+    for idx in rec.index:
+        ex = explain(s.loc[idx], fx, s.attrs)
+        assert ex.reasons                                   # 이유는 항상 1개 이상
+        # 폭염 주의가 나오면 그 관광지의 폭염 감점이 실제로 0보다 크다
+        if any("폭염" in t for t in ex.cautions):
+            assert s.loc[idx, "risk_heat"] > 0 and w["heat"] > 0
+
+
+def test_profile_summary_mentions_night_crime():
+    from tourrec.explain import profile_summary
+    assert "범죄 ×1.5" in profile_summary("30대", "가족(아동 동반)", "야간")
+    assert "같은 비중" in profile_summary("20대", "친구·연인", "주간")

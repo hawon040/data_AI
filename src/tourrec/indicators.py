@@ -120,6 +120,21 @@ def hotspot_exposure(attr: pd.DataFrame, hotspots: pd.DataFrame,
     return pd.Series(out, index=attr.index)
 
 
+def hotspot_count(attr: pd.DataFrame, hotspots: pd.DataFrame, radius_km: float = C.HOTSPOT_RADIUS_KM,
+                  acc_types: set | None = None) -> pd.Series:
+    """관광지 반경 r 안 사고다발지역 개수(설명 문장용)."""
+    hs = hotspots if acc_types is None else hotspots[hotspots["acc_type"].isin(acc_types)]
+    if hs.empty:
+        return pd.Series(0, index=attr.index)
+    out = np.zeros(len(attr), dtype=int)
+    a_lat, a_lon = attr["lat"].to_numpy(), attr["lon"].to_numpy()
+    for s in range(0, len(attr), 500):
+        d = haversine_km(a_lat[s:s + 500, None], a_lon[s:s + 500, None],
+                         hs["lat"].to_numpy()[None, :], hs["lon"].to_numpy()[None, :])
+        out[s:s + 500] = (d <= radius_km).sum(axis=1)
+    return pd.Series(out, index=attr.index)
+
+
 def traffic_area(hotspots: pd.DataFrame, n_eff: pd.Series) -> pd.Series:
     """시군구 사고다발지역 EPDO 합 / 유효인구 × 10만 (다발지역이 없으면 0)."""
     s = epdo(hotspots).groupby(hotspots["sgg_code"]).sum()

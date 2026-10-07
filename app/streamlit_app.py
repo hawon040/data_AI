@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from tourrec import config as C  # noqa: E402
 from tourrec import sample_data  # noqa: E402
 from tourrec import validation as V  # noqa: E402
+from tourrec.explain import explain, profile_summary  # noqa: E402
 from tourrec.scoring import (build_features, effective_weights, profile_weights,  # noqa: E402
                              recommend, score)
 
@@ -119,7 +120,36 @@ st.caption(f"**실효 가중치** 안전 {eff['S']:.2f} · 적합 {eff['F']:.2f}
            f"(명목 {at['alpha']:.2f} · {at['beta']:.2f} · {at['gamma']:.2f}) — 최종 점수 분산 중 각 항이 설명하는 몫입니다. "
            "명목보다 작거나 음수이면 그 항이 다른 항과 반대 방향으로 움직여(예: 인기 지역일수록 안전도 낮음) 효과가 상쇄된다는 뜻이에요.")
 
-tab_rec, tab_why, tab_map, tab_val, tab_doc = st.tabs(["추천 결과", "점수 분해", "지도", "민감도·검증", "계산 방식"])
+tab_me, tab_rec, tab_why, tab_map, tab_val, tab_doc = st.tabs(
+    ["나의 추천", "점수 비교", "점수 분해", "지도", "민감도·검증", "계산 방식"])
+
+# ---------------------------------------------------------------------------
+# 나의 추천 — 계산값으로 만든 이유·주의 문장
+# ---------------------------------------------------------------------------
+with tab_me:
+    st.markdown(f"**{profile_summary(age, comp, slot)}**")
+    st.caption(f"{month}월 · 전국 후보 {int(scored['eligible'].sum())}곳 중 상위 {len(rec)}곳"
+               + (f" · 희망 지역 {', '.join(region)}" if region else ""))
+    if rec.empty:
+        st.warning("조건에 맞는 관광지가 없어요. 희망 지역을 넓히거나 '안전 주의 포함'을 켜 보세요.")
+    for r in rec.itertuples():
+        row = scored.loc[r.Index]
+        ex = explain(row, fx, scored.attrs)
+        with st.container(border=True):
+            h1, h2 = st.columns([4, 1])
+            h1.markdown(f"#### {r.rank}. {r.title}")
+            h1.caption(f"{r.sido} {r.sigungu} · {r.category}")
+            h2.metric("추천 점수", f"{r.score*100:.1f}")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**추천 이유**")
+                st.markdown("\n".join(f"- {t}" for t in ex.reasons))
+            with c2:
+                st.markdown("**주의할 점**")
+                st.markdown("\n".join(f"- {t}" for t in ex.cautions) if ex.cautions
+                            else "- 이 프로필 기준으로 두드러진 위험 요소가 없어요")
+            if ex.notes:
+                st.caption(" · ".join(ex.notes))
 
 # ---------------------------------------------------------------------------
 # 추천 결과
