@@ -9,7 +9,7 @@
 | 파일명(권장) | 출처 | 비고 |
 |---|---|---|
 | `visitor_by_gender_age.csv` | [한국관광공사 빅데이터 지역별 방문자수](https://www.data.go.kr/data/15101972/openapi.do) | 기초지자체 단위 제공 여부, 연령 구간 확인 필요 (문서 11.1 넷째) |
-| `crime_by_region.csv` | [경찰청 범죄 발생 지역별 통계](https://www.data.go.kr/data/3074462/fileData.do) | 군 지역 개별 제공 여부 최우선 확인 (문서 11.1 첫째) |
+| `crime_by_region.csv` | [경찰청 범죄 발생 지역별 통계](https://www.data.go.kr/data/3074462/fileData.do) | **확인 완료** — 2024년 스냅샷(odcloud API, `tourism_platform/data/datasets.py`에 연결됨) 기준 군 지역도 전부 개별 컬럼으로 제공됨 (아래 1번 참고) |
 | `crime_by_place.csv` | [경찰청 범죄 발생 장소별 통계](https://www.data.go.kr/data/3074463/fileData.do) | 관광 노출 계수(λ_k) 산출용 |
 | `violent_crime_by_station.csv` | [경찰청 전국 경찰서별 강력범죄 발생 현황](https://www.data.go.kr/data/15084592/fileData.do) | 군 지역 대체용, 경찰서→시군구 매핑 필요 |
 | `seoul_5_major_crimes.csv` | [서울시 5대 범죄 발생현황](https://data.seoul.go.kr/dataList/316/S/2/datasetView.do) | 구별 구분이 경찰관서 주소지 기준임에 주의 |
@@ -17,7 +17,7 @@
 
 ## 제출 전 반드시 확인할 것 (문서 11.1)
 
-1. 경찰청 범죄 발생 지역별 통계에서 군 지역이 개별로 제공되는지 확인 — 핵심 기술의 실현 가능성이 여기 달려 있다.
+1. ~~경찰청 범죄 발생 지역별 통계에서 군 지역이 개별로 제공되는지 확인~~ **→ 확인 완료.** 실제 Swagger 명세(namespace 3074462, 2024년 스냅샷)를 보면 "울산 울주군", "경북 군위군", "강원도 고성군"(vs "경남 고성군", 동명이인도 시도명으로 정확히 구분)처럼 군 지역까지 전부 개별 컬럼으로 제공된다 — 핵심 기술의 실현 가능성이 확인됐다. 단, 응답이 시군구를 컬럼으로 둔 "넓은" 형식이라, `loaders.py`가 기대하는 긴 형식(region_code, crime_type, year, count)으로 변환하는 작업은 아직 안 돼 있다.
 2. 한국관광 데이터랩 성·연령별 방문자 분포가 기초지자체 단위로 제공되는지, 연령 구간이 어떻게 나뉘는지 확인 — 추천 해상도가 여기 달려 있다.
 3. 데이터랩·경찰청 데이터의 공공누리 유형을 확인해 상업적 이용 가능 여부를 정리한다.
 4. 한국관광공사의 관광지별 혼잡도 예측 정보 제공 여부와 범위 확인 — 여행 중 모드 기능이 여기 달려 있다.

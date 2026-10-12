@@ -53,6 +53,38 @@ def test_successful_fetch_returns_json(monkeypatch):
     assert data["response"]["body"]["items"] == [1, 2, 3]
 
 
+def test_odcloud_style_uses_page_perpage_and_flat_response(monkeypatch):
+    monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", "dummy-key")
+    config = DatasetConfig(
+        name="odcloud 테스트셋",
+        portal_url="https://www.data.go.kr",
+        endpoint="https://api.odcloud.kr/api",
+        operation="3074462/v1/uddi:test-uuid",
+        api_style="odcloud",
+    )
+
+    def fake_get(url, params, timeout):
+        assert url == "https://api.odcloud.kr/api/3074462/v1/uddi:test-uuid"
+        assert params["page"] == 1
+        assert params["perPage"] == 100
+        assert "pageNo" not in params and "type" not in params
+
+        class FakeResponse:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"page": 1, "perPage": 100, "totalCount": 2, "data": [{"a": 1}, {"a": 2}]}
+
+        return FakeResponse()
+
+    monkeypatch.setattr("tourism_platform.data.datagokr_client.requests.get", fake_get)
+
+    data = fetch(config)
+    assert data["totalCount"] == 2
+    assert len(data["data"]) == 2
+
+
 def test_api_error_result_code_raises(monkeypatch):
     monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", "dummy-key")
     config = DatasetConfig(

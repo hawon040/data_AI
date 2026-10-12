@@ -24,10 +24,20 @@ DATASETS: dict[str, DatasetConfig] = {
         operation=None,
     ),
     "crime_by_region": DatasetConfig(
-        name="경찰청 - 범죄 발생 지역별 통계",
+        # 사용자가 실제 Swagger 명세(namespace=3074462/v1)를 확인해 연결했다.
+        # odcloud.kr은 연도별 스냅샷을 각각 다른 uddi로 따로 제공한다 — 아래는
+        # 최신(2024) 것. 3개년 평균(문서 9.5)을 쓰려면 2023·2022년도 같이 받아야
+        # 하는데, 그 uddi는 다음과 같다 (Operation 문자열만 바꿔 넣으면 된다):
+        #   2023: 3074462/v1/uddi:161740bd-8ec5-4734-9a3d-f7a2cde34942
+        #   2022: 3074462/v1/uddi:fe3ae686-8f7d-4d82-8c3a-901a02a0aa75
+        # 2024년 스키마는 "서울 종로구"처럼 시도+시군구가 공백으로 구분돼 있고,
+        # 울산 울주군·경북 군위군 등 군 지역도 전부 개별 컬럼으로 나온다 —
+        # data/raw/README.md에 "확인 필요"로 남겨뒀던 질문의 답이 나온 것이다.
+        name="경찰청 - 범죄 발생 지역별 통계 (2024)",
         portal_url="https://www.data.go.kr/data/3074462/fileData.do",
-        endpoint=None,
-        operation=None,
+        endpoint="https://api.odcloud.kr/api",
+        operation="3074462/v1/uddi:ae109087-8690-4cb5-bda9-a7876a92f3b8",
+        api_style="odcloud",
     ),
     "crime_by_place": DatasetConfig(
         name="경찰청 - 범죄 발생 장소별 통계 (lambda_k 산출용)",
