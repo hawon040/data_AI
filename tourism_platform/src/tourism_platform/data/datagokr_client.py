@@ -1,13 +1,24 @@
 """공공데이터포털(data.go.kr) Open API 공통 호출 클라이언트.
 
-data.go.kr에 올라온 Open API는 거의 전부 같은 요청 규약을 쓴다:
+data.go.kr 산하 API는 실제로는 두 가지 서로 다른 요청 규약을 쓴다 — 하나로
+퉁치면 안 된다는 걸 실제 Swagger 명세를 받아보고서야 확인했다:
 
-    GET {endpoint}/{operation}?serviceKey=...&pageNo=...&numOfRows=...&type=json
+  - "datalab" 방식 (예: 한국관광공사 B551011 계열 — TourAPI, 데이터랩):
+      GET {endpoint}/{operation}?serviceKey=...&pageNo=...&numOfRows=...&type=json
+    응답은 {response: {header: {resultCode, resultMsg}, body: {...}}} 형태.
 
-이 모듈은 그 "공통 규약"만 구현한다. API마다 다른 부분(엔드포인트 주소·
-Operation명·데이터셋 고유 파라미터)은 추측하지 않고 datasets.py의
-DatasetConfig로 분리해 비워 뒀다 — 틀린 URL을 하드코딩해서 조용히 실패하는
-것보다, 뭘 채워야 하는지 명확한 에러로 알려주는 쪽을 택했다.
+  - "odcloud" 방식 (파일 데이터를 표준 API로도 열어주는 행정안전부
+    공공데이터개방표준서비스, host가 api.odcloud.kr인 것들 — 예: 경찰청
+    범죄 통계):
+      GET {endpoint}/{namespace}/v1/uddi:{uuid}?serviceKey=...&page=...&perPage=...
+    응답은 {page, perPage, totalCount, currentCount, matchCount, data: [...]}
+    형태로, header/resultCode 같은 건 없고 HTTP 상태 코드(401/500)로 오류를
+    알려준다.
+
+DatasetConfig.api_style로 둘을 구분한다. API마다 다른 나머지(엔드포인트
+주소·Operation/경로)는 추측하지 않고 datasets.py에 분리해 비워 뒀다 — 틀린
+URL을 하드코딩해서 조용히 실패하는 것보다, 뭘 채워야 하는지 명확한 에러로
+알려주는 쪽을 택했다.
 
 실제로 연결하는 절차:
     1. https://www.data.go.kr 에서 원하는 데이터셋 "활용신청" → 승인
@@ -46,9 +57,15 @@ class DatasetConfig:
     """portal_url이 메인 포털일 때, 포털 검색창에 입력할 키워드."""
     endpoint: str | None = None
     """API 엔드포인트. 예: https://apis.data.go.kr/B551011/KorService2
-    None이면 아직 미설정 — fetch()가 DatasetNotConfiguredError를 던진다."""
+    (odcloud 방식이면 https://api.odcloud.kr/api). None이면 아직 미설정 —
+    fetch()가 DatasetNotConfiguredError를 던진다."""
     operation: str | None = None
-    """Operation(작업)명. 예: areaBasedList2. None이면 아직 미설정."""
+    """datalab 방식: Operation(작업)명 (예: areaBasedList2).
+    odcloud 방식: {namespace}/v1/uddi:{uuid} 전체 경로 (예:
+    3074462/v1/uddi:ae109087-8690-4cb5-bda9-a7876a92f3b8). None이면 아직 미설정."""
+    api_style: str = "datalab"
+    """"datalab"(기본, B551011 계열) 또는 "odcloud"(api.odcloud.kr 계열) —
+    요청 파라미터명과 응답 구조가 서로 달라서 구분이 필요하다."""
     service_key_env: str = "DATA_GO_KR_SERVICE_KEY"
     extra_params: dict[str, Any] = field(default_factory=dict)
 
@@ -68,7 +85,8 @@ def fetch(config: DatasetConfig, *, page_no: int = 1, num_of_rows: int = 100, **
 
     config.endpoint/operation이 비어 있으면 호출을 시도하지 않고 바로
     DatasetNotConfiguredError를 던진다 — 채워야 할 값과 어디서 찾는지를
-    에러 메시지에 그대로 담는다.
+    에러 메시지에 그대로 담는다. config.api_style에 따라 "datalab"
+    (B551011 계열) 또는 "odcloud"(api.odcloud.kr 계열) 규약 중 하나로 호출한다.
     """
     if not config.endpoint or not config.operation:
         where = config.portal_url + (f" (검색: {config.search_hint})" if config.search_hint else "")
@@ -80,6 +98,19 @@ def fetch(config: DatasetConfig, *, page_no: int = 1, num_of_rows: int = 100, **
 
     service_key = _service_key(config.service_key_env)
     url = f"{config.endpoint.rstrip('/')}/{config.operation}"
+
+    if config.api_style == "odcloud":
+        query = {
+            "serviceKey": service_key,
+            "page": page_no,
+            "perPage": num_of_rows,
+            **config.extra_params,
+            **params,
+        }
+        res = requests.get(url, params=query, timeout=15)
+        res.raise_for_status()  # odcloud는 오류를 401/500 HTTP 상태로만 알려준다 — resultCode 필드가 없다
+        return res.json()
+
     query = {
         "serviceKey": service_key,
         "pageNo": page_no,
