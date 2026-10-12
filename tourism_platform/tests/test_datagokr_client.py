@@ -85,6 +85,31 @@ def test_odcloud_style_uses_page_perpage_and_flat_response(monkeypatch):
     assert len(data["data"]) == 2
 
 
+def test_empty_operation_means_endpoint_is_already_complete(monkeypatch):
+    monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", "dummy-key")
+    config = DatasetConfig(
+        name="표준데이터 테스트셋",
+        portal_url="https://www.data.go.kr",
+        endpoint="https://api.data.go.kr/openapi/tn_pubr_public_test_api",
+        operation="",
+    )
+
+    def fake_get(url, params, timeout):
+        assert url == "https://api.data.go.kr/openapi/tn_pubr_public_test_api"
+        return _FakeOkResponse()
+
+    monkeypatch.setattr("tourism_platform.data.datagokr_client.requests.get", fake_get)
+    fetch(config)
+
+
+class _FakeOkResponse:
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {"response": {"header": {"resultCode": "00"}, "body": {}}}
+
+
 def test_api_error_result_code_raises(monkeypatch):
     monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", "dummy-key")
     config = DatasetConfig(
