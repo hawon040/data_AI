@@ -17,11 +17,27 @@ DATASETS: dict[str, DatasetConfig] = {
         operation=None,
     ),
     "tourist_spots": DatasetConfig(
-        name="한국관광공사 TourAPI - 지역기반 관광정보 목록",
+        # 사용자가 승인받은 건 TourAPI(B551011)가 아니라 행안부 "전국관광지
+        # 정보표준데이터"(tn_pubr_public_trrsrt_api)였다. endpoint 자체가 이미
+        # 완전한 경로라 operation은 빈 문자열로 둔다.
+        # 주의: 샘플 URL/요청변수표를 직접 확인하지 못해서 data.go.kr 공통
+        # 규격(serviceKey·pageNo·numOfRows·type=json)을 그대로 가정했다 —
+        # 실제 호출해서 안 되면 상세페이지의 "미리보기" 샘플 URL로 재확인 필요.
+        name="전국관광지정보표준데이터",
         portal_url="https://www.data.go.kr",
-        search_hint="한국관광공사 국문 관광정보 서비스 (TourAPI)",
-        endpoint=None,
-        operation=None,
+        search_hint="전국관광지정보표준데이터",
+        endpoint="https://api.data.go.kr/openapi/tn_pubr_public_trrsrt_api",
+        operation="",
+    ),
+    "tourist_info_centers": DatasetConfig(
+        # 원래 7개 목록엔 없었지만 사용자가 추가로 신청해 보내준 데이터셋 —
+        # "가까운 관광안내소 찾기" 같은 기능에 쓸 수 있어 등록해 둔다.
+        # tourist_spots와 같은 이유로 요청 규격은 가정치다.
+        name="전국관광안내소표준데이터",
+        portal_url="https://www.data.go.kr",
+        search_hint="전국관광안내소표준데이터",
+        endpoint="https://api.data.go.kr/openapi/tn_pubr_public_trsmic_api",
+        operation="",
     ),
     "crime_by_region": DatasetConfig(
         # 사용자가 실제 Swagger 명세(namespace=3074462/v1)를 확인해 연결했다.

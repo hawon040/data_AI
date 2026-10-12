@@ -43,7 +43,8 @@ class ServiceKeyMissingError(RuntimeError):
 
 
 class DatasetNotConfiguredError(RuntimeError):
-    """datasets.py에 endpoint/operation이 아직 채워지지 않았을 때."""
+    """datasets.py에 endpoint가 없거나 operation이 None(미설정)일 때.
+    operation=""(빈 문자열)은 "설정 완료, 추가 경로 없음"이라 여기 해당 안 됨."""
 
 
 @dataclass(frozen=True)
@@ -60,9 +61,12 @@ class DatasetConfig:
     (odcloud 방식이면 https://api.odcloud.kr/api). None이면 아직 미설정 —
     fetch()가 DatasetNotConfiguredError를 던진다."""
     operation: str | None = None
-    """datalab 방식: Operation(작업)명 (예: areaBasedList2).
-    odcloud 방식: {namespace}/v1/uddi:{uuid} 전체 경로 (예:
-    3074462/v1/uddi:ae109087-8690-4cb5-bda9-a7876a92f3b8). None이면 아직 미설정."""
+    """datalab 방식: Operation(작업)명 (예: areaBasedList2) — endpoint 뒤에 이
+    값을 더 붙여야 완전한 경로가 된다. odcloud 방식: {namespace}/v1/uddi:{uuid}
+    전체 경로. "국가중점데이터/표준데이터"처럼 endpoint 자체가 이미 완전한
+    경로라 더 붙일 게 없으면 빈 문자열("")을 쓴다. None이면 아직 미설정 —
+    fetch()가 DatasetNotConfiguredError를 던진다 (빈 문자열과 다르다: ""은
+    "설정 완료, 추가 경로 없음"이라는 뜻)."""
     api_style: str = "datalab"
     """"datalab"(기본, B551011 계열) 또는 "odcloud"(api.odcloud.kr 계열) —
     요청 파라미터명과 응답 구조가 서로 달라서 구분이 필요하다."""
@@ -88,7 +92,7 @@ def fetch(config: DatasetConfig, *, page_no: int = 1, num_of_rows: int = 100, **
     에러 메시지에 그대로 담는다. config.api_style에 따라 "datalab"
     (B551011 계열) 또는 "odcloud"(api.odcloud.kr 계열) 규약 중 하나로 호출한다.
     """
-    if not config.endpoint or not config.operation:
+    if not config.endpoint or config.operation is None:
         where = config.portal_url + (f" (검색: {config.search_hint})" if config.search_hint else "")
         raise DatasetNotConfiguredError(
             f"'{config.name}'의 endpoint/operation이 아직 설정되지 않았습니다. "
@@ -97,7 +101,9 @@ def fetch(config: DatasetConfig, *, page_no: int = 1, num_of_rows: int = 100, **
         )
 
     service_key = _service_key(config.service_key_env)
-    url = f"{config.endpoint.rstrip('/')}/{config.operation}"
+    # operation이 빈 문자열이면 endpoint 자체가 이미 완전한 경로라는 뜻 —
+    # 그대로 쓰고 더 이어붙이지 않는다.
+    url = f"{config.endpoint.rstrip('/')}/{config.operation}" if config.operation else config.endpoint
 
     if config.api_style == "odcloud":
         query = {
