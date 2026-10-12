@@ -76,10 +76,18 @@ DATASETS: dict[str, DatasetConfig] = {
         operation=None,
     ),
     "emergency_facilities": DatasetConfig(
-        name="국립중앙의료원 - 응급의료기관 위치",
+        # 사용자가 올려준 공식 참고문서(NIA-IFT-OpenAPI 활용가이드 01.
+        # 국립중앙의료원_응급의료정보제공 V13.1.hwp)에서 직접 확인한 값 —
+        # getEgytLcinfoInqire: "경/위도를 기준으로 응급의료기관 위치 정보를
+        # 조회"하는 오퍼레이션으로, emergencyAccessMinutes(가장 가까운
+        # 응급의료기관까지 이동 시간) 계산에 정확히 맞는다.
+        # 필수 파라미터: WGS84_LON(경도), WGS84_LAT(위도) — 조회 기준점이라
+        # extra_params에 고정값으로 넣지 않고, fetch() 호출 시 매번
+        # 넘겨야 한다. 예: fetch(config, WGS84_LON=127.0852, WGS84_LAT=37.4881)
+        name="국립중앙의료원 - 응급의료기관 위치정보 조회",
         portal_url="https://www.data.go.kr",
-        search_hint="국립중앙의료원 응급의료기관",
-        endpoint=None,
-        operation=None,
+        search_hint="국립중앙의료원_응급의료정보제공",
+        endpoint="https://apis.data.go.kr/B552657/ErmctInfoInqireService",
+        operation="getEgytLcinfoInqire",
     ),
 }
