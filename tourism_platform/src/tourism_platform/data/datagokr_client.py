@@ -131,7 +131,10 @@ def fetch(config: DatasetConfig, *, page_no: int = 1, num_of_rows: int = 100, **
 
     header = data.get("response", {}).get("header", {})
     result_code = header.get("resultCode")
-    if result_code not in (None, "00", "0"):
+    # 성공 코드 표기가 API마다 다르다 — "00"/"0"으로 가정했었는데, 사용자가 올려준
+    # TourAPI DataLabService 공식 매뉴얼의 실제 응답 예제를 보니 "0000"(네 자리)을
+    # 쓴다. 셋 다 성공으로 처리한다.
+    if result_code not in (None, "00", "0", "0000"):
         raise RuntimeError(
             f"'{config.name}' API 오류 (resultCode={result_code}): "
             f"{header.get('resultMsg', '알 수 없는 오류')}"

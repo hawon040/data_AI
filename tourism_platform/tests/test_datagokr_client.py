@@ -14,6 +14,30 @@ def test_unconfigured_dataset_raises_before_any_network_call():
         fetch(config)
 
 
+def test_four_digit_success_result_code_is_accepted(monkeypatch):
+    """TourAPI DataLabService 공식 매뉴얼 예제가 resultCode="0000"을 성공으로 쓴다."""
+    monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", "dummy-key")
+    config = DatasetConfig(
+        name="테스트셋",
+        portal_url="https://www.data.go.kr",
+        endpoint="https://apis.data.go.kr/B551011/DataLabService",
+        operation="locgoRegnVisitrDDList",
+    )
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"response": {"header": {"resultCode": "0000", "resultMsg": "OK"}, "body": {}}}
+
+    monkeypatch.setattr(
+        "tourism_platform.data.datagokr_client.requests.get",
+        lambda url, params, timeout: FakeResponse(),
+    )
+    fetch(config)  # raises if "0000" were treated as an error
+
+
 def test_missing_service_key_raises(monkeypatch):
     monkeypatch.delenv("DATA_GO_KR_SERVICE_KEY", raising=False)
     config = DatasetConfig(
