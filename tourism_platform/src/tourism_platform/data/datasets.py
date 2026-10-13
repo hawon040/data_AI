@@ -11,10 +11,31 @@ from .datagokr_client import DatasetConfig
 
 DATASETS: dict[str, DatasetConfig] = {
     "visitor_by_gender_age": DatasetConfig(
+        # ⚠️ 2024-10 확인: 사용자가 올려준 공식 매뉴얼(한국관광공사_TourAPI
+        # 활용매뉴얼(관광빅데이터)_v4.1.docx)을 직접 열어보니, DataLabService는
+        # 성별·연령대 분포를 전혀 제공하지 않는다 — 시군구×요일×방문자유형
+        # (현지인/외지인/외국인)만 준다(아래 visitor_by_region_daily 참고).
+        # AreaTarDivService(지난번 사용자가 준 엔드포인트)는 이 매뉴얼에
+        # 등장하지 않아 실체를 확인 못 했다 — 별도 문서가 있는지 확인 필요.
+        # 이 프로젝트의 LQ 특화지수(성별×연령대 12개 그룹) 전제 자체가 재검토
+        # 대상일 수 있다는 뜻 — 추측으로 다른 걸 끼워 넣지 않고 None으로 둔다.
         name="한국관광 데이터랩 - 지역별 방문자 성·연령 분포",
         portal_url="https://www.data.go.kr/data/15101972/openapi.do",
-        endpoint=None,  # TODO: 승인 후 상세페이지 "참고문서"에서 채우기
+        endpoint=None,  # TODO: AreaTarDivService 실체 확인 또는 대안 데이터 탐색
         operation=None,
+    ),
+    "visitor_by_region_daily": DatasetConfig(
+        # 위 visitor_by_gender_age를 찾다가 실제로 확인된 데이터 — 성·연령은
+        # 없지만 시군구×요일×방문자유형(현지인/외지인/외국인)별 방문자 수는
+        # 진짜로 제공된다. locgoRegnVisitrDDList가 기초지자체(시군구) 단위.
+        # startYmd·endYmd(조회 기간, yyyyMMdd)는 공식 매뉴얼에 필수(1)로
+        # 표시돼 있고 조회마다 달라지는 값이라 extra_params에 고정하지 않는다
+        # — fetch(config, startYmd="20250101", endYmd="20250107")처럼 매번 넘긴다.
+        name="한국관광공사 DataLabService - 기초지자체 지역방문자수 집계",
+        portal_url="https://www.data.go.kr/data/15101972/openapi.do",
+        endpoint="https://apis.data.go.kr/B551011/DataLabService",
+        operation="locgoRegnVisitrDDList",
+        extra_params={"MobileOS": "ETC", "MobileApp": "TrueTrip"},
     ),
     "tourist_spots": DatasetConfig(
         # 사용자가 승인받은 건 TourAPI(B551011)가 아니라 행안부 "전국관광지
