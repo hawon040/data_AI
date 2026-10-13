@@ -77,10 +77,19 @@ DATASETS: dict[str, DatasetConfig] = {
         api_style="odcloud",
     ),
     "crime_by_place": DatasetConfig(
-        name="경찰청 - 범죄 발생 장소별 통계 (lambda_k 산출용)",
+        # 사용자가 붙여준 실제 Swagger 명세(namespace=3074463/v1) 기준. 최신은
+        # 2025년. 2023년부터 장소 분류가 36개에서 64개로 세분화돼, λ_k(관광객이
+        # 머무는 장소에서 발생한 비중) 계산에 필요한 숙박업소_호텔_모텔_여관,
+        # 음식점, 카페, 기차역, 버스터미널_정류소, 공항, 공원_놀이시설,
+        # 기타_디브이디방_유원지, 해안, 야외_산야가 따로 나온다.
+        # 3개년 평균용 (2023은 컬럼명이 조금 다름: 게임장_(PC)방, 기타_(DVD)방_유원지):
+        #   2024: 3074463/v1/uddi:6bb3e807-69f3-4d88-83f9-dd5febbf6bc6
+        #   2023: 3074463/v1/uddi:b375578d-d592-487f-bba7-e26eaededb13
+        name="경찰청 - 범죄 발생 장소별 통계 (2025, lambda_k 산출용)",
         portal_url="https://www.data.go.kr/data/3074463/fileData.do",
-        endpoint=None,
-        operation=None,
+        endpoint="https://api.odcloud.kr/api",
+        operation="3074463/v1/uddi:823ceb7c-4833-41ea-835f-dd8bd4c592d6",
+        api_style="odcloud",
     ),
     "pedestrian_accidents": DatasetConfig(
         name="도로교통공단 - 보행자 사고 통계",
