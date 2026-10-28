@@ -1,0 +1,427 @@
+<title>백석 랜덤채팅</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: one-screen app — sector board on the left/top, the conversation pane fills the rest */
+:root {
+  --bg: #f3f5f9;
+  --surface: #ffffff;
+  --ink: #16213a;
+  --muted: #5d6882;
+  --line: #d9dfeb;
+  --accent: #1f4fd6;
+  --accent-ink: #ffffff;
+  --mine: #1f4fd6;
+  --mine-ink: #ffffff;
+  --theirs: #e7ebf3;
+  --live: #12a36b;
+  --warn: #c2410c;
+  --f-display: "Black Han Sans", "IBM Plex Sans KR", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1322; --surface: #151d31; --ink: #e8ecf6; --muted: #98a3bd; --line: #26314b;
+    --accent: #6c93ff; --accent-ink: #0b1020; --mine: #4f7bf5; --mine-ink: #ffffff; --theirs: #222c45;
+    --live: #3ccf93; --warn: #fb923c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1322; --surface: #151d31; --ink: #e8ecf6; --muted: #98a3bd; --line: #26314b;
+  --accent: #6c93ff; --accent-ink: #0b1020; --mine: #4f7bf5; --mine-ink: #ffffff; --theirs: #222c45;
+  --live: #3ccf93; --warn: #fb923c; color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+}
+*, *::before, *::after { box-sizing: border-box; }
+button, input { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { height: 100%; max-width: 1040px; margin: 0 auto; display: grid; grid-template-rows: auto 1fr; gap: 14px; padding-block: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: 28px; margin: 0; letter-spacing: .01em; text-wrap: balance; }
+h1 small { font-family: var(--f-body); font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 8px; letter-spacing: 0; }
+.status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.on { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 25%, transparent); }
+
+.main { display: grid; grid-template-columns: 300px 1fr; gap: 16px; min-height: 0; }
+@media (max-width: 760px) { .main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } }
+
+aside { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.label { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 6px; }
+.nick { display: flex; gap: 6px; }
+.nick input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.nick button { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }
+
+.sectors { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 760px) { .sectors { grid-template-columns: repeat(3, 1fr); } }
+.sector { text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; display: grid; gap: 2px; min-width: 0; }
+.sector:hover { border-color: var(--accent); }
+.sector[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.sector b { font-size: 14px; }
+.sector span { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sector span.hot { color: var(--live); font-weight: 700; }
+.sector:disabled { cursor: default; opacity: .6; }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+
+.chat { display: grid; grid-template-rows: auto 1fr auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; min-height: 0; min-width: 0; overflow: hidden; }
+.chat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.who { min-width: 0; }
+.who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who span { font-size: 12px; color: var(--muted); }
+.actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 500; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+.log { overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-height: 240px; }
+.msg { max-width: 78%; padding: 8px 12px; border-radius: 14px; background: var(--theirs); align-self: flex-start; overflow-wrap: anywhere; white-space: pre-wrap; }
+.msg.me { align-self: flex-end; background: var(--mine); color: var(--mine-ink); }
+.sys { align-self: center; font-size: 12px; color: var(--muted); text-align: center; max-width: 90%; }
+.sys.warn { color: var(--warn); }
+.empty { margin: auto; text-align: center; color: var(--muted); max-width: 34ch; display: grid; gap: 8px; justify-items: center; }
+.empty strong { font-family: var(--f-display); font-weight: 400; font-size: 22px; color: var(--ink); }
+.spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+.compose { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+.compose input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.typing { font-size: 12px; color: var(--muted); padding: 0 16px 4px; min-height: 18px; }
+</style>
+
+<div class="app">
+  <header>
+    <h1>백석 랜덤채팅<small>섹터를 고르면 같은 섹터 학우와 1:1로 연결돼요</small></h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="online">연결 중…</span></div>
+  </header>
+
+  <div class="main">
+    <aside>
+      <div>
+        <p class="label">내 닉네임</p>
+        <div class="nick">
+          <input id="nick" maxlength="16" autocomplete="off" aria-label="닉네임">
+          <button id="reroll" type="button" title="랜덤 닉네임">🎲</button>
+        </div>
+      </div>
+      <div>
+        <p class="label">섹터</p>
+        <div class="sectors" id="sectors"></div>
+      </div>
+      <p class="note">대화는 저장되지 않아요. 창을 닫거나 나가기를 누르면 대화가 사라집니다. 욕설은 자동으로 가려져요.</p>
+    </aside>
+
+    <section class="chat" aria-label="채팅">
+      <div class="chat-head">
+        <div class="who"><b id="who">아직 연결된 상대가 없어요</b><span id="whoSub">왼쪽에서 섹터를 골라 매칭을 시작하세요</span></div>
+        <div class="actions">
+          <button class="btn" id="next" type="button" hidden>다음 상대</button>
+          <button class="btn" id="leave" type="button" hidden>나가기</button>
+        </div>
+      </div>
+      <div class="log" id="log"></div>
+      <div>
+        <div class="typing" id="typing"></div>
+        <form class="compose" id="compose">
+          <input id="text" maxlength="300" autocomplete="off" placeholder="매칭되면 메시지를 보낼 수 있어요" disabled aria-label="메시지">
+          <button class="btn primary" id="send" type="submit" disabled>보내기</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const SECTORS = [
+  { id: "study", name: "공부·스터디", hint: "과제, 시험, 스터디원" },
+  { id: "meal", name: "밥약", hint: "같이 밥 먹을 사람" },
+  { id: "sports", name: "운동", hint: "헬스, 풋살, 산책" },
+  { id: "game", name: "게임", hint: "롤, 발로, 모바일" },
+  { id: "worry", name: "고민상담", hint: "진로, 연애, 학교생활" },
+  { id: "free", name: "자유수다", hint: "아무 얘기나" },
+];
+const ADJ = ["졸린", "배고픈", "신난", "조용한", "용감한", "느긋한", "엉뚱한", "다정한", "바쁜", "수줍은"];
+const ANI = ["백곰", "수달", "고양이", "펭귄", "다람쥐", "여우", "판다", "부엉이", "햄스터", "강아지"];
+const BAD = ["씨발", "시발", "ㅅㅂ", "병신", "ㅂㅅ", "개새", "좆", "존나", "미친놈", "미친년", "닥쳐"];
+const CONFIRM_MS = 4000;
+
+const $ = (id) => document.getElementById(id);
+const logEl = $("log");
+const randomNick = () => `${ADJ[Math.floor(Math.random() * ADJ.length)]} ${ANI[Math.floor(Math.random() * ANI.length)]}`;
+const clean = (s) => { let out = s; for (const w of BAD) out = out.split(w).join("*".repeat(w.length)); return out; };
+
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+const state = {
+  room: null,
+  me: null,            // my peer label
+  nick: store.get("bu-nick") || randomNick(),
+  sector: null,
+  phase: "idle",       // idle | waiting | chatting | bot
+  waitSince: 0,
+  partner: null,       // peer label
+  partnerNick: "",
+  pairedAt: 0,
+  skip: new Set(),     // peers skipped with "다음 상대"
+  botTimer: null,
+};
+$("nick").value = state.nick;
+
+/* ---------- rendering ---------- */
+function addLine(text, cls) {
+  const div = document.createElement("div");
+  div.className = cls;
+  div.textContent = text;
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function clearLog() { logEl.replaceChildren(); }
+function showEmpty(kind) {
+  clearLog();
+  const box = document.createElement("div");
+  box.className = "empty";
+  if (kind === "waiting") {
+    const sp = document.createElement("div"); sp.className = "spinner"; box.appendChild(sp);
+    const t = document.createElement("strong"); t.textContent = "상대를 찾는 중"; box.appendChild(t);
+    const p = document.createElement("p"); p.style.margin = "0";
+    p.textContent = `‘${sectorName(state.sector)}’ 섹터에서 기다리는 학우와 바로 연결해 드려요.`;
+    box.appendChild(p);
+    const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.id = "botBtn";
+    b.textContent = "기다리는 동안 연습 상대와 대화"; b.addEventListener("click", startBot); box.appendChild(b);
+  } else {
+    const t = document.createElement("strong"); t.textContent = "섹터를 골라 주세요"; box.appendChild(t);
+    const p = document.createElement("p"); p.style.margin = "0";
+    p.textContent = "같은 섹터를 고른 백석대 학우 중 한 명과 무작위로 1:1 채팅이 시작돼요.";
+    box.appendChild(p);
+  }
+  logEl.appendChild(box);
+}
+const sectorName = (id) => (SECTORS.find((s) => s.id === id) || {}).name || "";
+
+function renderSectors() {
+  const peers = state.room ? state.room.peers() : [];
+  const counts = {};
+  for (const p of peers) {
+    const pr = p.presence || {};
+    if (typeof pr.sector === "string" && (pr.phase === "waiting" || pr.phase === "chatting")) counts[pr.sector] = (counts[pr.sector] || 0) + 1;
+  }
+  const box = $("sectors");
+  box.replaceChildren();
+  for (const s of SECTORS) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "sector"; b.id = "sector-" + s.id;
+    b.setAttribute("aria-pressed", String(state.sector === s.id));
+    const n = document.createElement("b"); n.textContent = s.name;
+    const c = document.createElement("span");
+    const k = counts[s.id] || 0;
+    c.textContent = k ? `${k}명 참여 중` : s.hint;
+    if (k) c.className = "hot";
+    b.append(n, c);
+    b.addEventListener("click", () => joinSector(s.id));
+    box.appendChild(b);
+  }
+  const online = peers.length;
+  $("online").textContent = state.room && state.room.connected() ? `지금 접속 ${online}명` : state.room ? "재연결 중…" : "혼자 보기 모드";
+  $("dot").className = "dot" + (state.room && state.room.connected() ? " on" : "");
+}
+
+function renderHead() {
+  const chatting = state.phase === "chatting" || state.phase === "bot";
+  $("next").hidden = !chatting;
+  $("leave").hidden = state.phase === "idle";
+  $("text").disabled = !chatting;
+  $("send").disabled = !chatting;
+  $("text").placeholder = chatting ? "메시지를 입력하세요" : "매칭되면 메시지를 보낼 수 있어요";
+  if (state.phase === "idle") { $("who").textContent = "아직 연결된 상대가 없어요"; $("whoSub").textContent = "왼쪽에서 섹터를 골라 매칭을 시작하세요"; }
+  if (state.phase === "waiting") { $("who").textContent = "매칭 대기 중"; $("whoSub").textContent = sectorName(state.sector); }
+  if (state.phase === "chatting") { $("who").textContent = state.partnerNick || "익명 학우"; $("whoSub").textContent = `${sectorName(state.sector)} · 실시간 연결됨`; }
+  if (state.phase === "bot") { $("who").textContent = "연습 상대 (자동 응답)"; $("whoSub").textContent = `${sectorName(state.sector)} · 실제 학우가 들어오면 바로 연결돼요`; }
+}
+
+/* ---------- presence & matching ---------- */
+function pushPresence() {
+  if (!state.room) return;
+  state.room.presence({
+    nick: state.nick,
+    sector: state.sector,
+    phase: state.phase === "bot" ? "waiting" : state.phase,
+    since: state.waitSince,
+    partner: state.phase === "chatting" ? state.partner : null,
+  }).catch(() => {});
+}
+
+function joinSector(id) {
+  if (state.phase === "chatting") { emitLeave(); }
+  stopBot();
+  state.sector = id;
+  state.phase = "waiting";
+  state.waitSince = Date.now();
+  state.partner = null;
+  showEmpty("waiting");
+  pushPresence();
+  renderSectors(); renderHead();
+  tryMatch();
+}
+
+function leave() {
+  if (state.phase === "chatting") emitLeave();
+  stopBot();
+  state.phase = "idle"; state.sector = null; state.partner = null;
+  pushPresence();
+  showEmpty("idle");
+  renderSectors(); renderHead();
+}
+
+function nextPartner() {
+  if (state.partner) state.skip.add(state.partner);
+  const s = state.sector;
+  joinSector(s);
+}
+
+function emitLeave() {
+  if (state.room && state.partner) state.room.emit("chat", { to: state.partner, kind: "bye" }).catch(() => {});
+}
+
+function waitingPool() {
+  if (!state.room) return [];
+  return state.room.peers().filter((p) => {
+    const pr = p.presence || {};
+    if (p.kind !== "viewer" || pr.phase !== "waiting" || pr.sector !== state.sector) return false;
+    if (!p.sameTab && state.skip.has(p.peer)) return false;
+    return true;
+  }).sort((a, b) => ((a.presence.since || 0) - (b.presence.since || 0)) || (a.peer < b.peer ? -1 : 1));
+}
+
+// Every waiting page sorts the same pool the same way and pairs neighbours (0-1, 2-3, …),
+// so both sides pick each other without a server. A pair is kept only if the partner confirms.
+function tryMatch() {
+  if (!(state.phase === "waiting" || state.phase === "bot") || !state.me) return;
+  const pool = waitingPool();
+  const i = pool.findIndex((p) => p.sameTab);
+  if (i < 0) return;
+  const j = i % 2 === 0 ? i + 1 : i - 1;
+  const other = pool[j];
+  if (!other) return;
+  stopBot();
+  state.phase = "chatting";
+  state.partner = other.peer;
+  state.partnerNick = String(other.presence.nick || "익명 학우").slice(0, 16);
+  state.pairedAt = Date.now();
+  clearLog();
+  addLine(`${state.partnerNick} 님과 연결됐어요. 먼저 인사해 보세요!`, "sys");
+  pushPresence();
+  renderSectors(); renderHead();
+  $("text").focus();
+}
+
+function checkPartner() {
+  if (state.phase !== "chatting" || !state.room) return;
+  const p = state.room.peers().find((x) => x.peer === state.partner);
+  const confirmed = p && p.presence && p.presence.phase === "chatting" && p.presence.partner === state.me;
+  if (confirmed) { state.pairedAt = 0; if (p.presence.nick) state.partnerNick = String(p.presence.nick).slice(0, 16); renderHead(); return; }
+  const gone = !p || (p.presence.phase !== "waiting" && p.presence.phase !== "chatting") || (p.presence.phase === "chatting" && p.presence.partner && p.presence.partner !== state.me);
+  const timedOut = state.pairedAt && Date.now() - state.pairedAt > CONFIRM_MS;
+  if (gone || timedOut || (state.pairedAt === 0 && p && p.presence.partner !== state.me)) partnerLeft();
+}
+
+function partnerLeft() {
+  const wasTalking = state.pairedAt === 0;
+  state.phase = "waiting"; state.partner = null; state.waitSince = Date.now();
+  pushPresence();
+  if (wasTalking) {
+    addLine("상대가 대화를 나갔어요. 같은 섹터에서 새 상대를 찾고 있어요…", "sys warn");
+    renderHead(); renderSectors();
+  } else { showEmpty("waiting"); renderHead(); }
+  setTimeout(tryMatch, 300);
+}
+
+/* ---------- messages ---------- */
+function sendMessage(text) {
+  const t = clean(text.trim()).slice(0, 300);
+  if (!t) return;
+  if (state.phase === "bot") { addLine(t, "msg me"); botReply(t); return; }
+  if (state.phase !== "chatting" || !state.room) return;
+  if (!state.room.connected()) { addLine("연결이 잠시 끊겼어요. 다시 연결되면 보내 주세요.", "sys warn"); return; }
+  addLine(t, "msg me");
+  state.room.emit("chat", { to: state.partner, kind: "msg", text: t }).catch(() => addLine("메시지를 보내지 못했어요.", "sys warn"));
+}
+
+function onChat(m) {
+  if (m.sameTab) return;
+  const d = m.data || {};
+  if (d.to !== state.me || m.peer !== state.partner || state.phase !== "chatting") return;
+  if (d.kind === "msg" && typeof d.text === "string") { addLine(clean(d.text).slice(0, 300), "msg"); $("typing").textContent = ""; }
+  if (d.kind === "typing") { $("typing").textContent = `${state.partnerNick} 님이 입력 중…`; clearTimeout(onChat.t); onChat.t = setTimeout(() => { $("typing").textContent = ""; }, 2500); }
+  if (d.kind === "bye") partnerLeft();
+}
+
+/* ---------- practice partner ---------- */
+const BOT_LINES = {
+  study: ["안녕하세요! 저도 이번 주 과제 때문에 정신없어요 ㅠ", "도서관 몇 층 자주 가세요?", "시험 기간엔 같이 스터디하면 좋을 것 같아요"],
+  meal: ["안녕하세요! 학식 오늘 뭐 나왔는지 아세요?", "학교 앞에 자주 가는 밥집 있어요?", "공강 시간 맞으면 같이 먹어요!"],
+  sports: ["안녕하세요~ 운동 뭐 하세요?", "체육관 저녁엔 사람 많더라구요", "주말에 풋살 인원 모을 때 연락 주세요!"],
+  game: ["ㅎㅇㅎㅇ 무슨 게임 하세요?", "티어 어디세요 ㅋㅋ", "공강 때 PC방 가실래요?"],
+  worry: ["안녕하세요. 편하게 얘기해도 괜찮아요.", "그런 고민 저도 해봤어요. 조금 더 얘기해 줄래요?", "학생상담센터도 꽤 도움 된다고 들었어요."],
+  free: ["안녕하세요! 몇 학번이세요?", "요즘 캠퍼스 날씨 좋지 않아요?", "ㅋㅋㅋ 그거 완전 공감이에요"],
+};
+function startBot() {
+  state.phase = "bot";
+  state.botStep = 0;
+  clearLog();
+  addLine("연습 상대와 연결됐어요. 실제 학우가 같은 섹터에 들어오면 자동으로 바뀌어요.", "sys");
+  renderHead();
+  botSay();
+}
+function botSay() {
+  const lines = BOT_LINES[state.sector] || BOT_LINES.free;
+  const line = lines[state.botStep % lines.length];
+  state.botStep++;
+  $("typing").textContent = "연습 상대가 입력 중…";
+  state.botTimer = setTimeout(() => { $("typing").textContent = ""; if (state.phase === "bot") addLine(line, "msg"); }, 900);
+}
+function botReply() { clearTimeout(state.botTimer); botSay(); }
+function stopBot() { clearTimeout(state.botTimer); $("typing").textContent = ""; if (state.phase === "bot") state.phase = "waiting"; }
+
+/* ---------- wiring ---------- */
+$("compose").addEventListener("submit", (e) => { e.preventDefault(); sendMessage($("text").value); $("text").value = ""; });
+let lastTyping = 0;
+$("text").addEventListener("input", () => {
+  if (state.phase !== "chatting" || !state.room || Date.now() - lastTyping < 1500) return;
+  lastTyping = Date.now();
+  state.room.emit("chat", { to: state.partner, kind: "typing" }).catch(() => {});
+});
+$("leave").addEventListener("click", leave);
+$("next").addEventListener("click", nextPartner);
+$("nick").addEventListener("change", () => { state.nick = clean($("nick").value.trim()).slice(0, 16) || randomNick(); $("nick").value = state.nick; store.set("bu-nick", state.nick); pushPresence(); });
+$("reroll").addEventListener("click", () => { state.nick = randomNick(); $("nick").value = state.nick; store.set("bu-nick", state.nick); pushPresence(); });
+window.addEventListener("pagehide", emitLeave);
+
+showEmpty("idle");
+renderSectors(); renderHead();
+
+(async () => {
+  const room = await (window.claude?.use ? window.claude.use("room") : Promise.resolve(null));
+  if (!room) { renderSectors(); return; }
+  state.room = room;
+  room.on("chat", onChat, () => {});
+  room.onConnection(() => renderSectors(), () => {});
+  room.onPeers((change) => {
+    const mine = change.peers.find((p) => p.sameTab);
+    if (mine) state.me = mine.peer;
+    if (state.partner && change.left.some((p) => p.peer === state.partner)) { partnerLeft(); }
+    renderSectors();
+    tryMatch();
+    checkPartner();
+  }, () => { state.room = null; renderSectors(); });
+  pushPresence();
+  setInterval(() => { tryMatch(); checkPartner(); }, 1000);
+})();
+</script>
