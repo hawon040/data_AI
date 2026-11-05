@@ -14,7 +14,7 @@ from pathlib import Path
 
 from . import datagokr_client
 from .datagokr_client import DatasetNotConfiguredError, ServiceKeyMissingError
-from .datasets import DATASETS
+from .datasets import DATASETS, live_sample_params
 
 LIVE_DIR = Path(__file__).resolve().parents[3] / "data" / "live"
 
@@ -23,15 +23,16 @@ def fetch_all(live_dir: Path = LIVE_DIR) -> dict[str, str]:
     """모든 데이터셋을 시도하고 {데이터셋key: 결과상태} 를 반환한다."""
     live_dir.mkdir(parents=True, exist_ok=True)
     results: dict[str, str] = {}
+    sample_params = live_sample_params()
 
     for key, config in DATASETS.items():
         try:
-            data = datagokr_client.fetch(config)
+            data = datagokr_client.fetch(config, **sample_params.get(key, {}))
         except DatasetNotConfiguredError:
             results[key] = "미설정 (endpoint/operation 비어 있음)"
             continue
         except ServiceKeyMissingError:
-            results[key] = "서비스키 없음 (DATA_GO_KR_SERVICE_KEY 미설정)"
+            results[key] = f"서비스키 없음 ({config.service_key_env} 미설정)"
             continue
         except Exception as e:  # noqa: BLE001 — 어떤 API 오류든 이 데이터셋만 실패 처리하고 계속 진행
             results[key] = f"실패: {e}"
@@ -50,7 +51,7 @@ def main() -> None:
     for key, status in results.items():
         print(f"{key}: {status}")
 
-    configured = sum(1 for s in results.values() if s.startswith("성공") or s.startswith("실패"))
+    configured = sum(1 for s in results.values() if not s.startswith("미설정"))
     print(f"\n{configured}/{len(results)}개 데이터셋이 설정됨 (나머지는 datasets.py에서 endpoint/operation 채우기 필요)")
 
 
