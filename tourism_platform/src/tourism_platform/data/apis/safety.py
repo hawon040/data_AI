@@ -37,7 +37,7 @@ SAFETY_DATASETS: dict[str, DatasetConfig] = {
     ),
     "kcisa_tour_safety": DatasetConfig(
         # 관광지 안전정보: 지진해일대피소(subject="지진해일대피소")·응급의료기관·관광지가 함께 들어 있다.
-        # 필드 이름(tourName, subject, lat, lon, totalCapacity …)은 tools/api.py에서 실제로 쓰는 값이다.
+        # 필드 이름(tourName, subject, lat, lon, totalCapacity …)은 tourapi/api.py에서 실제로 쓰는 값이다.
         # 응급의료기관 항목은 좌표가 비어 있어 거리 계산에는 emergency_facilities를 쓴다.
         name="한국문화정보원 관광지 안전정보",
         portal_url="https://api.kcisa.kr",

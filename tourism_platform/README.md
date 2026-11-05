@@ -95,7 +95,7 @@ python -m tourism_platform.lake.api_log_report
 | MongoDB | `tourlink_lab` DB (`MONGO_URI`, 기본 `mongodb://127.0.0.1:27017`) | `spots`·`shelters`·`weather` 컬렉션 |
 | 호출 로그 | `data/logs/api_calls.jsonl` (`TOURLINK_API_LOG`로 변경, 빈 값이면 끔) | 시간·API·응답시간·성공 여부·상태코드 (키는 남기지 않음) |
 
-산출물은 `.gitignore`로 커밋에서 뺀다. MongoDB는 `tools/api.py`가 쓰는 `tourlink` DB와 섞이지 않게 `tourlink_lab`을 쓴다.
+산출물은 `.gitignore`로 커밋에서 뺀다. MongoDB는 `tourapi/api.py`가 쓰는 `tourlink` DB와 섞이지 않게 `tourlink_lab`을 쓴다.
 
 ### Redis 응답 캐시 (아직 설치 안 됨)
 

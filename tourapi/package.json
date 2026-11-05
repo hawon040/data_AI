@@ -1,0 +1,7 @@
+{
+  "name": "tourlink",
+  "private": true,
+  "scripts": {
+    "dev": "py api.py local"
+  }
+}

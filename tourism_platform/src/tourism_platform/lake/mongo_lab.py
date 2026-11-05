@@ -1,6 +1,6 @@
 """MongoDB 실습: 관광지·대피소·날씨 컬렉션 적재, ESR 복합 인덱스·2dsphere 인덱스, explain 비교, aggregate ↔ pandas.
 
-DB는 tourlink_lab을 쓴다 — tools/api.py가 쓰는 tourlink DB와 섞이지 않게 하려고 따로 둔다.
+DB는 tourlink_lab을 쓴다 — tourapi/api.py가 쓰는 tourlink DB와 섞이지 않게 하려고 따로 둔다.
 접속 주소는 환경변수 MONGO_URI(기본 mongodb://127.0.0.1:27017).
 """
 from __future__ import annotations

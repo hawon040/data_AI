@@ -36,7 +36,7 @@ TOURISM_DATASETS: dict[str, DatasetConfig] = {
         portal_url="https://www.data.go.kr/data/15021141/standard.do",  # 2026-11-06 페이지 열어 확인
         endpoint="https://api.data.go.kr/openapi/tn_pubr_public_trrsrt_api",
         operation="",
-        timeout=60,  # 한 번에 많이 받으면 15초를 넘는다(tools/api.py도 60초)
+        timeout=60,  # 한 번에 많이 받으면 15초를 넘는다(tourapi/api.py도 60초)
     ),
     "tourist_info_centers": DatasetConfig(
         # 전국관광안내소표준데이터 Open API. 키 없이 호출하면 SERVICE_KEY_IS_NULL이라 API는 있다(2026-11-06).

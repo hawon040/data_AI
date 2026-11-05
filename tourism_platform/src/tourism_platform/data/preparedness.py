@@ -145,7 +145,7 @@ _shelter_cache: list[Facility] | None = None
 
 
 def _all_shelters() -> list[Facility]:
-    """관광지 안전정보 전체(1,500여 건, tools/api.py와 같은 3,000행 한 번 요청)에서 대피소만. 프로세스 안에서 한 번만 받는다."""
+    """관광지 안전정보 전체(1,500여 건, tourapi/api.py와 같은 3,000행 한 번 요청)에서 대피소만. 프로세스 안에서 한 번만 받는다."""
     global _shelter_cache
     if _shelter_cache is None:
         data = datagokr_client.fetch(SAFETY_DATASETS["kcisa_tour_safety"], num_of_rows=3000)

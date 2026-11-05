@@ -14,7 +14,7 @@ data_AI/
 │   ├── src/lib/         #   추천 수식·날씨 규칙·근거 문구
 │   └── scripts/         #   파이썬 테스트가 TS 계산을 부를 때 쓰는 CLI
 ├── tourism_platform/    # 파이썬: 공공데이터 API, 날씨·대비 정보 계산, 데이터 레이크·MongoDB
-├── tools/api.py         # 공공데이터 조회 웹 (python tools/api.py local → 127.0.0.1:8000)
+├── tourapi/            # 공공데이터 조회 웹 api.py (py tourapi/api.py local → 127.0.0.1:8000, Vercel tourapi-demo 배포)
 └── docs/
     ├── 10주차_작업기록.md  # 작업마다 한 일 / 실행 명령 / 결과 수치 / 오류와 해결
     ├── 근거자료.md         # 보고서용 출처 (열어서 확인한 주소만)
@@ -30,6 +30,9 @@ data_AI/
 cd web && npm install && npm run dev
 npm test                      # 날씨 규칙·근거 문구 테스트
 
+# 공공데이터 조회 웹 (web의 지도 레이어가 이 서버를 부른다)
+cd tourapi && py api.py local
+
 # 파이썬
 cd tourism_platform
 python -m venv .venv && .venv/Scripts/python -m pip install -e ".[dev,lake]"
@@ -44,6 +47,6 @@ python -m venv .venv && .venv/Scripts/python -m pip install -e ".[dev,lake]"
 | 환경변수 | 쓰는 곳 |
 |---|---|
 | `DATA_GO_KR_SERVICE_KEY` | tourism_platform (일반 인증키 **Decoding**) |
-| `API_KEY`, `KCISA_API_KEY` | tools/api.py |
+| `API_KEY`, `KCISA_API_KEY` | tourapi/api.py |
 | `TOUR_API_SERVICE_KEY` | web/api (Vercel 서버리스) |
 | `VITE_KAKAO_MAP_KEY`, `VITE_KAKAO_REST_API_KEY` | web (`web/.env.local`) |

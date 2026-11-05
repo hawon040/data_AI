@@ -5,7 +5,7 @@ import math
 
 EARTH_RADIUS_KM = 6371.0
 
-# 국내 좌표 범위 — 빈 값이나 위경도가 뒤바뀐 좌표를 거리 계산에서 뺄 때 쓴다(tools/api.py와 같은 범위).
+# 국내 좌표 범위 — 빈 값이나 위경도가 뒤바뀐 좌표를 거리 계산에서 뺄 때 쓴다(tourapi/api.py와 같은 범위).
 KOREA_LAT = (33.0, 39.0)
 KOREA_LON = (124.0, 132.0)
 
