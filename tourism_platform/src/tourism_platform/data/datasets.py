@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .apis import air, safety, weather
+from .apis import air, safety, tourism, weather
 from .apis import AIR_DATASETS, SAFETY_DATASETS, TOURISM_DATASETS, WEATHER_DATASETS
 from .datagokr_client import DatasetConfig
 
@@ -28,5 +28,5 @@ DATASETS: dict[str, DatasetConfig] = {
 
 
 def live_sample_params() -> dict[str, dict[str, Any]]:
-    """필수 파라미터가 있는 데이터셋(응급의료기관·날씨·대기질)을 fetch_live에서 호출할 때 쓸 예시값."""
-    return {**safety.sample_params(), **weather.sample_params(), **air.sample_params()}
+    """필수 파라미터가 있는 데이터셋(방문자 수·응급의료기관·날씨·대기질)을 fetch_live에서 호출할 때 쓸 예시값."""
+    return {**tourism.sample_params(), **safety.sample_params(), **weather.sample_params(), **air.sample_params()}

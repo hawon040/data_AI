@@ -9,7 +9,8 @@
 데이터 출처
     응급의료기관   국립중앙의료원 응급의료기관 위치정보 조회 (apis/safety.py emergency_facilities)
     지진해일대피소 한국문화정보원 관광지 안전정보 (apis/safety.py kcisa_tour_safety)
-    관광안내소     전국관광안내소표준데이터 CSV (Open API 없음, apis/safety.py 하단 주석 참고)
+    관광안내소     전국관광안내소표준데이터 (apis/tourism.py tourist_info_centers — Open API는 활용신청 후,
+                   그 전에는 포털 CSV를 load_info_centers()로 읽는다)
 """
 from __future__ import annotations
 

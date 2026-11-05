@@ -20,13 +20,13 @@ def main() -> None:
     day = now.date()
 
     print("## 1. raw — API 원본 저장")
-    for dataset in ("national_tourspots", "kcisa_tour_safety"):
+    for dataset in ("tourist_spots", "kcisa_tour_safety"):
         rows = 3000 if dataset == "kcisa_tour_safety" else 1000
         paths = pipeline.ingest(dataset, day=day, num_of_rows=rows)
         print(f"- {dataset}: {len(paths)}개 파일 → {paths[0].parent}")
 
     print("\n## 2. processed — 정제")
-    spots, spot_stats = pipeline.clean_tourspots(pipeline.raw_items("national_tourspots", day))
+    spots, spot_stats = pipeline.clean_tourspots(pipeline.raw_items("tourist_spots", day))
     shelters, shelter_stats = pipeline.clean_shelters(pipeline.raw_items("kcisa_tour_safety", day))
     sample = sorted((s for s in spots if s["sido"] == "강원" and s["capacity"]), key=lambda s: -s["capacity"])
     weather, weather_errors = pipeline.fetch_weather_for_spots(sample[:WEATHER_SAMPLE_SPOTS], now=now)

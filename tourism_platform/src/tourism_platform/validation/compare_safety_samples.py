@@ -21,10 +21,10 @@ WEB_DIR = Path(__file__).resolve().parents[4] / "web"
 # 위해지수 계산에 필요한 입력과 지금 상태. (입력, 데이터셋, 상태)
 FORMULA_INPUTS = [
     ("P_res 주민등록인구", "설정 없음 (행정안전부 주민등록 인구통계)", "미설정"),
-    ("V_pd 외지인 방문자(연간)", "visitor_by_gender_age (데이터랩)", "1일치만 수집 — 연간 합계 아님"),
+    ("V_pd 외지인 방문자(연간)", "visitor_by_region_daily (데이터랩)", "1일치만 수집 — 연간 합계 아님"),
     ("h̄ 평균 체류시간", "설정 없음 (데이터랩 체류시간)", "미설정"),
-    ("C_ik 범죄 유형별 발생 건수", "crime_by_region (경찰청, 파일데이터 3074462)", "Open API 없음 — 파일 내려받기 필요"),
-    ("λ_k 여행자 노출 장소 비중", "crime_by_place (경찰청, 파일데이터 3074463)", "Open API 없음 — 파일 내려받기 필요"),
+    ("C_ik 범죄 유형별 발생 건수", "crime_by_region (경찰청, odcloud API)", "연결됨 — 지금 키로 401, 활용신청 확인 필요"),
+    ("λ_k 여행자 노출 장소 비중", "crime_by_place (경찰청, odcloud API)", "연결됨 — 지금 키로 401, 활용신청 확인 필요"),
     ("s_k 유형별 심각도", "양형기준 기반 상대값", "값 미정"),
 ]
 
@@ -56,7 +56,8 @@ def _province_short(province: str) -> str:
 def build_table() -> str:
     regions = load_sample_regions()
 
-    visitors = _items(datagokr_client.fetch(DATASETS["visitor_by_gender_age"], num_of_rows=1000))
+    visitors = _items(datagokr_client.fetch(DATASETS["visitor_by_region_daily"], num_of_rows=1000,
+                                            startYmd="20260901", endYmd="20260901"))
     names = {v["signguCode"]: v["signguNm"] for v in visitors}
     outsiders = {v["signguCode"]: float(v["touNum"]) for v in visitors if v["touDivCd"] == "2"}
     base_ymd = visitors[0]["baseYmd"] if visitors else "?"

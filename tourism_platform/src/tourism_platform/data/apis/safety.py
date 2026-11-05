@@ -10,16 +10,30 @@ from ..datagokr_client import DatasetConfig
 
 SAFETY_DATASETS: dict[str, DatasetConfig] = {
     "crime_by_region": DatasetConfig(
-        name="경찰청 - 범죄 발생 지역별 통계",
+        # 파일데이터지만 odcloud(공공데이터개방표준서비스) API로도 열려 있다. Swagger 명세(namespace=3074462/v1)로
+        # 확인해 연결했다. 연도별 스냅샷마다 uddi가 다르다 — 아래는 최신(2024).
+        # 3개년 평균(문서 9.5)용: 2023 3074462/v1/uddi:161740bd-8ec5-4734-9a3d-f7a2cde34942,
+        #                       2022 3074462/v1/uddi:fe3ae686-8f7d-4d82-8c3a-901a02a0aa75
+        # 2024 스키마는 "서울 종로구"처럼 시도+시군구가 공백으로 구분된 컬럼이고, 군 지역도 전부 개별 컬럼이다.
+        # 2026-11-06: 지금 키(API_KEY)로 호출하면 401 "유효하지 않은 인증키" — 활용신청 확인 필요.
+        name="경찰청 - 범죄 발생 지역별 통계 (2024)",
         portal_url="https://www.data.go.kr/data/3074462/fileData.do",
-        endpoint=None,
-        operation=None,
+        endpoint="https://api.odcloud.kr/api",
+        operation="3074462/v1/uddi:ae109087-8690-4cb5-bda9-a7876a92f3b8",
+        api_style="odcloud",
     ),
     "crime_by_place": DatasetConfig(
-        name="경찰청 - 범죄 발생 장소별 통계 (lambda_k 산출용)",
+        # Swagger 명세(namespace=3074463/v1) 기준. 최신은 2025년. 2023년부터 장소 분류가 36개에서 64개로
+        # 세분화돼 λ_k(관광객이 머무는 장소 비중) 계산에 필요한 숙박업소·음식점·카페·기차역·버스터미널·
+        # 공항·공원_놀이시설·유원지·해안·야외_산야가 따로 나온다.
+        # 3개년 평균용: 2024 3074463/v1/uddi:6bb3e807-69f3-4d88-83f9-dd5febbf6bc6,
+        #              2023 3074463/v1/uddi:b375578d-d592-487f-bba7-e26eaededb13 (컬럼명이 조금 다름)
+        # 2026-11-06: 지금 키로 401 — 활용신청 확인 필요.
+        name="경찰청 - 범죄 발생 장소별 통계 (2025, lambda_k 산출용)",
         portal_url="https://www.data.go.kr/data/3074463/fileData.do",
-        endpoint=None,
-        operation=None,
+        endpoint="https://api.odcloud.kr/api",
+        operation="3074463/v1/uddi:823ceb7c-4833-41ea-835f-dd8bd4c592d6",
+        api_style="odcloud",
     ),
     "pedestrian_accidents": DatasetConfig(
         name="도로교통공단 - 보행자 사고 통계",
@@ -41,6 +55,7 @@ SAFETY_DATASETS: dict[str, DatasetConfig] = {
         # 응급실 전화(dutyTel3)는 기본정보 조회(getEgytBassInfoInqire, HPID)에만 있다.
         # 상세페이지 기준 XML만 제공한다 — datagokr_client가 XML도 읽는다.
         # 오퍼레이션명은 키 없이 호출해 SERVICE_KEY_IS_NULL 응답으로 확인했다(2026-11-05).
+        # 공식 참고문서(국립중앙의료원_응급의료정보제공 활용가이드 V13.1)에도 같은 값이 있다.
         name="국립중앙의료원 전국 응급의료기관 정보 조회 서비스 - 응급의료기관 위치정보 조회",
         portal_url="https://www.data.go.kr/data/15000563/openapi.do",
         endpoint="https://apis.data.go.kr/B552657/ErmctInfoInqireService",
@@ -59,10 +74,7 @@ SAFETY_DATASETS: dict[str, DatasetConfig] = {
     ),
 }
 
-# 관광안내소는 Open API가 없다. 공공데이터포털 "전국관광안내소표준데이터"
-# (https://www.data.go.kr/data/15013112/standard.do)는 파일(CSV 등) 내려받기만 제공한다.
-# 내려받은 CSV를 data/raw/tourist_info_centers.csv로 두고 preparedness.load_info_centers()로 읽는다.
-# 표준데이터 API 이름(tn_pubr_public_*_api) 후보 8개를 키 없이 호출해 봤지만 모두 NO_OPENAPI_SERVICE_ERROR였다.
+# 관광안내소 설정은 apis/tourism.py의 tourist_info_centers에 있다(Open API, 활용신청 필요).
 
 
 def sample_params() -> dict[str, dict]:
