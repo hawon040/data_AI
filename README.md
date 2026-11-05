@@ -15,6 +15,9 @@ data_AI/
 │   └── scripts/         #   파이썬 테스트가 TS 계산을 부를 때 쓰는 CLI
 ├── tourism_platform/    # 파이썬: 공공데이터 API, 날씨·대비 정보 계산, 데이터 레이크·MongoDB
 ├── tourapi/            # 공공데이터 조회 웹 api.py (py tourapi/api.py local → 127.0.0.1:8000, Vercel tourapi-demo 배포)
+├── dashboards/          # 데이터 시각화 대시보드 (GitHub Pages 배포)
+├── data/                # 대시보드용 샘플 CSV
+├── .github/workflows/   # dashboards/ 바뀌면 GitHub Pages에 자동 배포
 └── docs/
     ├── 10주차_작업기록.md  # 작업마다 한 일 / 실행 명령 / 결과 수치 / 오류와 해결
     ├── 근거자료.md         # 보고서용 출처 (열어서 확인한 주소만)
@@ -39,6 +42,15 @@ python -m venv .venv && .venv/Scripts/python -m pip install -e ".[dev,lake]"
 .venv/Scripts/python -m pytest -q
 .venv/Scripts/python -m tourism_platform.data.fetch_live   # API 연결 상태 확인
 ```
+
+## 대시보드 (GitHub Pages)
+
+`dashboards/dashboard.html`을 브라우저로 열면 바로 볼 수 있다. main에 `dashboards/`가 바뀌어 push되면
+`.github/workflows/deploy-dashboard.yml`이 GitHub Pages에 배포한다.
+
+- 공개 링크: https://hawon040.github.io/data_AI/dashboard.html
+- `data/sample_sales.csv`(월별 매출 2024 vs 2025), `data/sample_category_region.csv`(카테고리·지역별)는 샘플 데이터다.
+  실제 데이터로 바꾸려면 CSV와 `dashboard.html` 안의 `months`, `revenue2025`, `revenue2024`, `categories`, `regions` 값을 고친다.
 
 ## 서비스키
 

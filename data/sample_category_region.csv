@@ -1,0 +1,11 @@
+type,name,value,unit
+category,의류,312,백만원
+category,가전,268,백만원
+category,식품,190,백만원
+category,가구,121,백만원
+category,뷰티,88,백만원
+region,서울,1520,명
+region,경기,1180,명
+region,부산,540,명
+region,대구,380,명
+region,기타,300,명
