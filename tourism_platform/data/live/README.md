@@ -9,7 +9,8 @@
 
 1. [data.go.kr](https://www.data.go.kr)에서 `tourism_platform/src/tourism_platform/data/datasets.py`에
    나열된 데이터셋을 하나씩 활용신청 → 승인
-2. 마이페이지 > 개발계정에서 일반 인증키(Encoding) 발급
+2. 마이페이지 > 개발계정에서 일반 인증키 발급 — **Decoding 키**를 쓴다
+   (requests가 URL 인코딩을 한 번 더 하므로 Encoding 키는 이중 인코딩된다)
 3. 환경변수로 설정: `export DATA_GO_KR_SERVICE_KEY=발급받은키`
 4. 신청한 API 상세페이지의 "참고문서"를 보고 `datasets.py`의 해당
    `DatasetConfig.endpoint` / `operation`을 채운다 (여기서 추측하지 않는다 —

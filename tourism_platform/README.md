@@ -83,3 +83,35 @@ python -m tourism_platform.validation.validate_rank_uncertainty      # 10.7
    `endpoint`/`operation`을 채운다 (API마다 다르고 개편으로 바뀔 수 있어서
    여기서 미리 추측해 넣지 않았다)
 4. `python -m tourism_platform.data.fetch_live` 실행
+
+## 데이터 레이크 · MongoDB · 호출 로그 (수업 도구 실습)
+
+```bash
+pip install -e ".[dev,lake]"        # pymongo, pyarrow, tabulate
+DATA_GO_KR_SERVICE_KEY=... KCISA_API_KEY=... python -m tourism_platform.lake.run
+python -m tourism_platform.lake.api_log_report
+```
+
+| 단계 | 위치 | 형식 |
+|---|---|---|
+| raw | `data/raw/api/<데이터셋>/<YYYY-MM-DD>/page-0001.json` | API 응답 원본 그대로 |
+| processed | `data/processed/<데이터셋>/<YYYY-MM-DD>.jsonl` | 정제 레코드 (좌표 검사·시도 표준화·중복 제거) |
+| gold | `data/gold/*.parquet` | 시도별 지표, 관광지별 가장 가까운 대피소 거리 |
+| MongoDB | `tourlink_lab` DB (`MONGO_URI`, 기본 `mongodb://127.0.0.1:27017`) | `spots`·`shelters`·`weather` 컬렉션 |
+| 호출 로그 | `data/logs/api_calls.jsonl` (`TOURLINK_API_LOG`로 변경, 빈 값이면 끔) | 시간·API·응답시간·성공 여부·상태코드 (키는 남기지 않음) |
+
+산출물은 `.gitignore`로 커밋에서 뺀다. MongoDB는 `tools/api.py`가 쓰는 `tourlink` DB와 섞이지 않게 `tourlink_lab`을 쓴다.
+
+### Redis 응답 캐시 (아직 설치 안 됨)
+
+이 PC에는 Redis가 없어 캐시는 구현하지 않았다. 설치 후 `datagokr_client.fetch()`에
+"키 = API + 요청 파라미터(서비스키 제외)의 해시, 값 = 응답 JSON, TTL = 데이터 갱신 주기"로 붙이면 된다
+(예: 단기예보 1시간, 관광지 표준데이터 1일).
+
+Windows에서 설치하는 방법(하나만 고르면 된다):
+
+1. **Docker Desktop**: `docker run -d --name redis -p 6379:6379 redis:7`
+2. **WSL2(Ubuntu)**: `sudo apt update && sudo apt install redis-server && sudo service redis-server start`
+3. **Memurai**(Windows용 Redis 호환 서버): https://www.memurai.com 에서 설치 후 서비스로 실행
+
+확인: `redis-cli ping` → `PONG`. 파이썬 클라이언트는 `pip install redis`.
