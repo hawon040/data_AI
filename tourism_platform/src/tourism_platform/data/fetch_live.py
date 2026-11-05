@@ -1,6 +1,9 @@
-"""설정된 data.go.kr 데이터셋을 전부 실제로 호출해 data/live/에 저장한다.
+"""설정된 data.go.kr 데이터셋을 전부 실제로 호출해 연결 상태를 확인한다.
 
     python -m tourism_platform.data.fetch_live
+
+응답 원본은 데이터 레이크 raw 단계와 같은 자리
+(data/raw/api/<데이터셋>/<YYYY-MM-DD>/page-0001.json)에 저장한다.
 
 datasets.py에 endpoint/operation이 아직 안 채워진 항목은 건너뛰고 "미설정"으로
 표시한다 — 키를 일부만 발급받은 상태에서도 설정된 것만 돌아가게 하기 위해서다.
@@ -10,18 +13,19 @@ API 오류(호출은 됐지만 실패)와 미설정(애초에 호출 안 함)을
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 from . import datagokr_client
 from .datagokr_client import DatasetNotConfiguredError, ServiceKeyMissingError
 from .datasets import DATASETS, live_sample_params
 
-LIVE_DIR = Path(__file__).resolve().parents[3] / "data" / "live"
+RAW_API_DIR = Path(__file__).resolve().parents[3] / "data" / "raw" / "api"
 
 
-def fetch_all(live_dir: Path = LIVE_DIR) -> dict[str, str]:
+def fetch_all(raw_dir: Path = RAW_API_DIR, day: date | None = None) -> dict[str, str]:
     """모든 데이터셋을 시도하고 {데이터셋key: 결과상태} 를 반환한다."""
-    live_dir.mkdir(parents=True, exist_ok=True)
+    day = day or date.today()
     results: dict[str, str] = {}
     sample_params = live_sample_params()
 
@@ -38,7 +42,8 @@ def fetch_all(live_dir: Path = LIVE_DIR) -> dict[str, str]:
             results[key] = f"실패: {e}"
             continue
 
-        out_path = live_dir / f"{key}.json"
+        out_path = raw_dir / key / day.isoformat() / "page-0001.json"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         results[key] = f"성공 -> {out_path}"
 

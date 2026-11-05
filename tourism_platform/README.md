@@ -1,36 +1,64 @@
-# 관광 노출 보정 안전지수 기반 맞춤형 안심 관광 추천 플랫폼
+# tourism_platform — TourLink 계산·데이터 모듈
 
-창업 도전신청서([원본 문서](https://claude.ai/artifact/CBfwnCSGjiYwrQCAYZRNJt))에
-나온 수식과 결정값을 실제로 돌아가는 코드로 옮긴 핵심 계산 모듈이다.
-신청서 본문의 수식 하나하나가 어떤 파일에 대응하는지는 `docs/methodology.md`를 보면 된다.
+TourLink(빅데이터와 AI 2조)의 파이썬 쪽이다. 공공데이터 API 호출, 날씨·대비 정보 계산,
+추천 수식(LQ·동행자 점수), 데이터 레이크·MongoDB 실습을 담는다.
+수식과 코드의 대응은 저장소 루트의 [`docs/methodology.md`](../docs/methodology.md)에 있다.
+
+10주차(2026-11-05)부터 범죄율·사고율 기반 지역 안전도 점수는 서비스에서 뺐다.
+`indices/`의 유효인구·위해지수·베이즈 축소와 `validation/`의 안전도 검증은 방법론 기록으로 남겨 둔다.
 
 ## 폴더 구조
 
 ```
 tourism_platform/
 ├── src/tourism_platform/
-│   ├── indices/        # 문서 4장 — 추천·안전도 핵심 수식 (LQ, 그룹점수, 유효인구, 위해지수, 베이즈축소)
-│   ├── data/            # 문서 5.3 — 시군구 코드 매핑, 정제 규칙, 원본 데이터 로더
-│   └── validation/       # 문서 10장 — 몬테카를로 오차 검증 (교차검증)
+│   ├── data/
+│   │   ├── apis/              # 분야별 API 설정 — tourism(관광지·방문자) · safety(응급의료·대피소) · weather(기상청) · air(에어코리아)
+│   │   ├── datasets.py        # apis/를 하나로 모은 DATASETS
+│   │   ├── datagokr_client.py # 공통 호출 (XML·JSON, 키 마스킹, 호출 로그)
+│   │   ├── fetch_live.py      # 설정된 API를 전부 호출해 연결 상태 확인
+│   │   ├── spot_conditions.py # 관광지 좌표 → 강수확률·강수형태·기온·특보·미세먼지
+│   │   ├── preparedness.py    # 관광지 좌표 → 가까운 응급의료기관·지진해일대피소·관광안내소
+│   │   ├── geo.py             # 하버사인 거리, 국내 좌표 검사
+│   │   ├── region_codes.py · cleaning.py
+│   ├── indices/               # 추천 수식(LQ, 동행자 점수) + 안전도 수식(기록용)
+│   ├── lake/                  # 데이터 레이크(raw→processed→gold), MongoDB 실습, 호출 로그 리포트
+│   └── validation/            # 몬테카를로 검증, 실데이터 비교표
 ├── data/
-│   ├── raw/              # 공공데이터 포털에서 내려받은 원본 (리포지토리에는 미포함, README만)
-│   └── processed/        # 정제된 데이터
-├── docs/methodology.md   # 문서 절 ↔ 코드 파일 대응표
-└── tests/                # 각 수식의 단위 테스트
+│   ├── raw/                   # raw/api/: API 응답 원본(자동), 그 밖: 직접 내려받은 파일
+│   ├── processed/             # 정제 JSON Lines
+│   ├── gold/                  # 지표 Parquet
+│   └── logs/                  # API 호출 로그
+└── tests/
 ```
 
-## 설치
+`data/` 아래 산출물은 커밋하지 않는다(README만 커밋).
+
+## 설치와 테스트
 
 ```bash
 cd tourism_platform
-pip install -e ".[dev]"
+python -m venv .venv
+.venv/Scripts/python -m pip install -e ".[dev,lake]"
+.venv/Scripts/python -m pytest -q
 ```
 
-## 테스트
+`tests/test_ts_parity.py`는 node로 `web/src/lib/indices.ts`를 실행해 파이썬 결과와 비교한다(node가 없으면 건너뜀).
+MongoDB 실습 테스트는 로컬 MongoDB가 있을 때만 돈다.
 
-```bash
-pytest
-```
+## 공공데이터 API 연결
+
+1. [data.go.kr](https://www.data.go.kr)에서 `data/apis/` 설정에 적힌 데이터셋을 활용신청한다.
+2. 마이페이지 > 개발계정의 **일반 인증키(Decoding)** 를 환경변수 `DATA_GO_KR_SERVICE_KEY`로 설정한다.
+   관광지 안전정보(한국문화정보원)는 `KCISA_API_KEY`를 쓴다.
+   requests가 URL 인코딩을 한 번 더 하므로 Encoding 키를 넣으면 이중 인코딩된다.
+   키는 저장소 루트의 `.env`에만 두고 코드·커밋에 넣지 않는다.
+3. 연결 상태 확인: `python -m tourism_platform.data.fetch_live`
+   - 미설정(endpoint 없음)·서비스키 없음·실패(HTTP 403 등)를 데이터셋별로 보여 준다.
+   - 403은 대개 그 API의 활용신청이 승인되지 않았다는 뜻이다.
+
+엔드포인트와 오퍼레이션명은 추측하지 않는다. 포털 상세페이지와 참고문서로 확인하거나,
+키 없이 호출해 `SERVICE_KEY_IS_NULL`(있는 API)과 `NO_OPENAPI_SERVICE_ERROR`(없는 API)로 구분한 값만 넣는다.
 
 ## 오차 검증(교차검증) 실행
 
@@ -50,39 +78,6 @@ python -m tourism_platform.validation.validate_safety_index          # 10.4, 10.
 python -m tourism_platform.validation.validate_quadrant_stability    # 10.6
 python -m tourism_platform.validation.validate_rank_uncertainty      # 10.7
 ```
-
-## 다음 단계 (실데이터 확보 후)
-
-`data/raw/README.md`의 "제출 전 반드시 확인할 것" 항목부터 처리한다 —
-특히 경찰청 범죄 통계의 군 지역 제공 여부와 데이터랩 성·연령 분포의
-공간 단위 확인이 핵심 기술의 실현 가능성을 좌우한다.
-
-## 실제 API 연동 (data.go.kr Open API)
-
-아직 어느 데이터셋도 API 키를 발급받지 않은 상태라, 당장 호출되는 실제 연동은
-없다. 대신 키를 받는 즉시 바로 동작하도록 연동 뼈대만 먼저 만들어 뒀다:
-
-- `data/datagokr_client.py` — data.go.kr의 공통 요청 규약(serviceKey·
-  pageNo·type=json)을 구현한 클라이언트. 엔드포인트/Operation을 추측해
-  하드코딩하지 않고, 설정 안 됐으면 `DatasetNotConfiguredError`로 뭘 채워야
-  하는지 알려준다.
-- `data/datasets.py` — 연동해야 할 데이터셋 7개(데이터랩 방문자, TourAPI
-  관광지, 경찰청 범죄 2종, 도로교통공단·소방청·국립중앙의료원)의 설정 레지스트리.
-  `endpoint`/`operation`이 `None`인 항목은 아직 미설정.
-- `data/fetch_live.py` — 설정된 데이터셋을 전부 호출해 `data/live/`에
-  저장하는 CLI (`python -m tourism_platform.data.fetch_live`). 일부만
-  설정돼 있어도 나머지는 "미설정"으로 건너뛰고 계속 진행한다.
-
-실제로 연결하려면:
-
-1. [data.go.kr](https://www.data.go.kr)에서 `datasets.py`에 나열된 데이터셋을
-   활용신청 → 승인
-2. 마이페이지 > 개발계정에서 발급받은 인증키를 `DATA_GO_KR_SERVICE_KEY`
-   환경변수로 설정
-3. 승인된 API 상세페이지의 "참고문서"를 보고 `datasets.py`의 해당
-   `endpoint`/`operation`을 채운다 (API마다 다르고 개편으로 바뀔 수 있어서
-   여기서 미리 추측해 넣지 않았다)
-4. `python -m tourism_platform.data.fetch_live` 실행
 
 ## 데이터 레이크 · MongoDB · 호출 로그 (수업 도구 실습)
 

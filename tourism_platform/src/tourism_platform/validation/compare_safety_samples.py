@@ -23,8 +23,8 @@ FORMULA_INPUTS = [
     ("P_res 주민등록인구", "설정 없음 (행정안전부 주민등록 인구통계)", "미설정"),
     ("V_pd 외지인 방문자(연간)", "visitor_by_region_daily (데이터랩)", "1일치만 수집 — 연간 합계 아님"),
     ("h̄ 평균 체류시간", "설정 없음 (데이터랩 체류시간)", "미설정"),
-    ("C_ik 범죄 유형별 발생 건수", "crime_by_region (경찰청, odcloud API)", "연결됨 — 지금 키로 401, 활용신청 확인 필요"),
-    ("λ_k 여행자 노출 장소 비중", "crime_by_place (경찰청, odcloud API)", "연결됨 — 지금 키로 401, 활용신청 확인 필요"),
+    ("C_ik 범죄 유형별 발생 건수", "경찰청 범죄 발생 지역별 통계", "사용 안 함 — 10주차에 범죄 데이터를 뺌"),
+    ("λ_k 여행자 노출 장소 비중", "경찰청 범죄 발생 장소별 통계", "사용 안 함 — 10주차에 범죄 데이터를 뺌"),
     ("s_k 유형별 심각도", "양형기준 기반 상대값", "값 미정"),
 ]
 
@@ -88,7 +88,7 @@ def build_table() -> str:
             f"| {r['code']} | {r['province']} {r['name']} | {match} | {r['totalVisitors']:,} (합성) "
             f"| {outsiders.get(r['code'], float('nan')):,.0f} | {s['grade']} "
             f"| {s['ratePer100k']} ({s['confidenceIntervalLow']}–{s['confidenceIntervalHigh']}) "
-            f"| 계산 불가 (C_ik·P_res 없음) | {hospitals.get(key, 0)} | {shelters.get(key, 0)} |"
+            f"| 계산 안 함 (범죄 데이터 제외) | {hospitals.get(key, 0)} | {shelters.get(key, 0)} |"
         )
 
     inputs = ["| 입력 | 데이터 | 상태 |", "|---|---|---|"] + [f"| {a} | {b} | {c} |" for a, b, c in FORMULA_INPUTS]

@@ -11,4 +11,3 @@ data/raw/api/
 data/processed/*/
 data/gold/*.parquet
 data/logs/
-data/live/*.json

@@ -1,7 +1,7 @@
-# 가공 데이터
+# 가공 데이터 (데이터 레이크 processed 단계)
 
-`data/raw/`의 원본을 `tourism_platform.data.loaders`와
-`tourism_platform.data.cleaning`으로 정제한 결과를 저장하는 곳이다.
+`python -m tourism_platform.lake.run`이 `data/raw/api/`의 원본 응답을 정제해
+`data/processed/<데이터셋>/<YYYY-MM-DD>.jsonl`로 저장한다(좌표 범위 검사, 시도명 표준화,
+숫자 변환, 중복 제거 — `lake/pipeline.py`). 지표는 `data/gold/*.parquet`에 저장한다.
 
-기준 공간 키는 5자리 시군구 코드(`tourism_platform.data.region_codes`)로
-통일하고, 결측·이상값 처리 규칙은 `cleaning.py`를 따른다.
+산출물은 `.gitignore`로 커밋하지 않는다.
