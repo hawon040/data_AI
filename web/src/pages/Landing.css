@@ -298,8 +298,8 @@
 .hero {
   position: relative;
   display: flex;
-  min-height: 340px;
-  align-items: center;
+  min-height: clamp(400px, 72svh, 720px);
+  align-items: flex-end;
   padding: 64px 48px 72px;
   overflow: hidden;
   text-align: left;
@@ -351,6 +351,41 @@
   z-index: -1;
   animation: hero-photo-exit 900ms ease both;
 }
+/* 밝은 사진에서도 제목과 사진 출처가 읽히도록 아래쪽을 어둡게 깝니다. */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(to top, rgba(10, 16, 28, 0.62), rgba(10, 16, 28, 0.18) 55%, transparent),
+    linear-gradient(to right, rgba(10, 16, 28, 0.35), transparent 60%);
+  pointer-events: none;
+}
+.hero-content {
+  position: relative;
+  display: flex;
+  max-width: 560px;
+  flex-direction: column;
+  align-items: flex-start;
+  word-break: keep-all;
+}
+.hero-title {
+  margin: 0 0 14px;
+  color: #fff;
+  font-size: clamp(30px, 4.2vw, 48px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+.hero-lead {
+  margin: 0 0 28px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 16px;
+  line-height: 1.65;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
 @keyframes hero-photo-enter {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -377,7 +412,6 @@
 }
 .hero-actions {
   position: relative;
-  align-self: flex-end;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -471,8 +505,12 @@
 }
 @media (max-width: 720px) {
   .hero {
-    min-height: 300px;
-    padding: 56px 24px 68px;
+    min-height: clamp(420px, 70svh, 600px);
+    padding: 56px 24px 76px;
+  }
+  .hero-lead {
+    margin-bottom: 22px;
+    font-size: 14px;
   }
   .hero-actions {
     align-items: center;

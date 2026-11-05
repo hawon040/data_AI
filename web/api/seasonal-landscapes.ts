@@ -66,7 +66,7 @@ async function fetchTourApi<T>(
   url.search = new URLSearchParams({
     serviceKey,
     MobileOS: "ETC",
-    MobileApp: "TrueTrip",
+    MobileApp: "TourLink",
     _type: "json",
     ...params,
   }).toString();

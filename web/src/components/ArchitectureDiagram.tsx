@@ -1,5 +1,5 @@
 /**
- * TrueTrip 시스템 구조도 — 빅딩 아틀라스 문서의 다이어그램 문법(역할별 색상의
+ * TourLink 시스템 구조도 — 빅딩 아틀라스 문서의 다이어그램 문법(역할별 색상의
  * 둥근 사각형 노드 + 라벨 붙은 화살표 + 점선=연동 예정)을 우리 다크 테마로
  * 옮겨 손으로 그렸다. 실제 데이터가 10개뿐이라 자동 배치 대신 고정 좌표를 썼다.
  */
@@ -8,7 +8,7 @@ export function ArchitectureDiagram() {
     <svg
       viewBox="0 0 980 320"
       role="img"
-      aria-label="TrueTrip 시스템 구조: 사용자 브라우저가 Vercel에 배포된 React 앱에 접속하고, 앱은 카카오맵 SDK와 카카오 로컬 API를 실시간으로 호출한다. 지금은 코드에 내장한 샘플 데이터를 쓰고, 데이터랩·경찰청·TourAPI 같은 공공데이터 연동은 예정 상태다. 파이썬 tourism_platform 패키지는 같은 계산식을 독립적으로 재현해 검증한다."
+      aria-label="TourLink 시스템 구조: 사용자 브라우저가 Vercel에 배포된 React 앱에 접속하고, 앱은 카카오맵 SDK와 카카오 로컬 API를 실시간으로 호출한다. 지금은 코드에 내장한 샘플 데이터를 쓰고, 데이터랩·경찰청·TourAPI 같은 공공데이터 연동은 예정 상태다. 파이썬 tourism_platform 패키지는 같은 계산식을 독립적으로 재현해 검증한다."
       className="arch-svg"
     >
       <defs>

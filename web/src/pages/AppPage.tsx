@@ -4,6 +4,8 @@ import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
 import { MapView } from "../components/MapView";
+import { DemandCard } from "../components/DemandCard";
+import { NationalSpotPanel } from "../components/NationalSpotPanel";
 import { RandomTripPicker } from "../components/RandomTripPicker";
 import { RecommendationList } from "../components/RecommendationList";
 import { SeasonalDiscovery } from "../components/SeasonalDiscovery";
@@ -11,6 +13,7 @@ import { SafetyPanel } from "../components/SafetyPanel";
 import { TripPreparation } from "../components/TripPreparation";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
+import { loadMapPlaces, type MapPlaces, type MapSelection } from "../lib/nationalData";
 import { getExploreRecommendations, getRecommendations, rankAttractions, topAttractionsOf } from "../lib/recommend";
 import type { SeasonalDestination } from "../lib/seasonalDestinations";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
@@ -39,6 +42,48 @@ export function AppPage() {
   }>({ requestKey: null, items: [] });
   const [tripPreferences, setTripPreferences] = useState<TripPreferences>(DEFAULT_TRIP_PREFERENCES);
   const [carouselPaused, setCarouselPaused] = useState(false);
+  const [mapPlaces, setMapPlaces] = useState<{ province: string; data: MapPlaces | null; error: string | null }>({
+    province: "",
+    data: null,
+    error: null,
+  });
+  const [mapSelection, setMapSelection] = useState<MapSelection | null>(null);
+
+  // 고른 시도(또는 전국)의 공공데이터를 tourapi/api.py 서버에서 실시간으로 불러온다.
+  useEffect(() => {
+    let cancelled = false;
+    const province = tripPreferences.province;
+    loadMapPlaces(province)
+      .then((data) => {
+        if (!cancelled) setMapPlaces({ province, data, error: null });
+      })
+      .catch((error: Error) => {
+        if (!cancelled) setMapPlaces({ province, data: null, error: error.message });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tripPreferences.province]);
+  const mapData = mapPlaces.province === tripPreferences.province ? mapPlaces.data : null;
+  const mapLoading = mapPlaces.province !== tripPreferences.province;
+
+  // 맞춤 추천 시범 지역의 시·군·구를 고르면 지도 관광지도 그 시군구로 좁힌다.
+  const pilotDistrict =
+    tripPreferences.regionCode === "all"
+      ? null
+      : SAMPLE_REGIONS.find((region) => region.code === tripPreferences.regionCode)?.name ?? null;
+  const nationalSpots = useMemo(
+    () =>
+      (mapData?.spots ?? []).filter(
+        (spot) => !pilotDistrict || (spot.district !== "" && pilotDistrict.startsWith(spot.district)),
+      ),
+    [mapData, pilotDistrict],
+  );
+  const handleMapSelect = useCallback((selection: MapSelection) => {
+    setMapSelection(selection);
+    setSelectedAttraction(null);
+    setSelectedSeasonalPlace(null);
+  }, []);
 
   const destinationRegions = useMemo(
     () =>
@@ -95,6 +140,7 @@ export function AppPage() {
     setSelectedRegion(region ?? null);
     setSelectedAttraction(attraction);
     setSelectedSeasonalPlace(null);
+    setMapSelection(null);
   }, []);
   const displayedRegion = selectedSeasonalPlace ? null : selectedRegion ?? recommendations[0]?.region ?? null;
   const liveRequestKey =
@@ -130,33 +176,32 @@ export function AppPage() {
     <div className="app-shell" data-season={getSeason(tripPreferences.month)}>
       <header className="app-header">
         <Link to="/" className="back-link">
-          ← TrueTrip
+          ← TourLink
         </Link>
-        <p className="sample-notice">
-          시범 권역(충청권·강원권 일부) 샘플 데이터입니다. 실제 방문자·안전 데이터는{" "}
-          <code>tourism_platform</code> 파이썬 패키지의 계산 결과로 교체합니다.
-        </p>
       </header>
+
+      <CompanionForm
+        regions={SAMPLE_REGIONS}
+        provinces={mapData?.provinces}
+        preferences={tripPreferences}
+        onPreferencesChange={(preferences) => {
+          setTripPreferences(preferences);
+          setMapSelection(null);
+          setSelectedRegion(null);
+          setSelectedAttraction(null);
+          setSelectedSeasonalPlace(null);
+        }}
+        onSubmit={(p, filters) => {
+          setPeople(p);
+          setSafetyFilters(filters);
+          setSelectedRegion(null);
+          setSelectedAttraction(null);
+          setSelectedSeasonalPlace(null);
+        }}
+      />
 
       <main className="app-main">
         <aside className="sidebar">
-          <CompanionForm
-            regions={SAMPLE_REGIONS}
-            preferences={tripPreferences}
-            onPreferencesChange={(preferences) => {
-              setTripPreferences(preferences);
-              setSelectedRegion(null);
-              setSelectedAttraction(null);
-              setSelectedSeasonalPlace(null);
-            }}
-            onSubmit={(p, filters) => {
-              setPeople(p);
-              setSafetyFilters(filters);
-              setSelectedRegion(null);
-              setSelectedAttraction(null);
-              setSelectedSeasonalPlace(null);
-            }}
-          />
           <SeasonalDiscovery
             month={tripPreferences.month}
             paused={carouselPaused}
@@ -176,58 +221,85 @@ export function AppPage() {
               setSelectedSeasonalPlace(null);
             }}
           />
-          <RecommendationList
-            items={recommendations}
-            exploreItems={exploreRecommendations}
-            emptyMessage={
-              people == null
-                ? "여행 조건을 정하고 동행자를 입력한 뒤 추천받아 보세요."
-                : "현재 조건에 맞는 여행지가 없어요. 목적이나 지역 범위를 넓혀 보세요."
-            }
-            onSelect={(region) => {
-              setSelectedRegion(region);
-              setSelectedAttraction(null);
-              setSelectedSeasonalPlace(null);
-            }}
-            onSelectAttraction={handleSelectAttraction}
-            selectedCode={displayedRegion?.code}
-          />
         </aside>
 
         <section className="content">
-          {selectedAttraction && (
-            <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} />
-          )}
-          <MapView
-            regions={SAMPLE_REGIONS}
-            highlightedCodes={highlightedCodes}
-            selectedCode={displayedRegion?.code}
-            onSelectRegion={(region) => {
-              setSelectedRegion(region);
-              setSelectedAttraction(null);
-              setSelectedSeasonalPlace(null);
-            }}
-            onSelectAttraction={handleSelectAttraction}
-            people={people ?? []}
-            liveAttractions={liveAttractions.map((x) => x.attraction)}
-          />
-          {selectedAttraction && (
-            <AttractionDetail
-              attraction={selectedAttraction}
-              region={displayedRegion}
-              locationLabel={selectedSeasonalPlace?.location}
-              seasonalTiming={selectedSeasonalPlace?.timing}
-              seasonalDescription={selectedSeasonalPlace?.summary}
-            />
-          )}
-          {displayedRegion && (
-            <LiveAttractionsPanel
-              loading={liveLoading}
-              items={liveAttractions}
+          <div className="map-workspace">
+            <MapView
+              regions={SAMPLE_REGIONS}
+              highlightedCodes={highlightedCodes}
+              selectedCode={displayedRegion?.code}
+              onSelectRegion={(region) => {
+                setSelectedRegion(region);
+                setSelectedAttraction(null);
+                setSelectedSeasonalPlace(null);
+              }}
               onSelectAttraction={handleSelectAttraction}
+              people={people ?? []}
+              liveAttractions={liveAttractions.map((x) => x.attraction)}
+              nationalSpots={nationalSpots}
+              shelters={tripPreferences.province === "all" ? [] : mapData?.shelters ?? []}
+              pets={mapData?.pets ?? []}
+              medical={mapData?.medical ?? []}
+              selectedPlace={mapSelection?.place ?? null}
+              onSelectPlace={handleMapSelect}
             />
-          )}
-          {displayedRegion && <SafetyPanel region={displayedRegion} filters={safetyFilters} />}
+            <div className="map-info-rail">
+              {(mapLoading || mapPlaces.error) && (
+                <p className={`map-data-status${mapPlaces.error && !mapLoading ? " is-error" : ""}`} role="status">
+                  {mapLoading ? "공공데이터를 불러오는 중…" : mapPlaces.error}
+                </p>
+              )}
+              {mapSelection && mapData && (
+                <NationalSpotPanel
+                  selection={mapSelection}
+                  data={mapData}
+                  onClose={() => setMapSelection(null)}
+                />
+              )}
+              {mapData?.demand && tripPreferences.province !== "all" && (
+                <DemandCard demand={mapData.demand} />
+              )}
+              <RecommendationList
+                items={recommendations}
+                exploreItems={exploreRecommendations}
+                emptyMessage={
+                  destinationRegions.length === 0
+                    ? "이 지역은 맞춤 추천 시범 데이터가 없어요. 지도에서 전국 관광지를 눌러 안전 정보를 확인하세요."
+                    : people == null
+                      ? "여행 조건을 정하고 동행자를 입력한 뒤 추천받아 보세요."
+                      : "현재 조건에 맞는 여행지가 없어요. 목적이나 지역 범위를 넓혀 보세요."
+                }
+                onSelect={(region) => {
+                  setSelectedRegion(region);
+                  setSelectedAttraction(null);
+                  setSelectedSeasonalPlace(null);
+                }}
+                onSelectAttraction={handleSelectAttraction}
+                selectedCode={displayedRegion?.code}
+              />
+              {selectedAttraction && (
+                <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} />
+              )}
+              {selectedAttraction && (
+                <AttractionDetail
+                  attraction={selectedAttraction}
+                  region={displayedRegion}
+                  locationLabel={selectedSeasonalPlace?.location}
+                  seasonalTiming={selectedSeasonalPlace?.timing}
+                  seasonalDescription={selectedSeasonalPlace?.summary}
+                />
+              )}
+              {displayedRegion && (
+                <LiveAttractionsPanel
+                  loading={liveLoading}
+                  items={liveAttractions}
+                  onSelectAttraction={handleSelectAttraction}
+                />
+              )}
+              {displayedRegion && <SafetyPanel region={displayedRegion} filters={safetyFilters} />}
+            </div>
+          </div>
         </section>
       </main>
     </div>

@@ -371,7 +371,7 @@ export function About() {
       <nav className="landing-nav">
         <Link to="/" className="brand" style={{ textDecoration: "none", color: "inherit" }}>
           <div className="brand-mark">T</div>
-          <span className="brand-name">TrueTrip</span>
+          <span className="brand-name">TourLink</span>
         </Link>
         <div className="nav-links">
           <Link to="/">홈</Link>

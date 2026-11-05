@@ -228,7 +228,7 @@ export function LandingNav() {
         </button>
         <Link to="/" className="brand">
           <span className="brand-mark">T</span>
-          <span className="brand-name">TrueTrip</span>
+          <span className="brand-name">TourLink</span>
         </Link>
       </div>
       <Link to="/methodology" className="nav-safety-link">
@@ -351,6 +351,15 @@ export function Landing() {
           alt=""
           aria-hidden="true"
         />
+        <div className="hero-content">
+          <h1 className="hero-title">
+            어디로 떠날지,
+            <br />
+            얼마나 안전한지 한 번에
+          </h1>
+          <p className="hero-lead">
+            성·연령 방문 데이터로 맞춤 관광지를 추천하고 안전지수를 함께 보여드려요.
+          </p>
         <div className={`hero-actions${launching ? " is-launching" : ""}`}>
           <button
             className="pill-button primary trip-launch-button"
@@ -370,6 +379,7 @@ export function Landing() {
             </svg>
           </button>
         </div>
+        </div>
         <div className="hero-seasonal-credit" aria-live="polite">
             <span>{destination.month}월 · {destination.location} · {destination.title}</span>
             <span>
@@ -385,7 +395,7 @@ export function Landing() {
           <div>
             <div className="brand">
               <div className="brand-mark small">T</div>
-              <span className="brand-name">TrueTrip</span>
+              <span className="brand-name">TourLink</span>
             </div>
             <p className="footer-desc">
               맞춤 관광지 추천부터 여행자 관점의 안전 정보까지.
