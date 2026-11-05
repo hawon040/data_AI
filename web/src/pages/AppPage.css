@@ -118,6 +118,55 @@
   line-height: 1.5;
 }
 
+.weather-notice {
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--teal);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.weather-notice.is-caution {
+  border-left-color: var(--grade-4);
+}
+.weather-notice .field-label {
+  margin: 0 0 4px;
+}
+.weather-notice h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.weather-notice ul {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.weather-notice-note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.indoor-alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.indoor-alternatives-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.attraction-chip.is-indoor {
+  padding-right: 10px;
+  border-style: dashed;
+}
+
 .live-attractions-panel h3 {
   margin: 0 0 8px;
   font-size: 16px;
@@ -181,7 +230,8 @@
 .companion-form {
   --control-height: 40px;
 }
-.companion-form select {
+.companion-form select,
+.companion-form input[type="date"] {
   height: var(--control-height);
   padding: 0 10px;
   border: 1px solid var(--border);
@@ -193,6 +243,7 @@
   font-weight: 500;
 }
 .companion-form select:focus-visible,
+.companion-form input[type="date"]:focus-visible,
 .segmented label:has(input:focus-visible) {
   outline: 2px solid var(--blue);
   outline-offset: 1px;
@@ -219,7 +270,8 @@
   flex-direction: column;
   min-width: 0;
 }
-.travel-filter-grid select {
+.travel-filter-grid select,
+.travel-filter-grid input[type="date"] {
   width: 100%;
   min-width: 0;
 }

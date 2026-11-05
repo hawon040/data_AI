@@ -113,4 +113,6 @@ export interface RecommendationItem {
    * (문서 4.3 2단계 추천). matchScore는 popularityScore x 연령대 선호 가중치.
    */
   topAttractions: { attraction: Attraction; matchScore: number }[];
+  /** 날씨는 좋지만 비 소식이 있을 때 함께 보여 줄 실내 관광지 (lib/weatherRules.ts) */
+  indoorAlternatives?: Attraction[];
 }

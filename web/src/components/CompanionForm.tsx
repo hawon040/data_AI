@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { AGE_GROUPS, AGE_GROUP_LABELS, type AgeGroup, type Gender, type Person, type Region } from "../lib/types";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
+import { WEATHER_PRESETS } from "../lib/weatherPresets";
 import {
   getSeason,
   PURPOSE_OPTIONS,
   SEASON_LABELS,
   STYLE_OPTIONS,
+  todayIso,
   TRANSPORT_OPTIONS,
   type TripPreferences,
 } from "../lib/tripPreferences";
@@ -96,6 +98,31 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
         <section className="companion-form-conditions" aria-labelledby="trip-conditions-heading">
           <h3 className="form-section-title" id="trip-conditions-heading">여행 조건</h3>
           <div className="travel-filter-grid">
+            <label>
+              <span className="field-title">방문일</span>
+              <input
+                type="date"
+                value={preferences.visitDate}
+                min={todayIso()}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  onPreferencesChange({
+                    ...preferences,
+                    visitDate: e.target.value,
+                    month: Number(e.target.value.slice(5, 7)),
+                  });
+                }}
+              />
+            </label>
+            <label>
+              <span className="field-title">
+                방문일 날씨
+                <span className="season-indicator">시연용</span>
+              </span>
+              <select value={preferences.weatherPreset} onChange={(e) => updatePreference("weatherPreset", e.target.value)}>
+                {WEATHER_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
+              </select>
+            </label>
             <label>
               <span className="field-title">
                 여행 월
@@ -213,14 +240,15 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
             </label>
             <label>
               <input type="checkbox" checked={withChildren} onChange={(e) => setWithChildren(e.target.checked)} />
-              아이 동반
+              아이(10세 미만) 동반
             </label>
             <label>
               <input type="checkbox" checked={nightPlan} onChange={(e) => setNightPlan(e.target.checked)} />
               야간 일정
             </label>
           </div>
-          {withElderly && <p className="auto-badge">고령자 동반 감지됨 — 응급 접근성 우선 표시</p>}
+          {withElderly && <p className="auto-badge">고령자 동반 감지됨 — 응급 접근성 우선 표시 · 날씨 기준 강화</p>}
+          {!withElderly && withChildren && <p className="auto-badge">아이 동반 — 날씨 기준 강화</p>}
 
           <button type="submit" className="submit-btn" disabled={people.length === 0}>
             추천받기

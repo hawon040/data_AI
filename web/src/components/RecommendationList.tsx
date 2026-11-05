@@ -67,6 +67,25 @@ function RecommendationCard({
           ))}
         </div>
       )}
+      {item.indoorAlternatives && item.indoorAlternatives.length > 0 && (
+        <div className="indoor-alternatives">
+          <span className="indoor-alternatives-label">비 오면 실내 대안</span>
+          {item.indoorAlternatives.map((attraction) => (
+            <button
+              key={attraction.name}
+              type="button"
+              className="attraction-chip is-indoor"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(item.region);
+                onSelectAttraction(attraction);
+              }}
+            >
+              {attraction.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

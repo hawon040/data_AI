@@ -11,6 +11,7 @@ import { RecommendationList } from "../components/RecommendationList";
 import { SeasonalDiscovery } from "../components/SeasonalDiscovery";
 import { SafetyPanel } from "../components/SafetyPanel";
 import { TripPreparation } from "../components/TripPreparation";
+import { WeatherNotice } from "../components/WeatherNotice";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
 import { loadMapPlaces, type MapPlaces, type MapSelection } from "../lib/nationalData";
@@ -22,8 +23,11 @@ import {
   DEFAULT_TRIP_PREFERENCES,
   filterRecommendations,
   getSeason,
+  todayIso,
   type TripPreferences,
 } from "../lib/tripPreferences";
+import { findWeatherPreset } from "../lib/weatherPresets";
+import { applyWeatherRules, decideWeather } from "../lib/weatherRules";
 import "./AppPage.css";
 
 export function AppPage() {
@@ -94,6 +98,18 @@ export function AppPage() {
       ),
     [tripPreferences.province, tripPreferences.regionCode],
   );
+  const weatherPreset = findWeatherPreset(tripPreferences.weatherPreset);
+  const weatherDecision = useMemo(
+    () =>
+      decideWeather(
+        weatherPreset.weather,
+        { withElderly: safetyFilters.withElderly, withChildren: safetyFilters.withChildren },
+        tripPreferences.visitDate,
+        todayIso(),
+      ),
+    [weatherPreset, safetyFilters.withElderly, safetyFilters.withChildren, tripPreferences.visitDate],
+  );
+
   const recommendations: RecommendationItem[] = useMemo(() => {
     if (people == null) return [];
     let candidates: RecommendationItem[];
@@ -113,21 +129,20 @@ export function AppPage() {
       candidates = getRecommendations(people, SAMPLE_REGIONS, SAMPLE_REGIONS.length);
     }
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
-    return filterRecommendations(candidates, people, tripPreferences)
+    return applyWeatherRules(filterRecommendations(candidates, people, tripPreferences), weatherDecision)
       .filter((item) => locationCodes.has(item.region.code))
       .slice(0, 5);
-  }, [destinationRegions, people, tripPreferences]);
+  }, [destinationRegions, people, tripPreferences, weatherDecision]);
 
   const exploreRecommendations = useMemo(() => {
     if (people == null || people.length === 0 || destinationRegions.length === 0) return [];
     const excludeCodes = new Set(recommendations.map((r) => r.region.code));
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
-    return filterRecommendations(
-      getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes),
-      people,
-      tripPreferences,
+    return applyWeatherRules(
+      filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes), people, tripPreferences),
+      weatherDecision,
     ).filter((item) => locationCodes.has(item.region.code));
-  }, [destinationRegions, people, recommendations, tripPreferences]);
+  }, [destinationRegions, people, recommendations, tripPreferences, weatherDecision]);
 
   const highlightedCodes = useMemo(
     () => new Set([...recommendations, ...exploreRecommendations].map((r) => r.region.code)),
@@ -260,6 +275,9 @@ export function AppPage() {
               {mapData?.demand && tripPreferences.province !== "all" && (
                 <DemandCard demand={mapData.demand} />
               )}
+              {people != null && destinationRegions.length > 0 && (
+                <WeatherNotice decision={weatherDecision} weatherLabel={weatherPreset.label} />
+              )}
               <RecommendationList
                 items={recommendations}
                 exploreItems={exploreRecommendations}
@@ -268,7 +286,9 @@ export function AppPage() {
                     ? "이 지역은 맞춤 추천 시범 데이터가 없어요. 지도에서 전국 관광지를 눌러 안전 정보를 확인하세요."
                     : people == null
                       ? "여행 조건을 정하고 동행자를 입력한 뒤 추천받아 보세요."
-                      : "현재 조건에 맞는 여행지가 없어요. 목적이나 지역 범위를 넓혀 보세요."
+                      : weatherDecision.indoorOnly || weatherDecision.excludedTerrains.length > 0
+                        ? "방문일 날씨 기준에 맞는 관광지가 이 조건에는 없어요. 지역 범위나 목적을 넓히거나 다른 날짜를 골라 보세요."
+                        : "현재 조건에 맞는 여행지가 없어요. 목적이나 지역 범위를 넓혀 보세요."
                 }
                 onSelect={(region) => {
                   setSelectedRegion(region);

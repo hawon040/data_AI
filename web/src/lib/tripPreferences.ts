@@ -17,6 +17,16 @@ export interface TripPreferences {
   transport: TransportMode;
   ranking: RankingMode;
   duration: TripDuration;
+  /** 방문일 (YYYY-MM-DD, 로컬 날짜). 바꾸면 month도 함께 바뀐다. */
+  visitDate: string;
+  /** 시연용 날씨 예시 id (lib/weatherPresets.ts) — 실시간 날씨 연동 전까지 쓴다. */
+  weatherPreset: string;
+}
+
+/** 오늘 날짜(로컬)를 YYYY-MM-DD로. */
+export function todayIso(now = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 export const DEFAULT_TRIP_PREFERENCES: TripPreferences = {
@@ -28,6 +38,8 @@ export const DEFAULT_TRIP_PREFERENCES: TripPreferences = {
   transport: "public-transit",
   ranking: "companion",
   duration: "day",
+  visitDate: todayIso(),
+  weatherPreset: "clear",
 };
 
 export const PURPOSE_OPTIONS: { value: TravelPurpose; label: string }[] = [
