@@ -145,3 +145,17 @@ describe("applyWeatherRules", () => {
     expect(names(result)).toContain("경포해변"); // 야외도 그대로 추천
   });
 });
+
+describe("summary (추천 근거 한 줄)", () => {
+  it("날씨가 추천을 바꾸지 않으면 null", () => {
+    expect(decide({}).summary).toBeNull();
+  });
+  it("실내만 → 핵심 수치 → 실내", () => {
+    expect(decide({ pop: 70 }).summary).toBe("강수확률 70% → 실내");
+    expect(decide({ pop: 80, precipitation: "rain" }).summary).toBe("강수확률 80% → 실내");
+    expect(decide({ minTempC: -8, pm10Grade: 3 }).summary).toBe("최저 -8℃ · 미세먼지 나쁨 → 실내");
+  });
+  it("특보·실내 대안", () => {
+    expect(decide({ warnings: ["호우"], pop: 40 }).summary).toBe("호우특보 → 바다·산·계곡 제외 · 강수확률 40% → 실내 대안");
+  });
+});

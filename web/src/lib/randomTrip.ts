@@ -7,6 +7,7 @@
  */
 import { attractionMatchScore } from "./attractionAffinity";
 import { safetyGradeLabel } from "./safetyGrades";
+import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
 import type { Attraction, Person, Region } from "./types";
 
 export interface TripCandidate {
@@ -80,6 +81,9 @@ export function candidateKey(c: TripCandidate): string {
 
 /** 결과 카드에 보여줄 한 줄 근거. */
 export function tripReason(c: TripCandidate, people: Person[]): string {
+  if (!SHOW_REGION_SAFETY_SCORE) {
+    return people.length === 0 ? `인기 지표 ${c.attraction.popularityScore}점` : `맞춤 점수 ${Math.round(c.matchScore)}점`;
+  }
   const grade = `${c.region.name}은(는) ${safetyGradeLabel(c.region.safety.grade)}`;
   if (people.length === 0) return `${grade}이고, 인기 지표 ${c.attraction.popularityScore}점인 곳이에요.`;
   return `${grade}이고, 동행자 연령대를 반영한 맞춤 점수가 ${Math.round(c.matchScore)}점이에요.`;

@@ -1,5 +1,7 @@
 import type { Attraction, RecommendationItem, Region } from "../lib/types";
 import { isSafetyGrade, safetyGradeLabel } from "../lib/safetyGrades";
+import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
+import { shortEvidence } from "../lib/evidence";
 
 function SafetyBadge({ grade }: { grade: number }) {
   if (!isSafetyGrade(grade)) {
@@ -14,8 +16,10 @@ function RecommendationCard({
   onSelect,
   onSelectAttraction,
   selected,
+  weatherSummary,
 }: {
   item: RecommendationItem;
+  weatherSummary: string | null;
   rank?: number;
   onSelect: (r: Region) => void;
   onSelectAttraction: (a: Attraction) => void;
@@ -37,17 +41,15 @@ function RecommendationCard({
           <div className="region-name">{item.region.name}</div>
           <div className="region-province">{item.region.province}</div>
         </div>
-        <div className="safety-reference">
-          <span>안전 참고</span>
-          <SafetyBadge grade={item.region.safety.grade} />
-        </div>
+        {SHOW_REGION_SAFETY_SCORE && (
+          <div className="safety-reference">
+            <span>안전 참고</span>
+            <SafetyBadge grade={item.region.safety.grade} />
+          </div>
+        )}
       </div>
       <p className="highlight">{item.region.highlight}</p>
-      <ul className="evidence-list">
-        {item.evidence.map((e, i) => (
-          <li key={i}>{e}</li>
-        ))}
-      </ul>
+      <p className="evidence-line">{shortEvidence(item, weatherSummary)}</p>
       {item.topAttractions.length > 0 && (
         <div className="attraction-chips">
           {item.topAttractions.map(({ attraction, matchScore }) => (
@@ -97,6 +99,7 @@ export function RecommendationList({
   onSelectAttraction,
   selectedCode,
   emptyMessage,
+  weatherSummary = null,
 }: {
   items: RecommendationItem[];
   exploreItems: RecommendationItem[];
@@ -104,6 +107,8 @@ export function RecommendationList({
   onSelectAttraction: (a: Attraction) => void;
   selectedCode?: string;
   emptyMessage: string;
+  /** 날씨 규칙 요약 (lib/weatherRules.ts WeatherDecision.summary) */
+  weatherSummary?: string | null;
 }) {
   if (items.length === 0) {
     return <p className="empty-state">{emptyMessage}</p>;
@@ -119,6 +124,7 @@ export function RecommendationList({
           onSelect={onSelect}
           onSelectAttraction={onSelectAttraction}
           selected={selectedCode === item.region.code}
+          weatherSummary={weatherSummary}
         />
       ))}
 
@@ -132,6 +138,7 @@ export function RecommendationList({
               onSelect={onSelect}
               onSelectAttraction={onSelectAttraction}
               selected={selectedCode === item.region.code}
+              weatherSummary={weatherSummary}
             />
           ))}
         </>

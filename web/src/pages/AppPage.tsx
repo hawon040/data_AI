@@ -10,6 +10,7 @@ import { RandomTripPicker } from "../components/RandomTripPicker";
 import { RecommendationList } from "../components/RecommendationList";
 import { SeasonalDiscovery } from "../components/SeasonalDiscovery";
 import { SafetyPanel } from "../components/SafetyPanel";
+import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
 import { TripPreparation } from "../components/TripPreparation";
 import { WeatherNotice } from "../components/WeatherNotice";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
@@ -297,6 +298,7 @@ export function AppPage() {
                 }}
                 onSelectAttraction={handleSelectAttraction}
                 selectedCode={displayedRegion?.code}
+                weatherSummary={weatherDecision.summary}
               />
               {selectedAttraction && (
                 <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} />
@@ -317,7 +319,9 @@ export function AppPage() {
                   onSelectAttraction={handleSelectAttraction}
                 />
               )}
-              {displayedRegion && <SafetyPanel region={displayedRegion} filters={safetyFilters} />}
+              {SHOW_REGION_SAFETY_SCORE && displayedRegion && (
+                <SafetyPanel region={displayedRegion} filters={safetyFilters} />
+              )}
             </div>
           </div>
         </section>

@@ -597,6 +597,12 @@
   font-size: 12px;
   color: var(--text-secondary);
 }
+.evidence-line {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
 
 .attraction-chips {
   display: flex;

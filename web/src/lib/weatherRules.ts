@@ -54,6 +54,8 @@ export interface WeatherDecision {
   reasons: string[];
   /** 화면에 보여 줄 안내 (다시 확인 등) */
   notices: string[];
+  /** 추천 근거 한 줄용 요약 (예: "강수확률 70% → 실내"). 날씨 때문에 바뀐 게 없으면 null */
+  summary: string | null;
 }
 
 const PRECIPITATION_LABELS: Record<Exclude<PrecipitationType, "none">, string> = {
@@ -84,27 +86,33 @@ export function decideWeather(
   const pick = (pair: ThresholdPair) => (strict ? pair.strict : pair.normal);
   const reasons: string[] = [];
   const notices: string[] = [];
+  const short: string[] = [];
   let indoorOnly = false;
 
   if (weather.precipitation && weather.precipitation !== "none") {
     indoorOnly = true;
     reasons.push(`${PRECIPITATION_LABELS[weather.precipitation]} 예보`);
+    short.push(weather.pop != null ? `강수확률 ${weather.pop}%` : `${PRECIPITATION_LABELS[weather.precipitation]} 예보`);
   } else if (weather.pop != null && weather.pop >= pick(RAIN_INDOOR_POP)) {
     indoorOnly = true;
     reasons.push(`강수확률 ${weather.pop}% (기준 ${pick(RAIN_INDOOR_POP)}% 이상)`);
+    short.push(`강수확률 ${weather.pop}%`);
   }
   if (weather.minTempC != null && weather.minTempC <= pick(COLD_MAX_TEMP_C)) {
     indoorOnly = true;
     reasons.push(`최저기온 ${weather.minTempC}℃ (기준 ${pick(COLD_MAX_TEMP_C)}℃ 이하)`);
+    short.push(`최저 ${weather.minTempC}℃`);
   }
   if (weather.maxTempC != null && weather.maxTempC >= pick(HOT_MIN_TEMP_C)) {
     indoorOnly = true;
     reasons.push(`최고기온 ${weather.maxTempC}℃ (기준 ${pick(HOT_MIN_TEMP_C)}℃ 이상)`);
+    short.push(`최고 ${weather.maxTempC}℃`);
   }
   const dustGrade = Math.max(weather.pm10Grade ?? 0, weather.pm25Grade ?? 0);
   if (dustGrade >= pick(DUST_INDOOR_GRADE)) {
     indoorOnly = true;
     reasons.push(`미세먼지 ${dustGrade === 4 ? "매우나쁨" : "나쁨"}`);
+    short.push(`미세먼지 ${dustGrade === 4 ? "매우나쁨" : "나쁨"}`);
   }
 
   const excludeWarnings: readonly string[] = strict ? TERRAIN_EXCLUDE_WARNINGS.strict : TERRAIN_EXCLUDE_WARNINGS.normal;
@@ -126,7 +134,13 @@ export function decideWeather(
     notices.push("방문일까지 3일 넘게 남아 예보가 바뀔 수 있어요. 출발 2~3일 전에 다시 확인해 주세요.");
   }
 
-  return { indoorOnly, excludedTerrains, showIndoorAlternatives, strict, reasons, notices };
+  const summaryParts: string[] = [];
+  if (indoorOnly) summaryParts.push(`${short.join(" · ")} → 실내`);
+  if (activeWarnings.length > 0) summaryParts.push(`${activeWarnings.join("·")}특보 → 바다·산·계곡 제외`);
+  if (showIndoorAlternatives) summaryParts.push(`강수확률 ${weather.pop}% → 실내 대안`);
+  const summary = summaryParts.length > 0 ? summaryParts.join(" · ") : null;
+
+  return { indoorOnly, excludedTerrains, showIndoorAlternatives, strict, reasons, notices, summary };
 }
 
 export function isAllowed(attraction: Attraction, decision: WeatherDecision): boolean {

@@ -9,6 +9,7 @@ import {
   type TripCandidate,
 } from "../lib/randomTrip";
 import { safetyGradeLabel } from "../lib/safetyGrades";
+import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
 import type { Attraction, Person, Region } from "../lib/types";
 import "./RandomTripPicker.css";
 
@@ -138,9 +139,11 @@ export function RandomTripPicker({
         <div className="rt-result">
           <div className="rt-result-head">
             <strong>{result.attraction.name}</strong>
-            <span className={`safety-badge grade-${result.region.safety.grade}`}>
-              {safetyGradeLabel(result.region.safety.grade)}
-            </span>
+            {SHOW_REGION_SAFETY_SCORE && (
+              <span className={`safety-badge grade-${result.region.safety.grade}`}>
+                {safetyGradeLabel(result.region.safety.grade)}
+              </span>
+            )}
           </div>
           <div className="rt-result-meta">
             {result.region.province} {result.region.name} · {result.attraction.category}
