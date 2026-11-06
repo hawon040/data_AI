@@ -11,6 +11,8 @@ api.py에서 분리한 날씨 전용 파일입니다. api.py에는 두 줄만 �
   3. 기상청_기상특보 조회서비스   WthrWrnInfoService          (호우·태풍·한파 등 특보 현황)
   4. 한국환경공단_에어코리아_대기오염정보  ArpltnInforInqireSvc (시도별 실시간 미세먼지)
 
+웹으로 보기:     py weather.py local          (내 PC 서버를 켜고 /weather 페이지 열기)
+                 py weather.py                (배포된 Vercel /weather 페이지 열기)
 혼자 점검할 때:  py weather.py check            (청주 기준 4개 API 확인)
                  py weather.py check 37.75 128.90 강원
 추천 결과 보기:  py weather.py 36.64 127.49 충북 20261110 senior 청주시
@@ -266,6 +268,8 @@ def fetch_mid_day(land_id, ta_id, target, now):
     else:
         pop = _num(land.get(f"rnSt{offset}")) or 0
         sky = land.get(f"wf{offset}", "")
+    if not sky.strip(" /") and _num(ta.get(f"taMin{offset}")) is None:
+        return None   # 18시 발표에는 4일 뒤 자료가 비어 있습니다. 빈 값을 '0%·야외 가능'으로 보지 않습니다.
     precip = [w for w in ("비", "눈", "소나기") if w in sky]
     return {"source": "중기예보", "pop": pop, "precip": precip, "tmin": _num(ta.get(f"taMin{offset}")),
             "tmax": _num(ta.get(f"taMax{offset}")), "sky": sky, "issued": tm}
@@ -512,9 +516,60 @@ def fetch_weather(lat, lon, sido, date_text="", companions="", gungu=""):
             "recommend": decide(day, air, warnings, strict), "notice": notice, "errors": errors}
 
 
+def _place(lat, lon, sido):
+    """API별 조회 경로의 공통 입력 검사: 위경도 → 격자, 시도 → 지역 코드."""
+    try:
+        lat, lon = float(lat), float(lon)
+    except (TypeError, ValueError):
+        raise ValueError("위도(lat)·경도(lon)가 필요합니다.") from None
+    if not (33 <= lat <= 39 and 124 <= lon <= 132):
+        raise ValueError("국내 위치의 위도·경도가 필요합니다.")
+    return (*latlon_to_grid(lat, lon), *_sido_info(sido, lon))
+
+
+def short_detail(lat, lon, sido):
+    """① 단기예보 조회서비스: 초단기실황 + 날짜별 단기예보(오늘~3일 뒤)."""
+    nx, ny, *_ = _place(lat, lon, sido)
+    now = dt.datetime.now(KST)
+    return {"grid": [nx, ny], "now": fetch_now(nx, ny, now), **fetch_short_days(nx, ny, now)}
+
+
+def mid_detail(lat, lon, sido):
+    """② 중기예보 조회서비스: 4~10일 뒤 강수확률·하늘·기온."""
+    *_, land_id, ta_id = _place(lat, lon, sido)
+    now = dt.datetime.now(KST)
+    base = dt.datetime.strptime(_mid_tmfc(now)[:8], "%Y%m%d").date()
+    days = {}
+    for offset in range(4, 11):
+        target = base + dt.timedelta(days=offset)
+        day = fetch_mid_day(land_id, ta_id, target, now)
+        if day:
+            days[target.strftime("%Y%m%d")] = day
+    return {"issued": _mid_tmfc(now), "landRegId": land_id, "taRegId": ta_id, "days": days}
+
+
+def warnings_detail(sido, gungu=""):
+    """③ 기상특보 조회서비스: 이 지역 발효 특보와 같은 시도의 다른 지역 특보."""
+    if sido not in SIDO:
+        raise ValueError(f"시도 이름이 올바르지 않습니다: {sido} (예: 서울, 강원, 충북, 제주)")
+    return fetch_warnings(SIDO[sido][1], gungu)
+
+
+def air_detail(sido):
+    """④ 에어코리아 대기오염정보: 시도 측정소 실시간 미세먼지."""
+    if sido not in SIDO:
+        raise ValueError(f"시도 이름이 올바르지 않습니다: {sido} (예: 서울, 강원, 충북, 제주)")
+    return fetch_air(SIDO[sido][0])
+
+
 WEATHER_ROUTES = {
     "/api/weather": lambda param: fetch_weather(
         param("lat"), param("lon"), param("sido"), param("date"), param("with"), param("gungu")),
+    # API별 원자료 확인용(웹 /weather 페이지에서 사용)
+    "/api/weather/short": lambda param: short_detail(param("lat"), param("lon"), param("sido")),
+    "/api/weather/mid": lambda param: mid_detail(param("lat"), param("lon"), param("sido")),
+    "/api/weather/warnings": lambda param: warnings_detail(param("sido"), param("gungu")),
+    "/api/weather/air": lambda param: air_detail(param("sido")),
 }
 
 
@@ -554,5 +609,16 @@ if __name__ == "__main__":
         result = fetch_weather(args[0], args[1], args[2], args[3] if len(args) > 3 else "",
                                args[4] if len(args) > 4 else "", args[5] if len(args) > 5 else "")
         print(json.dumps(result, ensure_ascii=False, indent=2))
-    else:
+    elif args[:1] == ["local"]:
+        # 웹 서버는 api.py 것을 그대로 씁니다. 날씨 페이지(/weather)를 바로 엽니다.
+        import api
+        api.run_web_app("/weather")
+    elif args[:1] == ["help"]:
         print(__doc__)
+    else:
+        import webbrowser
+        url = "https://tourapi-demo.vercel.app/weather"
+        print(f"날씨 페이지 (Vercel): {url}")
+        print("내 PC에서 서버를 직접 켜려면: py weather.py local")
+        print("사용법 보기: py weather.py help")
+        webbrowser.open(url)

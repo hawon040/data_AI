@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 import webbrowser
 import xml.etree.ElementTree as ET
-from weather import WEATHER_ROUTES
+from weather import SIDO as WEATHER_SIDO, WEATHER_ROUTES
 
 
 # 공공데이터포털(data.go.kr) 일반(Decoding) 인증키. 코드에 쓰지 말고 환경변수 API_KEY로 설정하세요.
@@ -975,6 +975,7 @@ def fetch_map_places(province=None):
 NAV_ITEMS = [
     ("/", "홈"),
     ("/area", "지역 안전 종합"),
+    ("/weather", "날씨 맞춤 추천"),
     ("/safety", "관광지 안전정보"),
     ("/tourspot", "전국 관광지"),
     ("/demand", "관광 자원 수요"),
@@ -1232,6 +1233,7 @@ HOME_PAGE = _build_page(
     r"""
   <div class="hub">
     <a href="/area"><strong>지역 안전 종합</strong><span>지역별 응급의료기관·대피소·관광지 수용인원·관광수요를 한 화면에, 내 위치 주변 검색까지</span></a>
+    <a href="/weather"><strong>날씨 맞춤 추천</strong><span>단기·중기예보, 기상특보, 미세먼지로 실내·야외 추천(어르신·아이 동반 기준 따로)</span></a>
     <a href="/safety"><strong>관광지 안전정보</strong><span>지진해일대피소, 응급의료기관, 관광지 위치와 수용인원</span></a>
     <a href="/tourspot"><strong>전국 관광지</strong><span>전국관광지정보표준데이터 892곳의 시설·수용인원</span></a>
     <a href="/demand"><strong>관광 자원 수요</strong><span>시군구별 관광수요지수로 사람이 몰리는 지역 비교</span></a>
@@ -1932,9 +1934,261 @@ AREA_PAGE = _build_page(
 )
 
 
+WEATHER_PAGE = _build_page(
+    "/weather",
+    "날씨 맞춤 추천",
+    "방문할 곳의 날씨·특보·미세먼지를 보고 실내·야외 중 어디가 좋을지 알려 줍니다. 어르신·아이와 함께면 기준을 더 엄격하게 봅니다.",
+    r"""
+  <div class="toolbar">
+    <label for="preset">장소</label>
+    <select id="preset"></select>
+    <select id="wsido" aria-label="시도"></select>
+    <label for="wgungu">시군구</label>
+    <input id="wgungu" type="search" placeholder="예: 청주시" size="10">
+  </div>
+  <div class="toolbar">
+    <label for="lat">위도</label>
+    <input id="lat" inputmode="decimal" size="8">
+    <label for="lon">경도</label>
+    <input id="lon" inputmode="decimal" size="8">
+    <button id="locate" type="button">내 위치</button>
+  </div>
+  <div class="toolbar">
+    <label for="visit">방문일</label>
+    <input id="visit" type="date">
+    <select id="party" aria-label="일행">
+      <option value="">일반 일행</option>
+      <option value="senior,child">어르신·아이 동반</option>
+    </select>
+    <button id="search">조회</button>
+  </div>
+  <p class="note">출처: 기상청 단기예보·중기예보·기상특보 조회서비스, 한국환경공단 에어코리아 대기오염정보(공공데이터포털). 판단 기준은 팀 기준(안)이며 기상청·환경부 공식 기준이 아닙니다. 예보는 30분 동안 저장해 두고 씁니다.</p>
+  <div id="report"></div>
+""",
+    r"""
+    const sidoNames = __SIDO__;
+    const presets = [
+      ["충북 청주시", 36.6424, 127.4890, "충북", "청주시"],
+      ["충북 영동군", 36.1750, 127.7834, "충북", "영동군"],
+      ["서울 중구", 37.5636, 126.9976, "서울", "중구"],
+      ["강원 춘천시", 37.8813, 127.7298, "강원", "춘천시"],
+      ["강원 강릉시", 37.7519, 128.8761, "강원", "강릉시"],
+      ["부산 해운대구", 35.1631, 129.1636, "부산", "해운대구"],
+      ["경북 경주시", 35.8562, 129.2247, "경북", "경주시"],
+      ["전북 전주시", 35.8242, 127.1480, "전북", "전주시"],
+      ["전남 여수시", 34.7604, 127.6622, "전남", "여수시"],
+      ["제주 제주시", 33.4996, 126.5312, "제주", "제주시"],
+      ["제주 서귀포시", 33.2541, 126.5601, "제주", "서귀포시"]
+    ];
+    const report = document.querySelector("#report");
+    const preset = document.querySelector("#preset");
+    const wsido = document.querySelector("#wsido");
+    const wgungu = document.querySelector("#wgungu");
+    const lat = document.querySelector("#lat");
+    const lon = document.querySelector("#lon");
+    const visit = document.querySelector("#visit");
+    const party = document.querySelector("#party");
+
+    presets.forEach(([name], index) => { addText(preset, "option", name).value = index; });
+    addText(preset, "option", "직접 입력").value = "";
+    for (const name of sidoNames) addText(wsido, "option", name).value = name;
+
+    const pad = n => String(n).padStart(2, "0");
+    const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const today = new Date();
+    visit.value = visit.min = isoDate(today);
+    visit.max = isoDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 10));
+
+    function applyPreset() {
+      const row = presets[preset.value];
+      if (!row) return;
+      [, lat.value, lon.value, wsido.value, wgungu.value] = row;
+    }
+    applyPreset();
+
+    const temp = v => v === null || v === undefined ? "-" : `${Number(v)}℃`;
+    const percent = v => v === null || v === undefined ? "-" : `${Number(v)}%`;
+    function dayLabel(key) {
+      const d = new Date(Number(key.slice(0, 4)), Number(key.slice(4, 6)) - 1, Number(key.slice(6, 8)));
+      return `${d.getMonth() + 1}월 ${d.getDate()}일(${"일월화수목금토"[d.getDay()]})`;
+    }
+    const issuedLabel = text => {
+      const s = String(text || "").replace(/\D/g, "");
+      return s.length >= 12 ? `${s.slice(4, 6)}월 ${s.slice(6, 8)}일 ${s.slice(8, 10)}:${s.slice(10, 12)} 발표` : "";
+    };
+
+    function addStat(parent, value, label) {
+      const box = addText(parent, "div", "");
+      addText(box, "strong", value);
+      addText(box, "span", label);
+    }
+
+    function addSection(title, source) {
+      const section = addText(report, "section", "");
+      addText(section, "h2", title);
+      if (source) addText(section, "p", source).className = "note";
+      return section;
+    }
+
+    function addTable(parent, headers, rows, selectedIndex = -1) {
+      const wrap = addText(parent, "div", "");
+      wrap.className = "table-wrap";
+      const table = addText(wrap, "table", "");
+      const head = addText(addText(table, "thead", ""), "tr", "");
+      for (const header of headers) addText(head, "th", header);
+      const body = addText(table, "tbody", "");
+      rows.forEach((cells, index) => {
+        const tr = addText(body, "tr", "");
+        if (index === selectedIndex) tr.className = "selected";
+        for (const cell of cells) addText(tr, "td", cell ?? "-");
+      });
+    }
+
+    function addList(parent, items, empty) {
+      if (!items || !items.length) {
+        addText(parent, "p", empty).className = "note";
+        return;
+      }
+      const list = addText(parent, "ul", "");
+      for (const item of items) addText(list, "li", item);
+    }
+
+    function sectionError(section, result) {
+      if (result.status === "fulfilled") return false;
+      addText(section, "p", result.reason.message).className = "far";
+      return true;
+    }
+
+    function renderRecommend(result) {
+      const section = addSection("추천", null);
+      if (sectionError(section, result)) return;
+      const data = result.value;
+      const rec = data.recommend;
+      const stats = addText(section, "div", "");
+      stats.className = "stats";
+      addStat(stats, rec.modeLabel, `${dayLabel(data.date.replace(/-/g, ""))} · ${data.strict ? "어르신·아이 동반 기준" : "일반 기준"}`);
+      if (data.forecast) {
+        addStat(stats, `${temp(data.forecast.tmin)} / ${temp(data.forecast.tmax)}`, `최저 / 최고 · ${data.forecast.source}`);
+        addStat(stats, percent(data.forecast.pop), `강수확률 · ${data.forecast.sky || "하늘 정보 없음"}`);
+      }
+      if (data.air) addStat(stats, data.air.worstLabel, "미세먼지(시도 측정소 중 가장 나쁜 등급)");
+      addText(section, "h3", "이유");
+      addList(section, rec.reasons, "특별히 조심할 날씨가 없습니다.");
+      if (rec.tips.length) addText(section, "p", `챙길 것: ${rec.tips.join(", ")}`);
+      if (rec.excludeOutdoor.length) addText(section, "p", `추천에서 빼는 야외 장소: ${rec.excludeOutdoor.join(", ")}`).className = "far";
+      if (data.notice) addText(section, "p", data.notice).className = "note";
+      const failed = Object.keys(data.errors || {});
+      if (failed.length) addText(section, "p", `일부 자료를 불러오지 못했습니다: ${failed.join(", ")}`).className = "note";
+    }
+
+    function renderShort(result, visitKey) {
+      const section = addSection("① 단기예보 조회서비스", "기상청 · 초단기실황(지금) + 단기예보(오늘~3일 뒤, 5km 격자)");
+      if (sectionError(section, result)) return;
+      const data = result.value;
+      const stats = addText(section, "div", "");
+      stats.className = "stats";
+      addStat(stats, temp(data.now.temp), `지금 기온 · 격자 (${data.grid.join(", ")})`);
+      addStat(stats, data.now.precipType, `강수 형태 · 1시간 강수량 ${data.now.rain1h ?? "-"}mm`);
+      const keys = Object.keys(data.days).sort();
+      addText(section, "p", `${issuedLabel(data.issued)} 단기예보`).className = "note";
+      addTable(section, ["날짜", "하늘", "강수확률(최대)", "비·눈", "최저", "최고"],
+        keys.map(k => { const d = data.days[k]; return [dayLabel(k), d.sky, percent(d.pop), d.precip.join(", ") || "없음", temp(d.tmin), temp(d.tmax)]; }),
+        keys.indexOf(visitKey));
+    }
+
+    function renderMid(result, visitKey) {
+      const section = addSection("② 중기예보 조회서비스", "기상청 · 4~10일 뒤 육상예보(강수확률·하늘)와 기온");
+      if (sectionError(section, result)) return;
+      const data = result.value;
+      const keys = Object.keys(data.days).sort();
+      addText(section, "p", `${issuedLabel(data.issued)} 중기예보 · 육상 ${data.landRegId}, 기온 ${data.taRegId}`).className = "note";
+      if (!keys.length) {
+        addText(section, "p", "중기예보 자료가 없습니다.").className = "note";
+        return;
+      }
+      addTable(section, ["날짜", "하늘(오전 / 오후)", "강수확률", "최저", "최고"],
+        keys.map(k => { const d = data.days[k]; return [dayLabel(k), d.sky, percent(d.pop), temp(d.tmin), temp(d.tmax)]; }),
+        keys.indexOf(visitKey));
+    }
+
+    function renderWarnings(result) {
+      const section = addSection("③ 기상특보 조회서비스", "기상청 · 지금 발효 중인 특보(오늘·내일 추천에만 씁니다)");
+      if (sectionError(section, result)) return;
+      const data = result.value;
+      addText(section, "h3", data.matchedBy === "시군구" ? `${wgungu.value.trim()}에 발효 중` : `${wsido.value} 전체에 발효 중`);
+      addList(section, data.active, "발효 중인 특보가 없습니다.");
+      addText(section, "h3", `${wsido.value}의 다른 지역 (추천 판단에는 쓰지 않음)`);
+      addList(section, data.elsewhereInSido, "없습니다.");
+      if (data.matchedBy !== "시군구") addText(section, "p", "시군구를 넣으면 그 지역 특보만 골라 판단합니다.").className = "note";
+    }
+
+    function renderAir(result) {
+      const section = addSection("④ 에어코리아 대기오염정보", "한국환경공단 · 시도 측정소 실시간 미세먼지(PM10·PM2.5)");
+      if (sectionError(section, result)) return;
+      const data = result.value;
+      const stats = addText(section, "div", "");
+      stats.className = "stats";
+      addStat(stats, data.worstLabel, `가장 나쁜 등급 · 측정소 ${data.stations}곳`);
+      addStat(stats, data.pm10Median ?? "-", "PM10 중앙값(㎍/㎥)");
+      addStat(stats, data.pm25Median ?? "-", "PM2.5 중앙값(㎍/㎥)");
+      if (data.time) addText(section, "p", `${data.time} 측정 · 미세먼지는 실시간 값이라 오늘 방문에만 추천에 씁니다.`).className = "note";
+    }
+
+    async function load() {
+      startLoading();
+      report.replaceChildren();
+      const place = { lat: lat.value.trim(), lon: lon.value.trim(), sido: wsido.value };
+      const gungu = wgungu.value.trim();
+      const visitKey = visit.value.replace(/-/g, "");
+      const q = extra => new URLSearchParams({ ...place, ...extra });
+      const results = await Promise.allSettled([
+        getJson(`/api/weather?${q({ gungu, date: visitKey, with: party.value })}`),
+        getJson(`/api/weather/short?${q({})}`),
+        getJson(`/api/weather/mid?${q({})}`),
+        getJson(`/api/weather/warnings?${new URLSearchParams({ sido: place.sido, gungu })}`),
+        getJson(`/api/weather/air?${new URLSearchParams({ sido: place.sido })}`)
+      ]);
+      status.textContent = "";
+      addText(report, "p", `${place.sido} ${gungu} (${place.lat}, ${place.lon}) · ${dayLabel(visitKey)} 방문`).className = "note";
+      renderRecommend(results[0]);
+      renderShort(results[1], visitKey);
+      renderMid(results[2], visitKey);
+      renderWarnings(results[3]);
+      renderAir(results[4]);
+    }
+
+    function locate() {
+      if (!navigator.geolocation) {
+        showError(new Error("이 브라우저에서는 위치 정보를 쓸 수 없습니다."));
+        return;
+      }
+      status.textContent = "현재 위치를 확인하는 중...";
+      navigator.geolocation.getCurrentPosition(position => {
+        lat.value = position.coords.latitude.toFixed(4);
+        lon.value = position.coords.longitude.toFixed(4);
+        preset.value = "";
+        status.textContent = "위치를 넣었습니다. 시도와 시군구를 맞게 고른 뒤 조회를 누르세요.";
+      }, () => showError(new Error("위치 권한이 거부되었거나 위치를 확인하지 못했습니다.")));
+    }
+
+    preset.addEventListener("change", () => { applyPreset(); if (preset.value !== "") load(); });
+    for (const input of [wgungu, lat, lon]) {
+      input.addEventListener("input", () => { preset.value = ""; });
+      input.addEventListener("keydown", event => { if (event.key === "Enter") load(); });
+    }
+    wsido.addEventListener("change", () => { preset.value = ""; });
+    document.querySelector("#search").addEventListener("click", load);
+    document.querySelector("#locate").addEventListener("click", locate);
+    load();
+""".replace("__SIDO__", json.dumps(list(WEATHER_SIDO), ensure_ascii=False)),
+    listing=False,
+)
+
+
 PAGES = {
     "/": HOME_PAGE,
     "/area": AREA_PAGE,
+    "/weather": WEATHER_PAGE,
     "/safety": SAFETY_PAGE,
     "/tourspot": TOURSPOT_PAGE,
     "/demand": DEMAND_PAGE,
@@ -2045,10 +2299,11 @@ class TourRequestHandler(BaseHTTPRequestHandler):
         print(f"[웹 서버] {args[0]}")
 
 
-def run_web_app():
+def run_web_app(path="/"):
+    """내 PC에서 웹 서버를 켜고 path 페이지를 브라우저로 엽니다(weather.py local은 path="/weather")."""
     address = ("127.0.0.1", PORT)
     server = ThreadingHTTPServer(address, TourRequestHandler)
-    url = f"http://{address[0]}:{address[1]}"
+    url = f"http://{address[0]}:{address[1]}{path if path != '/' else ''}"
     print(f"{SITE_NAME} 웹 화면: {url}")
     print(f"공유용 링크 (Vercel): {DEPLOY_URL}")
     print("종료하려면 이 창에서 Ctrl+C를 누르세요.")
