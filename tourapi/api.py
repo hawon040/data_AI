@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 import webbrowser
 import xml.etree.ElementTree as ET
+from weather import WEATHER_ROUTES
 
 
 # 공공데이터포털(data.go.kr) 일반(Decoding) 인증키. 코드에 쓰지 말고 환경변수 API_KEY로 설정하세요.
@@ -1997,6 +1998,7 @@ for _service in ("eng", "pet"):
             s, param("contentId"), param("contentTypeId")
         ),
     })
+API_ROUTES.update(WEATHER_ROUTES)
 
 
 class TourRequestHandler(BaseHTTPRequestHandler):
