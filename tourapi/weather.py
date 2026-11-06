@@ -489,6 +489,13 @@ def fetch_weather(lat, lon, sido, date_text="", companions="", gungu=""):
         current = get(now_f, "now")
 
     day = (short or {}).get("days", {}).get(target.strftime("%Y%m%d"))
+    if day is None and days_ahead == 0 and short is not None:
+        # 23시 발표는 다음 날 00시부터라 23:10~24:00에는 오늘 예보가 없습니다. 20시 발표를 한 번 더 봅니다.
+        try:
+            earlier = fetch_short_days(nx, ny, now - dt.timedelta(hours=3))
+            day = earlier["days"].get(target.strftime("%Y%m%d"))
+        except (RuntimeError, ValueError) as error:
+            errors["short_prev"] = str(error)
     if day is None and days_ahead >= 4:
         try:
             day = fetch_mid_day(land_id, ta_id, target, now)
