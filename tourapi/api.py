@@ -13,7 +13,8 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 import webbrowser
 import xml.etree.ElementTree as ET
-from weather import SIDO as WEATHER_SIDO, WEATHER_ROUTES
+from weather import WEATHER_ROUTES
+from sigungu import SIGUNGU
 
 
 # 공공데이터포털(data.go.kr) 일반(Decoding) 인증키. 코드에 쓰지 말고 환경변수 API_KEY로 설정하세요.
@@ -1940,19 +1941,22 @@ WEATHER_PAGE = _build_page(
     "방문할 곳의 날씨·특보·미세먼지를 보고 실내·야외 중 어디가 좋을지 알려 줍니다. 어르신·아이와 함께면 기준을 더 엄격하게 봅니다.",
     r"""
   <div class="toolbar">
-    <label for="preset">장소</label>
-    <select id="preset"></select>
-    <select id="wsido" aria-label="시도"></select>
+    <label for="wsido">시도</label>
+    <select id="wsido"></select>
     <label for="wgungu">시군구</label>
-    <input id="wgungu" type="search" placeholder="예: 청주시" size="10">
-  </div>
-  <div class="toolbar">
-    <label for="lat">위도</label>
-    <input id="lat" inputmode="decimal" size="8">
-    <label for="lon">경도</label>
-    <input id="lon" inputmode="decimal" size="8">
+    <select id="wgungu"></select>
     <button id="locate" type="button">내 위치</button>
   </div>
+  <details class="note">
+    <summary>위도·경도 직접 입력</summary>
+    <div class="toolbar">
+      <label for="lat">위도</label>
+      <input id="lat" inputmode="decimal" size="8">
+      <label for="lon">경도</label>
+      <input id="lon" inputmode="decimal" size="8">
+    </div>
+    <p>시군구를 고르면 시청·군청 부근 좌표가 자동으로 들어갑니다. 관광지 좌표를 넣으면 그 자리의 5km 격자 예보를 봅니다.</p>
+  </details>
   <div class="toolbar">
     <label for="visit">방문일</label>
     <input id="visit" type="date">
@@ -1966,22 +1970,9 @@ WEATHER_PAGE = _build_page(
   <div id="report"></div>
 """,
     r"""
-    const sidoNames = __SIDO__;
-    const presets = [
-      ["충북 청주시", 36.6424, 127.4890, "충북", "청주시"],
-      ["충북 영동군", 36.1750, 127.7834, "충북", "영동군"],
-      ["서울 중구", 37.5636, 126.9976, "서울", "중구"],
-      ["강원 춘천시", 37.8813, 127.7298, "강원", "춘천시"],
-      ["강원 강릉시", 37.7519, 128.8761, "강원", "강릉시"],
-      ["부산 해운대구", 35.1631, 129.1636, "부산", "해운대구"],
-      ["경북 경주시", 35.8562, 129.2247, "경북", "경주시"],
-      ["전북 전주시", 35.8242, 127.1480, "전북", "전주시"],
-      ["전남 여수시", 34.7604, 127.6622, "전남", "여수시"],
-      ["제주 제주시", 33.4996, 126.5312, "제주", "제주시"],
-      ["제주 서귀포시", 33.2541, 126.5601, "제주", "서귀포시"]
-    ];
+    // 시도 → [[시군구, 위도, 경도], ...] (tourapi/sigungu.py)
+    const sigungu = __SIGUNGU__;
     const report = document.querySelector("#report");
-    const preset = document.querySelector("#preset");
     const wsido = document.querySelector("#wsido");
     const wgungu = document.querySelector("#wgungu");
     const lat = document.querySelector("#lat");
@@ -1989,9 +1980,21 @@ WEATHER_PAGE = _build_page(
     const visit = document.querySelector("#visit");
     const party = document.querySelector("#party");
 
-    presets.forEach(([name], index) => { addText(preset, "option", name).value = index; });
-    addText(preset, "option", "직접 입력").value = "";
-    for (const name of sidoNames) addText(wsido, "option", name).value = name;
+    for (const name of Object.keys(sigungu)) addText(wsido, "option", name).value = name;
+
+    // 시도를 바꾸면 그 시도의 시군구만 다시 채웁니다.
+    function fillGungu(selected) {
+      wgungu.replaceChildren();
+      for (const [name] of sigungu[wsido.value]) addText(wgungu, "option", name).value = name;
+      if (selected) wgungu.value = selected;
+      applyGungu();
+    }
+
+    // 고른 시군구의 대표 좌표를 위도·경도 칸에 넣습니다.
+    function applyGungu() {
+      const row = sigungu[wsido.value].find(([name]) => name === wgungu.value);
+      if (row) [, lat.value, lon.value] = row;
+    }
 
     const pad = n => String(n).padStart(2, "0");
     const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -1999,12 +2002,8 @@ WEATHER_PAGE = _build_page(
     visit.value = visit.min = isoDate(today);
     visit.max = isoDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 10));
 
-    function applyPreset() {
-      const row = presets[preset.value];
-      if (!row) return;
-      [, lat.value, lon.value, wsido.value, wgungu.value] = row;
-    }
-    applyPreset();
+    wsido.value = "충북";
+    fillGungu("청주시");
 
     const temp = v => v === null || v === undefined ? "-" : `${Number(v)}℃`;
     const percent = v => v === null || v === undefined ? "-" : `${Number(v)}%`;
@@ -2144,7 +2143,7 @@ WEATHER_PAGE = _build_page(
       const results = await Promise.allSettled([
         getJson(`/api/weather?${q({ gungu, date: visitKey, with: party.value })}`),
         getJson(`/api/weather/short?${q({})}`),
-        getJson(`/api/weather/mid?${q({})}`),
+        getJson(`/api/weather/mid?${q({ gungu })}`),
         getJson(`/api/weather/warnings?${new URLSearchParams({ sido: place.sido, gungu })}`),
         getJson(`/api/weather/air?${new URLSearchParams({ sido: place.sido })}`)
       ]);
@@ -2164,23 +2163,30 @@ WEATHER_PAGE = _build_page(
       }
       status.textContent = "현재 위치를 확인하는 중...";
       navigator.geolocation.getCurrentPosition(position => {
-        lat.value = position.coords.latitude.toFixed(4);
-        lon.value = position.coords.longitude.toFixed(4);
-        preset.value = "";
-        status.textContent = "위치를 넣었습니다. 시도와 시군구를 맞게 고른 뒤 조회를 누르세요.";
+        const y = position.coords.latitude, x = position.coords.longitude;
+        // 대표 좌표가 가장 가까운 시군구를 골라 시도·시군구를 맞춥니다(특보·미세먼지 판단용).
+        let best = null;
+        for (const [sido, rows] of Object.entries(sigungu)) {
+          for (const [name, la, lo] of rows) {
+            const d = (la - y) ** 2 + ((lo - x) * Math.cos(y * Math.PI / 180)) ** 2;
+            if (!best || d < best.d) best = { sido, name, d };
+          }
+        }
+        wsido.value = best.sido;
+        fillGungu(best.name);
+        lat.value = y.toFixed(4);
+        lon.value = x.toFixed(4);
+        load();
       }, () => showError(new Error("위치 권한이 거부되었거나 위치를 확인하지 못했습니다.")));
     }
 
-    preset.addEventListener("change", () => { applyPreset(); if (preset.value !== "") load(); });
-    for (const input of [wgungu, lat, lon]) {
-      input.addEventListener("input", () => { preset.value = ""; });
-      input.addEventListener("keydown", event => { if (event.key === "Enter") load(); });
-    }
-    wsido.addEventListener("change", () => { preset.value = ""; });
+    wsido.addEventListener("change", () => { fillGungu(); load(); });
+    wgungu.addEventListener("change", () => { applyGungu(); load(); });
+    for (const input of [lat, lon]) input.addEventListener("keydown", event => { if (event.key === "Enter") load(); });
     document.querySelector("#search").addEventListener("click", load);
     document.querySelector("#locate").addEventListener("click", locate);
     load();
-""".replace("__SIDO__", json.dumps(list(WEATHER_SIDO), ensure_ascii=False)),
+""".replace("__SIGUNGU__", json.dumps(SIGUNGU, ensure_ascii=False)),
     listing=False,
 )
 

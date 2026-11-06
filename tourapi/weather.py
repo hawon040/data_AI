@@ -78,8 +78,8 @@ SIDO = {
     "세종": ("세종", ("세종",), "11C20000", "11C20401"),
     "충남": ("충남", ("충청남도", "충남"), "11C20000", "11C20401"),
     "충북": ("충북", ("충청북도", "충북"), "11C10000", "11C10301"),
-    "광주": ("광주", ("광주",), "11F20000", "11F20501"),
-    "전남": ("전남", ("전라남도", "전남"), "11F20000", "11F20501"),
+    "광주": ("광주", ("광주", "전남광주"), "11F20000", "11F20501"),
+    "전남": ("전남", ("전라남도", "전남", "전남광주"), "11F20000", "11F20501"),
     "전북": ("전북", ("전북", "전라북도"), "11F10000", "11F10201"),
     "대구": ("대구", ("대구",), "11H10000", "11H10701"),
     "경북": ("경북", ("경상북도", "경북"), "11H10000", "11H10701"),
@@ -89,6 +89,14 @@ SIDO = {
     "제주": ("제주", ("제주",), "11G00000", "11G00201"),
 }
 GANGWON_EAST = ("11D20000", "11D20501")   # 강원 영동(강릉 등)
+# 강원 시군별 중기기온 regId(2026-11-07 getMidTa로 19곳 모두 확인).
+# 11D1로 시작하면 영서(육상 11D10000), 11D2로 시작하면 영동(육상 11D20000)입니다.
+GANGWON_TA = {
+    "철원": "11D10101", "화천": "11D10102", "인제": "11D10201", "양구": "11D10202", "춘천": "11D10301",
+    "홍천": "11D10302", "원주": "11D10401", "횡성": "11D10402", "영월": "11D10501", "정선": "11D10502",
+    "평창": "11D10503", "태백": "11D20301", "속초": "11D20401", "고성": "11D20402", "양양": "11D20403",
+    "강릉": "11D20501", "동해": "11D20601", "삼척": "11D20602",
+}
 
 # ---------------------------------------------------------------------------
 # 공통 호출 (api.py의 _http_get·_parse_json·_response_items와 같은 방식)
@@ -183,12 +191,16 @@ def _mid_tmfc(now):
     return (t - dt.timedelta(days=1)).strftime("%Y%m%d1800")
 
 
-def _sido_info(sido, lon):
+def _sido_info(sido, lon, gungu=""):
     if sido not in SIDO:
         raise ValueError(f"시도 이름이 올바르지 않습니다: {sido} (예: 서울, 강원, 충북, 제주)")
     air_name, names, land_id, ta_id = SIDO[sido]
-    if sido == "강원" and lon >= 128.4:   # 대관령 동쪽은 영동 예보 구역
-        land_id, ta_id = GANGWON_EAST
+    if sido == "강원":
+        ta = GANGWON_TA.get(_gungu_key(gungu))
+        if ta:   # 시군을 알면 그 시군의 기온과 영서·영동 구역을 씁니다
+            land_id, ta_id = ("11D20000" if ta.startswith("11D2") else "11D10000"), ta
+        elif lon >= 128.4:   # 시군을 모르면 경도로 나눕니다(대관령 동쪽은 영동)
+            land_id, ta_id = GANGWON_EAST
     return air_name, names, land_id, ta_id
 
 
@@ -462,7 +474,7 @@ def fetch_weather(lat, lon, sido, date_text="", companions="", gungu=""):
         raise ValueError("위도(lat)·경도(lon)가 필요합니다.") from None
     if not (33 <= lat <= 39 and 124 <= lon <= 132):
         raise ValueError("국내 위치의 위도·경도가 필요합니다.")
-    air_name, names, land_id, ta_id = _sido_info(sido, lon)
+    air_name, names, land_id, ta_id = _sido_info(sido, lon, gungu)
     now = dt.datetime.now(KST)
     target = dt.datetime.strptime(date_text, "%Y%m%d").date() if date_text else now.date()
     days_ahead = (target - now.date()).days
@@ -516,7 +528,7 @@ def fetch_weather(lat, lon, sido, date_text="", companions="", gungu=""):
             "recommend": decide(day, air, warnings, strict), "notice": notice, "errors": errors}
 
 
-def _place(lat, lon, sido):
+def _place(lat, lon, sido, gungu=""):
     """API별 조회 경로의 공통 입력 검사: 위경도 → 격자, 시도 → 지역 코드."""
     try:
         lat, lon = float(lat), float(lon)
@@ -524,7 +536,7 @@ def _place(lat, lon, sido):
         raise ValueError("위도(lat)·경도(lon)가 필요합니다.") from None
     if not (33 <= lat <= 39 and 124 <= lon <= 132):
         raise ValueError("국내 위치의 위도·경도가 필요합니다.")
-    return (*latlon_to_grid(lat, lon), *_sido_info(sido, lon))
+    return (*latlon_to_grid(lat, lon), *_sido_info(sido, lon, gungu))
 
 
 def short_detail(lat, lon, sido):
@@ -534,9 +546,9 @@ def short_detail(lat, lon, sido):
     return {"grid": [nx, ny], "now": fetch_now(nx, ny, now), **fetch_short_days(nx, ny, now)}
 
 
-def mid_detail(lat, lon, sido):
+def mid_detail(lat, lon, sido, gungu=""):
     """② 중기예보 조회서비스: 4~10일 뒤 강수확률·하늘·기온."""
-    *_, land_id, ta_id = _place(lat, lon, sido)
+    *_, land_id, ta_id = _place(lat, lon, sido, gungu)
     now = dt.datetime.now(KST)
     base = dt.datetime.strptime(_mid_tmfc(now)[:8], "%Y%m%d").date()
     days = {}
@@ -567,7 +579,7 @@ WEATHER_ROUTES = {
         param("lat"), param("lon"), param("sido"), param("date"), param("with"), param("gungu")),
     # API별 원자료 확인용(웹 /weather 페이지에서 사용)
     "/api/weather/short": lambda param: short_detail(param("lat"), param("lon"), param("sido")),
-    "/api/weather/mid": lambda param: mid_detail(param("lat"), param("lon"), param("sido")),
+    "/api/weather/mid": lambda param: mid_detail(param("lat"), param("lon"), param("sido"), param("gungu")),
     "/api/weather/warnings": lambda param: warnings_detail(param("sido"), param("gungu")),
     "/api/weather/air": lambda param: air_detail(param("sido")),
 }
