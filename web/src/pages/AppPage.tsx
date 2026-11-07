@@ -14,6 +14,8 @@ import { SafetyPanel } from "../components/SafetyPanel";
 import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
 import { TripPreparation } from "../components/TripPreparation";
 import { WeatherNotice } from "../components/WeatherNotice";
+import { WeatherExcludedList } from "../components/WeatherExcludedList";
+import { listWeatherExclusions } from "../lib/weatherExclusions";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
 import { loadMapPlaces, type MapPlaces, type MapSelection } from "../lib/nationalData";
@@ -155,7 +157,8 @@ export function AppPage() {
     (region) => weatherDecisions[region.code].indoorOnly || weatherDecisions[region.code].excludedTerrains.length > 0,
   );
 
-  const recommendations: RecommendationItem[] = useMemo(() => {
+  // 날씨 규칙을 적용하기 전 추천(지역 범위까지 거른 것). 날씨 때문에 빠진 곳을 보여 줄 때도 쓴다.
+  const preWeatherRecommendations: RecommendationItem[] = useMemo(() => {
     if (people == null) return [];
     let candidates: RecommendationItem[];
     if (people.length === 0) {
@@ -174,10 +177,18 @@ export function AppPage() {
       candidates = getRecommendations(people, SAMPLE_REGIONS, SAMPLE_REGIONS.length);
     }
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
-    return applyRegionWeather(filterRecommendations(candidates, people, tripPreferences))
-      .filter((item) => locationCodes.has(item.region.code))
-      .slice(0, 5);
-  }, [destinationRegions, people, tripPreferences, applyRegionWeather]);
+    return filterRecommendations(candidates, people, tripPreferences).filter((item) =>
+      locationCodes.has(item.region.code),
+    );
+  }, [destinationRegions, people, tripPreferences]);
+  const recommendations: RecommendationItem[] = useMemo(
+    () => applyRegionWeather(preWeatherRecommendations).slice(0, 5),
+    [preWeatherRecommendations, applyRegionWeather],
+  );
+  const weatherExclusions = useMemo(
+    () => listWeatherExclusions(preWeatherRecommendations.slice(0, 5), (code) => weatherDecisions[code]),
+    [preWeatherRecommendations, weatherDecisions],
+  );
 
   const exploreRecommendations = useMemo(() => {
     if (people == null || people.length === 0 || destinationRegions.length === 0) return [];
@@ -365,6 +376,7 @@ export function AppPage() {
                 selectedCode={displayedRegion?.code}
                 weatherSummaryFor={(code) => weatherDecisions[code]?.summary ?? null}
               />
+              {people != null && <WeatherExcludedList items={weatherExclusions} />}
               {selectedAttraction && (
                 <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} />
               )}

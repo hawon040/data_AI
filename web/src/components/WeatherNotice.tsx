@@ -1,4 +1,11 @@
-import type { DayWeather } from "../lib/liveWeather";
+import type { DayWeather, WeatherPart } from "../lib/liveWeather";
+
+const PART_LABELS: Record<WeatherPart, string> = {
+  forecast: "예보",
+  warnings: "기상특보",
+  air: "미세먼지",
+  now: "현재 날씨",
+};
 import type { PrecipitationType, WeatherDecision, WeatherSnapshot } from "../lib/weatherRules";
 
 const PRECIP_LABELS: Record<PrecipitationType, string> = {
@@ -59,6 +66,14 @@ export function WeatherNotice(props: WeatherNoticeProps) {
         ? "바다·산·계곡을 빼고 추천해요"
         : "실내·야외를 함께 추천해요";
   const sources = [...new Set(known.map((day) => day.source).filter((s): s is string => Boolean(s)))];
+  // 초단기실황: weather.py는 방문일이 오늘일 때만 now를 준다. 오늘이 아니면 숨긴다.
+  const current = days[0]?.now ?? null;
+  if (current?.observedAt) sources.unshift(`기상청 초단기실황 ${current.observedAt} 관측`);
+  // API 하나가 실패해도 나머지는 보여 주고, 실패한 칸만 알린다(개발자용 오류 문구는 내보내지 않는다).
+  const unreachable = days.length > 0 && days.every((day) => day.unreachable);
+  const failedParts = unreachable
+    ? []
+    : [...new Set(days.flatMap((day) => day.failed))].filter((part) => !(part === "forecast" && known.length > 0));
 
   return (
     <section
@@ -68,8 +83,18 @@ export function WeatherNotice(props: WeatherNoticeProps) {
       <p className="field-label">
         {props.mode === "demo" ? `${place}날씨 · ${props.demoLabel} (시연 모드)` : `${place}날씨 · 실제 예보`}
       </p>
+      {current && (
+        <p className="weather-now">
+          지금 <strong>{current.tempC != null ? `${current.tempC}℃` : "기온 정보 없음"}</strong> ·{" "}
+          {current.precipType === "없음" ? "강수 없음" : current.precipType}
+        </p>
+      )}
       <h3 id="weather-notice-heading">{heading}</h3>
-      {noForecast ? (
+      {unreachable ? (
+        <p className="weather-notice-note">
+          날씨 정보를 불러오지 못했습니다. 날씨 조건 없이 추천했으니 잠시 후 다시 확인해 주세요.
+        </p>
+      ) : noForecast ? (
         <p className="weather-notice-note">
           이 날짜의 예보가 아직 없거나 불러오지 못했어요. 날씨 조건 없이 추천했으니 출발 2~3일 전에 다시 확인해 주세요.
         </p>
@@ -97,6 +122,11 @@ export function WeatherNotice(props: WeatherNoticeProps) {
       )}
       {!noForecast && decision.notices.map((notice) => (
         <p key={notice} className="weather-notice-note">{notice}</p>
+      ))}
+      {failedParts.map((part) => (
+        <p key={part} className="weather-notice-note">
+          {PART_LABELS[part]} 정보를 불러오지 못했습니다.
+        </p>
       ))}
       {sources.length > 0 && <p className="weather-notice-source">출처: {sources.join(" / ")}</p>}
     </section>

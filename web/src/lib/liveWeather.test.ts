@@ -58,6 +58,25 @@ describe("toDayWeather (weather.py 응답 → WeatherSnapshot)", () => {
   });
 });
 
+describe("toDayWeather — 초단기실황·API별 실패", () => {
+  it("now를 현재 날씨로 바꾸고, 실패한 하위 API는 칸 이름으로만 남긴다", () => {
+    const day = toDayWeather(
+      "2026-11-07",
+      response({
+        now: { time: "20261107 1500", temp: 12.3, precipType: "없음" },
+        errors: { air: "에어코리아 API가 HTTP 500을(를) 반환했습니다.", warnings: "기상특보 API 오류" },
+      }),
+    );
+    expect(day.now).toEqual({ tempC: 12.3, precipType: "없음", observedAt: "11월 7일 15:00" });
+    expect(day.failed.sort()).toEqual(["air", "warnings"]);
+    expect(day.unreachable).toBe(false);
+    expect(JSON.stringify(day)).not.toContain("HTTP 500");
+  });
+  it("오늘이 아니면 now는 null", () => {
+    expect(toDayWeather("2026-11-08", response()).now).toBeNull();
+  });
+});
+
 describe("worstOf (1박 이상: 가장 나쁜 날 기준)", () => {
   it("항목별로 가장 나쁜 값을 고른다", () => {
     const worst = worstOf([

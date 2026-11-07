@@ -45,6 +45,30 @@ interface WeatherResponse {
   } | null;
   air: { pm10Grade?: number | null; pm25Grade?: number | null; time?: string | null } | null;
   warnings: { kinds?: string[] } | null;
+  /** 초단기실황(방문일이 오늘일 때만) */
+  now?: { time?: string; temp?: number | null; precipType?: string | null } | null;
+  /** 하위 API별 실패 (short·short_prev·mid·warnings·air·now → 오류 문구). 문구는 화면에 내보내지 않는다. */
+  errors?: Record<string, string>;
+}
+
+/** 화면에서 칸별로 "정보를 불러오지 못했습니다"를 보여 줄 단위 */
+export type WeatherPart = "forecast" | "warnings" | "air" | "now";
+
+const ERROR_PARTS: Record<string, WeatherPart> = {
+  short: "forecast",
+  short_prev: "forecast",
+  mid: "forecast",
+  warnings: "warnings",
+  air: "air",
+  now: "now",
+};
+
+export interface CurrentWeather {
+  tempC: number | null;
+  /** 기상청 강수형태 (없음·비·눈 등) */
+  precipType: string;
+  /** 예: "11월 7일 14:00" */
+  observedAt: string;
 }
 
 export interface DayWeather {
@@ -54,6 +78,12 @@ export interface DayWeather {
   snapshot: WeatherSnapshot | null;
   /** 예: "기상청 단기예보 11월 7일 14:00 발표 · 에어코리아 11월 7일 14:00 측정" */
   source: string | null;
+  /** 초단기실황. 방문일이 오늘이 아니거나 못 불러오면 null */
+  now: CurrentWeather | null;
+  /** 이 날 불러오지 못한 칸 */
+  failed: WeatherPart[];
+  /** 서버에 아예 연결하지 못했는지 */
+  unreachable: boolean;
 }
 
 export interface RegionWeather {
@@ -97,7 +127,16 @@ function precipitationOf(labels: string[]): PrecipitationType {
 /** weather.py 응답 하나를 WeatherSnapshot과 출처 문구로 바꾼다. 예보가 없으면 snapshot null. */
 export function toDayWeather(date: string, response: WeatherResponse): DayWeather {
   const forecast = response.forecast;
-  if (!forecast) return { date, snapshot: null, source: null };
+  const failed = [...new Set(Object.keys(response.errors ?? {}).map((key) => ERROR_PARTS[key]).filter(Boolean))];
+  const now: CurrentWeather | null =
+    response.now && (response.now.temp != null || response.now.precipType)
+      ? {
+          tempC: response.now.temp ?? null,
+          precipType: response.now.precipType || "없음",
+          observedAt: monthDayTime(response.now.time ?? ""),
+        }
+      : null;
+  if (!forecast) return { date, snapshot: null, source: null, now, failed, unreachable: false };
   const issued = monthDayTime(forecast.issued ?? "");
   const sources = [`기상청 ${forecast.source}${issued ? ` ${issued}` : ""} 발표`];
   if (response.air?.time && (response.air.pm10Grade != null || response.air.pm25Grade != null)) {
@@ -115,6 +154,9 @@ export function toDayWeather(date: string, response: WeatherResponse): DayWeathe
       pm25Grade: response.air?.pm25Grade ?? null,
     },
     source: sources.join(" · "),
+    now,
+    failed,
+    unreachable: false,
   };
 }
 
@@ -171,7 +213,7 @@ function loadDay(region: Region, date: string): Promise<DayWeather> {
         // 서버가 꺼졌거나 오류면 이 날은 "예보 확인 필요". 자세한 원인은 콘솔에만 남긴다.
         console.warn(`날씨 예보를 불러오지 못함 (${region.name} ${date})`, error);
         dayRequests.delete(key);
-        return { date, snapshot: null, source: null };
+        return { date, snapshot: null, source: null, now: null, failed: [], unreachable: true };
       });
     dayRequests.set(key, { at: Date.now(), request });
   }

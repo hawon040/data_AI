@@ -150,6 +150,46 @@
   font-size: 12px;
   line-height: 1.5;
 }
+.weather-now {
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.weather-now strong {
+  color: var(--text-primary);
+  font-size: 16px;
+}
+.weather-excluded {
+  padding: 12px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 12px;
+}
+.weather-excluded summary {
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
+.weather-excluded ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.weather-excluded li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  color: var(--text-muted);
+}
+.weather-excluded li strong {
+  color: var(--text-primary);
+}
+.weather-excluded-reason {
+  flex-basis: 100%;
+}
 .weather-notice.is-unknown {
   border-left-color: var(--text-muted);
 }
