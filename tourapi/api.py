@@ -21,7 +21,7 @@ from sigungu import SIGUNGU
 
 
 # 공공데이터포털(data.go.kr) 일반(Decoding) 인증키. 코드에 쓰지 말고 환경변수 API_KEY로 설정하세요.
-# 의료관광, 전국관광지, 영문관광, 반려동물, 관광자원수요에 함께 쓰입니다.
+# 의료관광, 전국관광지, 반려동물, 관광자원수요에 함께 쓰입니다.
 API_KEY = os.environ.get("API_KEY", "")
 # 관광지 안전정보(한국문화정보원, api.kcisa.kr) 인증키. 환경변수 KCISA_API_KEY로 설정하세요.
 KCISA_API_KEY = os.environ.get("KCISA_API_KEY", "")
@@ -37,11 +37,6 @@ TOUR_SERVICES = {
         "https://apis.data.go.kr/B551011/MdclTursmService",
         "MedicalTourismApp",
         "의료 관광정보",
-    ),
-    "eng": (
-        "https://apis.data.go.kr/B551011/EngService2",
-        "EnglishTourApp",
-        "영문 관광정보",
     ),
     "pet": (
         "https://apis.data.go.kr/B551011/KorPetTourService2",
@@ -327,7 +322,7 @@ def fetch_medical_details(content_id):
 
 
 # ---------------------------------------------------------------------------
-# 영문 관광정보 (EngService2) / 반려동물 동반여행 (KorPetTourService2)
+# 반려동물 동반여행 (KorPetTourService2)
 # ---------------------------------------------------------------------------
 
 def fetch_regions(service):
@@ -1002,7 +997,6 @@ NAV_ITEMS = [
     ("/tourspot", "전국 관광지"),
     ("/demand", "관광 자원 수요"),
     ("/pet", "반려동물 동반여행"),
-    ("/eng", "영문 관광정보"),
     ("/medical", "의료 관광정보"),
 ]
 
@@ -1261,7 +1255,6 @@ HOME_PAGE = _build_page(
     <a href="/tourspot"><strong>전국 관광지</strong><span>전국관광지정보표준데이터 892곳의 시설·수용인원</span></a>
     <a href="/demand"><strong>관광 자원 수요</strong><span>시군구별 관광수요지수로 사람이 몰리는 지역 비교</span></a>
     <a href="/pet"><strong>반려동물 동반여행</strong><span>동반 가능 장소와 목줄·입마개 등 동반 안전수칙</span></a>
-    <a href="/eng"><strong>영문 관광정보</strong><span>외국인 관광객용 영문 관광지·축제·숙박 정보</span></a>
     <a href="/medical"><strong>의료 관광정보</strong><span>한국관광공사 의료 관광기관 정보</span></a>
   </div>
 """,
@@ -1517,20 +1510,8 @@ TOURSPOT_PAGE = _build_page(
 )
 
 
-# 영문/반려동물 화면은 구조가 같아 설정만 바꿔서 만듭니다.
+# 반려동물 화면 설정. 목록·상세 화면은 _place_page가 이 설정으로 만듭니다.
 PLACE_PAGE_CONFIG = {
-    "eng": {
-        "title": "영문 관광정보",
-        "intro": "한국관광공사 영문 관광정보를 조회합니다.",
-        "placeholder": "영문 검색어 (예: temple)",
-        "untitled": "Untitled",
-        "tel": "Tel",
-        "content_types": [
-            ("76", "관광지"), ("78", "문화시설"), ("85", "축제·행사"), ("75", "레포츠"),
-            ("80", "숙박"), ("79", "쇼핑"), ("82", "음식점"), ("77", "교통"),
-        ],
-        "sections": [("common", "기본 정보"), ("intro", "이용 안내")],
-    },
     "pet": {
         "title": "반려동물 동반여행",
         "intro": "한국관광공사 반려동물 동반여행 정보를 조회합니다.",
@@ -2407,7 +2388,6 @@ PAGES = {
     "/tourspot": TOURSPOT_PAGE,
     "/demand": DEMAND_PAGE,
     "/pet": _place_page("pet"),
-    "/eng": _place_page("eng"),
     "/medical": MEDICAL_PAGE,
 }
 
@@ -2452,7 +2432,7 @@ API_ROUTES = {
     "/api/map/places": lambda param: fetch_map_places(param("province") or None),
     "/api/db/status": lambda param: fetch_db_status(),
 }
-for _service in ("eng", "pet"):
+for _service in ("pet",):
     API_ROUTES.update({
         f"/api/{_service}/regions": lambda param, s=_service: {"items": fetch_regions(s)},
         f"/api/{_service}/places": lambda param, s=_service: fetch_places(
