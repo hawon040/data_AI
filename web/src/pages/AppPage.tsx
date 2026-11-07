@@ -28,7 +28,8 @@ import {
   type TripPreferences,
 } from "../lib/tripPreferences";
 import { findWeatherPreset } from "../lib/weatherPresets";
-import { applyWeatherRules, decideWeather } from "../lib/weatherRules";
+import { EMPTY_WEATHER, loadRegionWeather, tripDates, type RegionWeather } from "../lib/liveWeather";
+import { applyWeatherRules, decideWeather, type WeatherDecision } from "../lib/weatherRules";
 import "./AppPage.css";
 
 export function AppPage() {
@@ -99,16 +100,58 @@ export function AppPage() {
       ),
     [tripPreferences.province, tripPreferences.regionCode],
   );
+  // 방문일 날씨: 기본은 지역마다 실제 예보(tourapi /api/weather), 시연 모드면 예시 날씨 하나를 모든 지역에 쓴다.
   const weatherPreset = findWeatherPreset(tripPreferences.weatherPreset);
-  const weatherDecision = useMemo(
-    () =>
-      decideWeather(
-        weatherPreset.weather,
-        { withElderly: safetyFilters.withElderly, withChildren: safetyFilters.withChildren },
-        tripPreferences.visitDate,
-        todayIso(),
-      ),
-    [weatherPreset, safetyFilters.withElderly, safetyFilters.withChildren, tripPreferences.visitDate],
+  const weatherDemo = tripPreferences.weatherDemo;
+  const { duration, visitDate, nights } = tripPreferences;
+  const tripDays = useMemo(() => tripDates({ duration, visitDate, nights }), [duration, visitDate, nights]);
+  const weatherKey = `${destinationRegions.map((region) => region.code).join(",")}|${tripDays.join(",")}`;
+  const useLiveWeather = people != null && !weatherDemo && destinationRegions.length > 0;
+  const [liveWeather, setLiveWeather] = useState<{ key: string; byRegion: Record<string, RegionWeather> }>({
+    key: "",
+    byRegion: {},
+  });
+  useEffect(() => {
+    if (!useLiveWeather) return;
+    let cancelled = false;
+    Promise.all(
+      destinationRegions.map(async (region) => [region.code, await loadRegionWeather(region, tripDays)] as const),
+    ).then((entries) => {
+      if (!cancelled) setLiveWeather({ key: weatherKey, byRegion: Object.fromEntries(entries) });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [useLiveWeather, weatherKey, destinationRegions, tripDays]);
+  const weatherLoading = useLiveWeather && liveWeather.key !== weatherKey;
+  const regionWeather = useMemo(
+    () => (liveWeather.key === weatherKey ? liveWeather.byRegion : {}),
+    [liveWeather, weatherKey],
+  );
+
+  /** 지역 코드별 날씨 판정. 예보가 없거나 아직 못 불러온 지역은 날씨 조건 없이 판정한다. */
+  const weatherDecisions = useMemo(() => {
+    const party = { withElderly: safetyFilters.withElderly, withChildren: safetyFilters.withChildren };
+    const today = todayIso();
+    return Object.fromEntries(
+      SAMPLE_REGIONS.map((region) => [
+        region.code,
+        decideWeather(
+          weatherDemo ? weatherPreset.weather : regionWeather[region.code]?.worst ?? EMPTY_WEATHER,
+          party,
+          visitDate,
+          today,
+        ),
+      ]),
+    ) as Record<string, WeatherDecision>;
+  }, [weatherDemo, weatherPreset, regionWeather, safetyFilters.withElderly, safetyFilters.withChildren, visitDate]);
+  const applyRegionWeather = useCallback(
+    (items: RecommendationItem[]) =>
+      items.flatMap((item) => applyWeatherRules([item], weatherDecisions[item.region.code])),
+    [weatherDecisions],
+  );
+  const weatherRestricted = destinationRegions.some(
+    (region) => weatherDecisions[region.code].indoorOnly || weatherDecisions[region.code].excludedTerrains.length > 0,
   );
 
   const recommendations: RecommendationItem[] = useMemo(() => {
@@ -130,20 +173,19 @@ export function AppPage() {
       candidates = getRecommendations(people, SAMPLE_REGIONS, SAMPLE_REGIONS.length);
     }
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
-    return applyWeatherRules(filterRecommendations(candidates, people, tripPreferences), weatherDecision)
+    return applyRegionWeather(filterRecommendations(candidates, people, tripPreferences))
       .filter((item) => locationCodes.has(item.region.code))
       .slice(0, 5);
-  }, [destinationRegions, people, tripPreferences, weatherDecision]);
+  }, [destinationRegions, people, tripPreferences, applyRegionWeather]);
 
   const exploreRecommendations = useMemo(() => {
     if (people == null || people.length === 0 || destinationRegions.length === 0) return [];
     const excludeCodes = new Set(recommendations.map((r) => r.region.code));
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
-    return applyWeatherRules(
+    return applyRegionWeather(
       filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes), people, tripPreferences),
-      weatherDecision,
     ).filter((item) => locationCodes.has(item.region.code));
-  }, [destinationRegions, people, recommendations, tripPreferences, weatherDecision]);
+  }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather]);
 
   const highlightedCodes = useMemo(
     () => new Set([...recommendations, ...exploreRecommendations].map((r) => r.region.code)),
@@ -159,6 +201,12 @@ export function AppPage() {
     setMapSelection(null);
   }, []);
   const displayedRegion = selectedSeasonalPlace ? null : selectedRegion ?? recommendations[0]?.region ?? null;
+  // 날씨 안내는 지금 보고 있는 지역(없으면 1위 추천, 그것도 없으면 첫 대상 지역) 기준으로 보여 준다.
+  const weatherRegion =
+    (displayedRegion && destinationRegions.find((region) => region.code === displayedRegion.code)) ||
+    recommendations[0]?.region ||
+    destinationRegions[0] ||
+    null;
   const liveRequestKey =
     displayedRegion && hasKakaoRestKey()
       ? `${displayedRegion.code}:${(people ?? []).map((person) => `${person.gender}-${person.ageGroup}`).join(",")}`
@@ -277,7 +325,23 @@ export function AppPage() {
                 <DemandCard demand={mapData.demand} />
               )}
               {people != null && destinationRegions.length > 0 && (
-                <WeatherNotice decision={weatherDecision} weatherLabel={weatherPreset.label} />
+                weatherDemo ? (
+                  <WeatherNotice
+                    mode="demo"
+                    regionName={weatherRegion?.name ?? null}
+                    decision={weatherDecisions[weatherRegion?.code ?? destinationRegions[0].code]}
+                    demoLabel={weatherPreset.label}
+                  />
+                ) : weatherLoading || !weatherRegion ? (
+                  <WeatherNotice mode="loading" regionName={weatherRegion?.name ?? null} />
+                ) : (
+                  <WeatherNotice
+                    mode="live"
+                    regionName={weatherRegion.name}
+                    decision={weatherDecisions[weatherRegion.code]}
+                    days={regionWeather[weatherRegion.code]?.days ?? []}
+                  />
+                )
               )}
               <RecommendationList
                 items={recommendations}
@@ -287,7 +351,7 @@ export function AppPage() {
                     ? "이 지역은 맞춤 추천 시범 데이터가 없어요. 지도에서 전국 관광지를 눌러 안전 정보를 확인하세요."
                     : people == null
                       ? "여행 조건을 정하고 동행자를 입력한 뒤 추천받아 보세요."
-                      : weatherDecision.indoorOnly || weatherDecision.excludedTerrains.length > 0
+                      : weatherRestricted
                         ? "방문일 날씨 기준에 맞는 관광지가 이 조건에는 없어요. 지역 범위나 목적을 넓히거나 다른 날짜를 골라 보세요."
                         : "현재 조건에 맞는 여행지가 없어요. 목적이나 지역 범위를 넓혀 보세요."
                 }
@@ -298,7 +362,7 @@ export function AppPage() {
                 }}
                 onSelectAttraction={handleSelectAttraction}
                 selectedCode={displayedRegion?.code}
-                weatherSummary={weatherDecision.summary}
+                weatherSummaryFor={(code) => weatherDecisions[code]?.summary ?? null}
               />
               {selectedAttraction && (
                 <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} />

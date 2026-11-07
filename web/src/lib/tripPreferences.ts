@@ -6,6 +6,13 @@ export type TravelStyle = "all" | "active" | "relaxed" | "family" | "culture" | 
 export type TransportMode = "tour-bus" | "car" | "public-transit" | "walking";
 export type RankingMode = "companion" | "popular";
 export type TripDuration = "day" | "overnight";
+export type TripNights = 1 | 2 | 3;
+
+export const NIGHTS_OPTIONS: { value: TripNights; label: string }[] = [
+  { value: 1, label: "1박 2일" },
+  { value: 2, label: "2박 3일" },
+  { value: 3, label: "3박 4일" },
+];
 export type Season = "spring" | "summer" | "autumn" | "winter";
 
 export interface TripPreferences {
@@ -19,8 +26,18 @@ export interface TripPreferences {
   duration: TripDuration;
   /** 방문일 (YYYY-MM-DD, 로컬 날짜). 바꾸면 month도 함께 바뀐다. */
   visitDate: string;
-  /** 시연용 날씨 예시 id (lib/weatherPresets.ts) — 실시간 날씨 연동 전까지 쓴다. */
+  /** 1박 이상일 때 박 수. 종료일 = 방문일 + nights. 당일치기면 쓰지 않는다. */
+  nights: TripNights;
+  /** 시연 모드: 켜면 실제 예보 대신 weatherPreset(lib/weatherPresets.ts) 예시 날씨를 쓴다. */
+  weatherDemo: boolean;
+  /** 시연 모드에서 쓸 날씨 예시 id */
   weatherPreset: string;
+}
+
+/** YYYY-MM-DD 날짜에 days일을 더한다. */
+export function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return todayIso(new Date(y, m - 1, d + days));
 }
 
 /** 오늘 날짜(로컬)를 YYYY-MM-DD로. */
@@ -39,6 +56,8 @@ export const DEFAULT_TRIP_PREFERENCES: TripPreferences = {
   ranking: "companion",
   duration: "day",
   visitDate: todayIso(),
+  nights: 1,
+  weatherDemo: false,
   weatherPreset: "clear",
 };
 

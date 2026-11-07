@@ -3,7 +3,9 @@ import { AGE_GROUPS, AGE_GROUP_LABELS, type AgeGroup, type Gender, type Person, 
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import { WEATHER_PRESETS } from "../lib/weatherPresets";
 import {
+  addDaysIso,
   getSeason,
+  NIGHTS_OPTIONS,
   PURPOSE_OPTIONS,
   SEASON_LABELS,
   STYLE_OPTIONS,
@@ -114,15 +116,27 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
                 }}
               />
             </label>
-            <label>
-              <span className="field-title">
-                방문일 날씨
-                <span className="season-indicator">시연용</span>
-              </span>
-              <select value={preferences.weatherPreset} onChange={(e) => updatePreference("weatherPreset", e.target.value)}>
-                {WEATHER_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
-              </select>
-            </label>
+            <div className="weather-demo-field">
+              <label className="weather-demo-toggle">
+                <input
+                  type="checkbox"
+                  checked={preferences.weatherDemo}
+                  onChange={(e) => updatePreference("weatherDemo", e.target.checked)}
+                />
+                <span className="field-title">시연 모드 (예시 날씨)</span>
+              </label>
+              {preferences.weatherDemo ? (
+                <select
+                  aria-label="시연용 날씨 예시"
+                  value={preferences.weatherPreset}
+                  onChange={(e) => updatePreference("weatherPreset", e.target.value)}
+                >
+                  {WEATHER_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
+                </select>
+              ) : (
+                <p className="weather-demo-hint">기상청·에어코리아 실제 예보로 추천해요.</p>
+              )}
+            </div>
             <label>
               <span className="field-title">
                 여행 월
@@ -194,6 +208,30 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
                 </label>
               </div>
             </fieldset>
+            {preferences.duration === "overnight" && (
+              <fieldset className="duration-field">
+                <legend className="field-title">
+                  일정 길이
+                  <span className="season-indicator">
+                    ~{Number(addDaysIso(preferences.visitDate, preferences.nights).slice(5, 7))}월{" "}
+                    {Number(addDaysIso(preferences.visitDate, preferences.nights).slice(8, 10))}일
+                  </span>
+                </legend>
+                <div className="segmented is-three">
+                  {NIGHTS_OPTIONS.map((option) => (
+                    <label key={option.value}>
+                      <input
+                        type="radio"
+                        name="trip-nights"
+                        checked={preferences.nights === option.value}
+                        onChange={() => updatePreference("nights", option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
           </div>
           <p className="form-hint" title="맞춤 추천은 시범 지역(충남·충북·강원)만 제공하고, 지도에는 전국 관광지·대피소를 보여줘요.">
             <span aria-hidden="true">i</span>

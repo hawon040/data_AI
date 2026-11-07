@@ -150,6 +150,41 @@
   font-size: 12px;
   line-height: 1.5;
 }
+.weather-notice.is-unknown {
+  border-left-color: var(--text-muted);
+}
+.weather-notice ul.weather-days {
+  padding-left: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.weather-days strong {
+  margin-right: 6px;
+  color: var(--text-primary);
+}
+.weather-notice-source {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.weather-demo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.weather-demo-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.weather-demo-hint {
+  margin: 0;
+  padding: 10px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
 .indoor-alternatives {
   display: flex;
   flex-wrap: wrap;
@@ -301,6 +336,13 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--bg);
+}
+.segmented.is-three {
+  grid-template-columns: repeat(3, 1fr);
+}
+.segmented.is-three label span {
+  font-size: 12px;
+  white-space: nowrap;
 }
 .segmented label {
   position: relative;

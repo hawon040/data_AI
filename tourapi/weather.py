@@ -261,14 +261,19 @@ def fetch_short_days(nx, ny, now):
         elif cat == "SKY":
             day["sky"].append(SKY.get(value, value))
     result = {}
+    today_key = now.strftime("%Y%m%d")
     for date_key, day in days.items():
+        # 단기예보 끝 날짜는 00시 한두 시간대만 들어 있기도 합니다. 최저·최고기온(TMN·TMX)이 모두 없는
+        # 미래 날짜는 하루 예보로 쓰지 않고 빼서, fetch_weather가 중기예보를 보게 합니다(오늘은 그대로 둡니다).
+        if date_key > today_key and day["tmin"] is None and day["tmax"] is None:
+            continue
         temps = [x for x in day["temps"] if x is not None]
         # TMN·TMX가 없는 시간대(오늘 오후 등)는 시간별 기온으로 채웁니다.
         tmin = day["tmin"] if day["tmin"] is not None else (min(temps) if temps else None)
         tmax = day["tmax"] if day["tmax"] is not None else (max(temps) if temps else None)
         sky = max(set(day["sky"]), key=day["sky"].count) if day["sky"] else None
         result[date_key] = {"source": "단기예보", "pop": day["pop"], "precip": sorted(day["precip"]),
-                            "tmin": tmin, "tmax": tmax, "sky": sky}
+                            "tmin": tmin, "tmax": tmax, "sky": sky, "issued": f"{d}{t}"}
     return {"issued": f"{d} {t}", "days": result}
 
 
@@ -370,11 +375,16 @@ def fetch_air(air_name):
     items = _cached(f"air_{air_name}", lambda: _call(
         f"{AIR_URL}/getCtprvnRltmMesureDnsty",
         {"pageNo": 1, "numOfRows": 200, "returnType": "json", "sidoName": air_name, "ver": "1.0"}, "에어코리아"))
-    grades = [g for i in items for g in (_num(i.get("pm10Grade")), _num(i.get("pm25Grade"))) if g]
+    grades10 = [g for g in (_num(i.get("pm10Grade")) for i in items) if g]
+    grades25 = [g for g in (_num(i.get("pm25Grade")) for i in items) if g]
+    grades = grades10 + grades25
     pm10 = sorted(v for v in (_num(i.get("pm10Value")) for i in items) if v is not None)
     pm25 = sorted(v for v in (_num(i.get("pm25Value")) for i in items) if v is not None)
     worst = max(grades) if grades else None
     return {"stations": len(items), "worstGrade": worst, "worstLabel": GRADE.get(worst, "정보 없음"),
+            # 웹앱 판정용: PM10·PM2.5 각각 측정소 중 가장 나쁜 등급
+            "pm10Grade": max(grades10) if grades10 else None,
+            "pm25Grade": max(grades25) if grades25 else None,
             "pm10Median": pm10[len(pm10) // 2] if pm10 else None,
             "pm25Median": pm25[len(pm25) // 2] if pm25 else None,
             "time": items[0].get("dataTime") if items else None}

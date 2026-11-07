@@ -98,7 +98,7 @@ export function RecommendationList({
   onSelectAttraction,
   selectedCode,
   emptyMessage,
-  weatherSummary = null,
+  weatherSummaryFor = () => null,
 }: {
   items: RecommendationItem[];
   exploreItems: RecommendationItem[];
@@ -106,8 +106,8 @@ export function RecommendationList({
   onSelectAttraction: (a: Attraction) => void;
   selectedCode?: string;
   emptyMessage: string;
-  /** 날씨 규칙 요약 (lib/weatherRules.ts WeatherDecision.summary) */
-  weatherSummary?: string | null;
+  /** 지역 코드별 날씨 규칙 요약 (lib/weatherRules.ts WeatherDecision.summary) */
+  weatherSummaryFor?: (regionCode: string) => string | null;
 }) {
   if (items.length === 0) {
     return <p className="empty-state">{emptyMessage}</p>;
@@ -123,7 +123,7 @@ export function RecommendationList({
           onSelect={onSelect}
           onSelectAttraction={onSelectAttraction}
           selected={selectedCode === item.region.code}
-          weatherSummary={weatherSummary}
+          weatherSummary={weatherSummaryFor(item.region.code)}
         />
       ))}
 
@@ -137,7 +137,7 @@ export function RecommendationList({
               onSelect={onSelect}
               onSelectAttraction={onSelectAttraction}
               selected={selectedCode === item.region.code}
-              weatherSummary={weatherSummary}
+              weatherSummary={weatherSummaryFor(item.region.code)}
             />
           ))}
         </>
