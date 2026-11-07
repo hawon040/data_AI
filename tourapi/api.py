@@ -6,13 +6,15 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 import webbrowser
 import xml.etree.ElementTree as ET
+import barrierfree
+import weather
 from weather import WEATHER_ROUTES
 from barrierfree import ACCESS_ROUTES
 from sigungu import SIGUNGU
@@ -119,8 +121,16 @@ def _db_load(db, name):
     return value, meta["savedAt"]
 
 
-def _db_save(db, name, value):
-    if isinstance(value, list):
+_ttl_index = {"ready": False}
+
+
+def _db_save(db, name, value, as_value=False, keep_seconds=None):
+    """value를 저장합니다. as_value면 목록도 별도 컬렉션 없이 _meta 문서 안에 넣습니다.
+
+    keep_seconds를 주면 expireAt을 붙여, 그 시간이 지난 항목을 MongoDB TTL 인덱스가 지웁니다.
+    (요청 값마다 이름이 달라 계속 쌓이는 날씨·무장애 결과용. expireAt이 없는 항목은 지우지 않습니다.)
+    """
+    if isinstance(value, list) and not as_value:
         collection = db[name]
         collection.delete_many({})
         if value:
@@ -129,19 +139,28 @@ def _db_save(db, name, value):
         meta = {"kind": "list", "count": len(value)}
     else:
         meta = {"kind": "value", "value": value}
+        if isinstance(value, list):
+            meta["count"] = len(value)
+    if keep_seconds:
+        if not _ttl_index["ready"]:
+            db["_meta"].create_index("expireAt", expireAfterSeconds=0)
+            _ttl_index["ready"] = True
+        meta["expireAt"] = datetime.now(timezone.utc) + timedelta(seconds=keep_seconds)
     db["_meta"].replace_one({"_id": name}, {**meta, "savedAt": time.time()}, upsert=True)
 
 
-def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS):
-    """Return loader() through a memory cache (CACHE_SECONDS) and MongoDB (db_seconds).
+def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_seconds=None):
+    """Return loader() through a memory cache and MongoDB (db_seconds).
 
+    메모리 캐시는 CACHE_SECONDS와 db_seconds 중 짧은 시간만 둡니다.
     API 호출이 실패하면 MongoDB에 남은 예전 데이터라도 돌려줍니다.
+    as_value·keep_seconds는 _db_save 설명을 보세요.
     """
     with _cache_locks_lock:
         lock = _cache_locks.setdefault(name, threading.Lock())
     with lock:
         entry = _caches.get(name)
-        if entry is not None and time.time() - entry[1] < CACHE_SECONDS:
+        if entry is not None and time.time() - entry[1] < min(CACHE_SECONDS, db_seconds):
             return entry[0]
 
         db = _mongo_db()
@@ -166,7 +185,7 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS):
 
         if db is not None:
             try:
-                _db_save(db, name, value)
+                _db_save(db, name, value, as_value, keep_seconds)
             except Exception as error:
                 print(f"[MongoDB] {name} 저장 실패: {error}")
         _caches[name] = (value, time.time())
@@ -2261,6 +2280,18 @@ for _service in ("eng", "pet"):
     })
 API_ROUTES.update(WEATHER_ROUTES)
 API_ROUTES.update(ACCESS_ROUTES)
+
+
+def _module_cache(db_seconds, keep_seconds):
+    """weather.py·barrierfree.py에 넣어 줄 캐시 함수. 두 모듈이 api.py를 import하면 순환 import가
+    생기므로, 모듈에는 캐시 함수를 받는 자리(use_cache)만 두고 여기서 _cached를 넣어 줍니다."""
+    return lambda name, loader: _cached(name, loader, db_seconds=db_seconds, as_value=True,
+                                        keep_seconds=keep_seconds)
+
+
+# 날씨 1시간, 무장애 6시간 저장. 지난 항목은 날씨 2일, 무장애 7일 뒤 MongoDB가 지웁니다.
+weather.use_cache(_module_cache(weather.WEATHER_CACHE_SECONDS, 2 * 24 * 60 * 60))
+barrierfree.use_cache(_module_cache(barrierfree.CACHE_SECONDS, 7 * 24 * 60 * 60))
 
 
 class TourRequestHandler(BaseHTTPRequestHandler):

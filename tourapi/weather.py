@@ -38,7 +38,7 @@ WARN_URL = "https://apis.data.go.kr/1360000/WthrWrnInfoService"
 AIR_URL = "https://apis.data.go.kr/B552584/ArpltnInforInqireSvc"
 
 # 예보는 자주 바뀌지 않으므로 30분 동안 메모리에 둡니다(호출 한도 절약).
-WEATHER_CACHE_SECONDS = 30 * 60
+WEATHER_CACHE_SECONDS = 60 * 60   # 예보·특보·대기 결과를 1시간 둡니다
 
 # ---------------------------------------------------------------------------
 # 판단 기준 (팀 기준안: 보고서 10주차 '날씨 맞춤 추천 규칙(안)')
@@ -103,9 +103,23 @@ GANGWON_TA = {
 # ---------------------------------------------------------------------------
 _cache = {}
 _cache_lock = threading.Lock()
+_store = None   # api.py가 use_cache()로 넣어 주는 캐시 함수(메모리 + MongoDB)
+
+
+def use_cache(store):
+    """api.py에서 store(name, loader)를 넣어 주면 결과를 MongoDB(tourlink DB)에도 저장합니다.
+
+    순환 import를 피하려고 이 모듈은 api.py를 import하지 않습니다. 넣어 주지 않으면
+    (py weather.py check 등) 아래 메모리 캐시만 씁니다.
+    """
+    global _store
+    _store = store
 
 
 def _cached(key, loader):
+    """저장 이름은 weather_ + 요청 값(격자·발표 시각·지역 코드 등)입니다."""
+    if _store is not None:
+        return _store(f"weather_{key}", loader)
     with _cache_lock:
         entry = _cache.get(key)
         if entry and time.time() - entry[1] < WEATHER_CACHE_SECONDS:

@@ -81,9 +81,23 @@ ALIASES = {"어르신": "senior", "노약자": "senior", "아이": "child", "유
 
 _cache = {}
 _cache_lock = threading.Lock()
+_store = None   # api.py가 use_cache()로 넣어 주는 캐시 함수(메모리 + MongoDB)
+
+
+def use_cache(store):
+    """api.py에서 store(name, loader)를 넣어 주면 결과를 MongoDB(tourlink DB)에도 저장합니다.
+
+    순환 import를 피하려고 이 모듈은 api.py를 import하지 않습니다. 넣어 주지 않으면
+    (py barrierfree.py check 등) 아래 메모리 캐시만 씁니다.
+    """
+    global _store
+    _store = store
 
 
 def _cached(key, loader):
+    """저장 이름은 access_ + 요청 값(위치·반경 또는 콘텐츠 ID)입니다."""
+    if _store is not None:
+        return _store(f"access_{key}", loader)
     with _cache_lock:
         entry = _cache.get(key)
         if entry and time.time() - entry[1] < CACHE_SECONDS:
@@ -143,7 +157,7 @@ def fetch_access(content_id):
     """관광지 하나의 무장애 편의 정보. 값이 있는 항목만 돌려줍니다."""
     if not str(content_id).isdigit():
         raise ValueError("콘텐츠 ID(contentId)는 숫자여야 합니다.")
-    items = _cached(f"with_{content_id}", lambda: _call("detailWithTour2", {"contentId": content_id}))
+    items = _cached(f"detail_{content_id}", lambda: _call("detailWithTour2", {"contentId": content_id}))
     raw = items[0] if items else {}
     available = {key: _clean(raw.get(key)) for key in FIELDS if _clean(raw.get(key))}
     return {"contentId": str(content_id), "available": available,
@@ -173,7 +187,7 @@ def fetch_nearby_access(lat, lon, needs_text="", radius=NEARBY_RADIUS_M):
         raise ValueError("반경(radius)은 100~20000m 사이여야 합니다.")
     needs = parse_needs(needs_text)
 
-    places = _cached(f"near_{lat:.3f}_{lon:.3f}_{radius}", lambda: _call(
+    places = _cached(f"nearby_{lat:.3f}_{lon:.3f}_{radius}", lambda: _call(
         "locationBasedList2",
         {"mapX": f"{lon:.6f}", "mapY": f"{lat:.6f}", "radius": radius, "arrange": "E",
          "numOfRows": 30, "pageNo": 1}))
