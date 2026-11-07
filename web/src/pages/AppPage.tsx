@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { AccessibilityInfo } from "../components/AccessibilityInfo";
 import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
@@ -374,6 +375,12 @@ export function AppPage() {
                   locationLabel={selectedSeasonalPlace?.location}
                   seasonalTiming={selectedSeasonalPlace?.timing}
                   seasonalDescription={selectedSeasonalPlace?.summary}
+                />
+              )}
+              {selectedAttraction && (
+                <AccessibilityInfo
+                  attraction={selectedAttraction}
+                  party={{ withElderly: safetyFilters.withElderly, withChildren: safetyFilters.withChildren }}
                 />
               )}
               {displayedRegion && (

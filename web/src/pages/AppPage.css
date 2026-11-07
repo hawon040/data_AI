@@ -168,6 +168,66 @@
   font-size: 11px;
   line-height: 1.5;
 }
+.accessibility-info {
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--blue);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.accessibility-info .field-label {
+  margin: 0 0 4px;
+}
+.accessibility-info h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.accessibility-note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.accessibility-fit {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.accessibility-fit p {
+  margin: 4px 0 0;
+}
+.accessibility-missing {
+  color: var(--text-muted);
+}
+.accessibility-details {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.accessibility-details summary {
+  color: var(--teal);
+  font-weight: 600;
+  cursor: pointer;
+}
+.accessibility-list {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+.accessibility-list div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+}
+.accessibility-list dt {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.accessibility-list dd {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
 .weather-demo-field {
   display: flex;
   flex-direction: column;

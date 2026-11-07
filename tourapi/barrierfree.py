@@ -18,6 +18,7 @@
 """
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -237,10 +238,87 @@ def _float(value):
         return None
 
 
+# 웹앱 샘플 관광지 좌표는 실제 위치와 수 km 다를 수 있습니다(청남대 약 8km). 그래서 좌표 주변이 아니라
+# 이름으로 찾고, 같은 이름의 다른 지역 장소를 피하려고 좌표에서 이 거리 안인 곳만 받습니다.
+MATCH_RADIUS_M = 20000
+MATCH_EXTRA_CHARS = 4   # 이름 일부 일치는 글자 수 차이가 이 이하일 때만(예: '천안 독립기념관')
+_NAME_NOISE = re.compile(r"[\s()\[\]{}·,.\-_/]")
+
+
+def _norm_name(text):
+    return _NAME_NOISE.sub("", str(text or ""))
+
+
+def _name_rank(target, title):
+    """2: 같은 이름, 1: 한쪽이 다른 쪽을 포함하고 글자 수 차이가 작음, 0: 다른 곳"""
+    if not title:
+        return 0
+    if title == target:
+        return 2
+    longer, shorter = (title, target) if len(title) > len(target) else (target, title)
+    if len(shorter) >= 3 and shorter in longer and len(longer) - len(shorter) <= MATCH_EXTRA_CHARS:
+        return 1
+    return 0
+
+
+def _distance_m(lat1, lon1, lat2, lon2):
+    import math
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    a = (math.sin((p2 - p1) / 2) ** 2
+         + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2)
+    return 2 * 6371000 * math.asin(math.sqrt(a))
+
+
+def fetch_access_match(lat, lon, name, needs_text=""):
+    """웹앱 추천 관광지(이름·좌표)와 같은 곳을 무장애 여행정보에서 찾아 무장애 정보를 붙입니다.
+
+    웹앱 관광지에는 관광공사 콘텐츠 ID가 없어서 이름으로 검색(searchKeyword2)하고,
+    좌표에서 20km 안에 있는 곳 중 이름이 같은 곳(없으면 이름 일부가 같은 곳)을 가까운 순으로 고릅니다.
+    못 찾으면 matched=False이고, 이는 '시설이 없다'가 아니라 '관광공사 무장애 정보에 등록되지 않았다'는 뜻입니다.
+    """
+    try:
+        lat, lon = float(lat), float(lon)
+    except (TypeError, ValueError):
+        raise ValueError("위도(lat)·경도(lon)가 필요합니다.") from None
+    if not (33 <= lat <= 39 and 124 <= lon <= 132):
+        raise ValueError("국내 위치의 위도·경도가 필요합니다.")
+    target = _norm_name(name)
+    if len(target) < 2:
+        raise ValueError("관광지 이름(name)이 필요합니다.")
+    needs = parse_needs(needs_text)
+
+    places = _cached(f"search_{target}", lambda: _call(
+        "searchKeyword2", {"keyword": str(name).strip(), "numOfRows": 30, "pageNo": 1, "arrange": "A"}))
+    candidates = []
+    for place in places:
+        rank = _name_rank(target, _norm_name(place.get("title")))
+        plat, plon = _float(place.get("mapy")), _float(place.get("mapx"))
+        if not rank or plat is None or plon is None:
+            continue
+        dist = _distance_m(lat, lon, plat, plon)
+        if dist <= MATCH_RADIUS_M:
+            candidates.append((-rank, dist, place))
+    base = {"name": name, "needs": [NEED_LABEL[n] for n in needs], "radiusM": MATCH_RADIUS_M,
+            "note": "편의시설은 관광공사에 등록된 정보 기준입니다. 방문 전 시설에 확인하세요."}
+    if not candidates:
+        return {**base, "matched": False}
+    neg_rank, dist, place = min(candidates, key=lambda c: (c[0], c[1]))
+    info = fetch_access(place.get("contentid"))
+    score, have, missing = access_score(info["available"], needs)
+    return {**base, "matched": True, "matchedBy": "같은 이름" if neg_rank == -2 else "이름 일부",
+            "contentId": str(place.get("contentid", "")), "title": place.get("title", ""),
+            "address": _clean(f"{place.get('addr1', '')} {place.get('addr2', '')}"),
+            "distanceKm": round(dist / 1000, 2),
+            "available": info["available"], "labels": info["labels"],
+            "fitScore": score, "fitHave": have, "fitMissing": missing}
+
+
 ACCESS_ROUTES = {
     "/api/access/nearby": lambda param: fetch_nearby_access(
         param("lat"), param("lon"), param("with"), param("radius") or NEARBY_RADIUS_M),
     "/api/access/detail": lambda param: fetch_access(param("contentId")),
+    "/api/access/match": lambda param: fetch_access_match(
+        param("lat"), param("lon"), param("name"), param("with")),
 }
 
 
