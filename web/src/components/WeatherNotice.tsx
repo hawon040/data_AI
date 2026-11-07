@@ -36,7 +36,7 @@ function daySummary(snapshot: WeatherSnapshot): string {
 }
 
 type WeatherNoticeProps =
-  | { mode: "demo"; regionName: string | null; decision: WeatherDecision; demoLabel: string }
+  | { mode: "demo"; regionName: string | null; decision: WeatherDecision; demoLabel: string; demoWeather: WeatherSnapshot }
   | { mode: "loading"; regionName: string | null }
   | { mode: "live"; regionName: string | null; decision: WeatherDecision; days: DayWeather[] };
 
@@ -68,6 +68,10 @@ export function WeatherNotice(props: WeatherNoticeProps) {
   const sources = [...new Set(known.map((day) => day.source).filter((s): s is string => Boolean(s)))];
   // 초단기실황: weather.py는 방문일이 오늘일 때만 now를 준다. 오늘이 아니면 숨긴다.
   const current = days[0]?.now ?? null;
+  // 에어코리아 미세먼지: 실시간 값이라 방문일이 오늘일 때만 있다(시연 모드는 예시 값).
+  const airDay = props.mode === "demo" ? null : days.find((day) => day.snapshot?.pm10Grade != null || day.snapshot?.pm25Grade != null);
+  const airSnapshot = props.mode === "demo" ? props.demoWeather : airDay?.snapshot ?? null;
+  const dustGrade = Math.max(airSnapshot?.pm10Grade ?? 0, airSnapshot?.pm25Grade ?? 0);
   if (current?.observedAt) sources.unshift(`기상청 초단기실황 ${current.observedAt} 관측`);
   // API 하나가 실패해도 나머지는 보여 주고, 실패한 칸만 알린다(개발자용 오류 문구는 내보내지 않는다).
   const unreachable = days.length > 0 && days.every((day) => day.unreachable);
@@ -90,6 +94,14 @@ export function WeatherNotice(props: WeatherNoticeProps) {
         </p>
       )}
       <h3 id="weather-notice-heading">{heading}</h3>
+      {dustGrade > 0 && airSnapshot && (
+        <p className={`weather-dust${dustGrade >= 3 ? " is-bad" : ""}`}>
+          미세먼지 <strong>{DUST_LABELS[dustGrade]}</strong>
+          {" "}(PM10 {DUST_LABELS[airSnapshot.pm10Grade ?? 0] || "-"} · PM2.5 {DUST_LABELS[airSnapshot.pm25Grade ?? 0] || "-"})
+          {airDay?.airObservedAt && <span> · 에어코리아 {airDay.airObservedAt} 측정</span>}
+          {dustGrade >= 3 && <span className="weather-dust-tip">실내 장소 위주로 보여 드려요. 마스크를 챙기세요.</span>}
+        </p>
+      )}
       {unreachable ? (
         <p className="weather-notice-note">
           날씨 정보를 불러오지 못했습니다. 날씨 조건 없이 추천했으니 잠시 후 다시 확인해 주세요.

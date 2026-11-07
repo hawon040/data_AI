@@ -1,14 +1,18 @@
 import { getPreparationTips, type TripPreferences } from "../lib/tripPreferences";
+import { mergeTips } from "../lib/preparationTips";
 import type { Attraction } from "../lib/types";
 
 export function TripPreparation({
   attraction,
   preferences,
+  extraTips = [],
 }: {
   attraction: Attraction;
   preferences: TripPreferences;
+  /** 날씨·미세먼지·편의시설 등 실시간 정보로 더하는 안내 (lib/preparationTips.ts에서 겹침을 정리해 넘긴다) */
+  extraTips?: string[];
 }) {
-  const tips = getPreparationTips(attraction, preferences);
+  const tips = mergeTips(getPreparationTips(attraction, preferences), extraTips);
   const transport = {
     "public-transit": "대중교통",
     "tour-bus": "관광버스",

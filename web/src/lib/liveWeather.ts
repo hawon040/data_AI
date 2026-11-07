@@ -81,6 +81,8 @@ export interface DayWeather {
   source: string | null;
   /** 초단기실황. 방문일이 오늘이 아니거나 못 불러오면 null */
   now: CurrentWeather | null;
+  /** 에어코리아 측정 시각 (예: "11월 7일 14:00"). 방문일이 오늘이 아니면 null */
+  airObservedAt: string | null;
   /** 이 시군구에 발효 중인 특보 (예: "한파주의보") */
   warningsHere: string[];
   /** 같은 시도의 다른 시군에만 있는 특보 (예: "한파주의보(영동)") */
@@ -141,10 +143,14 @@ export function toDayWeather(date: string, response: WeatherResponse): DayWeathe
           observedAt: monthDayTime(response.now.time ?? ""),
         }
       : null;
+  const airObservedAt =
+    response.air?.time && (response.air.pm10Grade != null || response.air.pm25Grade != null)
+      ? monthDayTime(response.air.time)
+      : null;
   const warningsHere = response.warnings?.active ?? [];
   const warningsNearby = response.warnings?.elsewhereInSido ?? [];
   if (!forecast) {
-    return { date, snapshot: null, source: null, now, warningsHere, warningsNearby, failed, unreachable: false };
+    return { date, snapshot: null, source: null, now, airObservedAt, warningsHere, warningsNearby, failed, unreachable: false };
   }
   const issued = monthDayTime(forecast.issued ?? "");
   const sources = [`기상청 ${forecast.source}${issued ? ` ${issued}` : ""} 발표`];
@@ -164,6 +170,7 @@ export function toDayWeather(date: string, response: WeatherResponse): DayWeathe
     },
     source: sources.join(" · "),
     now,
+    airObservedAt,
     warningsHere,
     warningsNearby,
     failed,
@@ -224,7 +231,7 @@ function loadDay(region: Region, date: string): Promise<DayWeather> {
         // 서버가 꺼졌거나 오류면 이 날은 "예보 확인 필요". 자세한 원인은 콘솔에만 남긴다.
         console.warn(`날씨 예보를 불러오지 못함 (${region.name} ${date})`, error);
         dayRequests.delete(key);
-        return { date, snapshot: null, source: null, now: null, warningsHere: [], warningsNearby: [], failed: [], unreachable: true };
+        return { date, snapshot: null, source: null, now: null, airObservedAt: null, warningsHere: [], warningsNearby: [], failed: [], unreachable: true };
       });
     dayRequests.set(key, { at: Date.now(), request });
   }

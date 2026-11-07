@@ -17,6 +17,7 @@ import { WeatherNotice } from "../components/WeatherNotice";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { WarningBanner } from "../components/WarningBanner";
 import { listWeatherExclusions } from "../lib/weatherExclusions";
+import { airTips } from "../lib/preparationTips";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
 import { loadMapPlaces, type MapPlaces, type MapSelection } from "../lib/nationalData";
@@ -220,6 +221,13 @@ export function AppPage() {
     recommendations[0]?.region ||
     destinationRegions[0] ||
     null;
+  // 여행 체크리스트에 더할 실시간 안내: 고른 관광지 지역의 날씨(일정 중 가장 나쁜 값)
+  const prepWeather = displayedRegion
+    ? weatherDemo
+      ? weatherPreset.weather
+      : regionWeather[displayedRegion.code]?.worst ?? null
+    : null;
+  const extraPrepTips = airTips(prepWeather);
   const liveRequestKey =
     displayedRegion && hasKakaoRestKey()
       ? `${displayedRegion.code}:${(people ?? []).map((person) => `${person.gender}-${person.ageGroup}`).join(",")}`
@@ -344,6 +352,7 @@ export function AppPage() {
                     regionName={weatherRegion?.name ?? null}
                     decision={weatherDecisions[weatherRegion?.code ?? destinationRegions[0].code]}
                     demoLabel={weatherPreset.label}
+                    demoWeather={weatherPreset.weather}
                   />
                 ) : weatherLoading || !weatherRegion ? (
                   <WeatherNotice mode="loading" regionName={weatherRegion?.name ?? null} />
@@ -395,7 +404,7 @@ export function AppPage() {
               />
               {people != null && <WeatherExcludedList items={weatherExclusions} />}
               {selectedAttraction && (
-                <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} />
+                <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} extraTips={extraPrepTips} />
               )}
               {selectedAttraction && (
                 <AttractionDetail

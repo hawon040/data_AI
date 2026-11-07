@@ -150,6 +150,22 @@
   font-size: 12px;
   line-height: 1.5;
 }
+.weather-dust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.weather-dust.is-bad strong {
+  color: var(--grade-4);
+}
+.weather-dust-tip {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: 12px;
+}
 .weather-now {
   margin: 0 0 8px;
   color: var(--text-secondary);
