@@ -15,6 +15,7 @@ import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
 import { TripPreparation } from "../components/TripPreparation";
 import { WeatherNotice } from "../components/WeatherNotice";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
+import { WarningBanner } from "../components/WarningBanner";
 import { listWeatherExclusions } from "../lib/weatherExclusions";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
@@ -354,6 +355,22 @@ export function AppPage() {
                     days={regionWeather[weatherRegion.code]?.days ?? []}
                   />
                 )
+              )}
+              {people != null && weatherRegion && (
+                <WarningBanner
+                  regionName={weatherRegion.name}
+                  here={
+                    weatherDemo
+                      ? weatherPreset.weather.warnings.map((kind) => `${kind}특보`)
+                      : [...new Set((regionWeather[weatherRegion.code]?.days ?? []).flatMap((day) => day.warningsHere))]
+                  }
+                  nearby={
+                    weatherDemo
+                      ? []
+                      : [...new Set((regionWeather[weatherRegion.code]?.days ?? []).flatMap((day) => day.warningsNearby))]
+                  }
+                  terrainExcluded={weatherDecisions[weatherRegion.code].excludedTerrains.length > 0}
+                />
               )}
               <RecommendationList
                 items={recommendations}

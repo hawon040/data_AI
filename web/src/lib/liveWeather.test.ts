@@ -72,6 +72,15 @@ describe("toDayWeather — 초단기실황·API별 실패", () => {
     expect(day.unreachable).toBe(false);
     expect(JSON.stringify(day)).not.toContain("HTTP 500");
   });
+  it("특보는 이 시군구 발효(warningsHere)와 같은 시도 다른 시군(warningsNearby)으로 나눈다", () => {
+    const day = toDayWeather(
+      "2026-11-08",
+      response({ warnings: { kinds: ["한파"], active: ["한파주의보"], elsewhereInSido: ["강풍주의보(태안)"] } }),
+    );
+    expect(day.warningsHere).toEqual(["한파주의보"]);
+    expect(day.warningsNearby).toEqual(["강풍주의보(태안)"]);
+    expect(day.snapshot?.warnings).toEqual(["한파"]);
+  });
   it("오늘이 아니면 now는 null", () => {
     expect(toDayWeather("2026-11-08", response()).now).toBeNull();
   });
