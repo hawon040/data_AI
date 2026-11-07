@@ -17,9 +17,11 @@ function RecommendationCard({
   onSelectAttraction,
   selected,
   weatherSummary,
+  attractionBadge,
 }: {
   item: RecommendationItem;
   weatherSummary: string | null;
+  attractionBadge: (attraction: Attraction) => string | null;
   rank?: number;
   onSelect: (r: Region) => void;
   onSelectAttraction: (a: Attraction) => void;
@@ -64,6 +66,7 @@ function RecommendationCard({
               }}
             >
               {attraction.name}
+              {attractionBadge(attraction) && <span className="attraction-badge">{attractionBadge(attraction)}</span>}
             </button>
           ))}
         </div>
@@ -99,6 +102,7 @@ export function RecommendationList({
   selectedCode,
   emptyMessage,
   weatherSummaryFor = () => null,
+  attractionBadge = () => null,
 }: {
   items: RecommendationItem[];
   exploreItems: RecommendationItem[];
@@ -108,6 +112,8 @@ export function RecommendationList({
   emptyMessage: string;
   /** 지역 코드별 날씨 규칙 요약 (lib/weatherRules.ts WeatherDecision.summary) */
   weatherSummaryFor?: (regionCode: string) => string | null;
+  /** 관광지 칩 옆 배지(예: 무장애 "편의 정보"). 정보가 있을 때만 문구를 돌려준다. 순서는 바꾸지 않는다. */
+  attractionBadge?: (attraction: Attraction) => string | null;
 }) {
   if (items.length === 0) {
     return <p className="empty-state">{emptyMessage}</p>;
@@ -124,6 +130,7 @@ export function RecommendationList({
           onSelectAttraction={onSelectAttraction}
           selected={selectedCode === item.region.code}
           weatherSummary={weatherSummaryFor(item.region.code)}
+          attractionBadge={attractionBadge}
         />
       ))}
 
@@ -138,6 +145,7 @@ export function RecommendationList({
               onSelectAttraction={onSelectAttraction}
               selected={selectedCode === item.region.code}
               weatherSummary={weatherSummaryFor(item.region.code)}
+              attractionBadge={attractionBadge}
             />
           ))}
         </>

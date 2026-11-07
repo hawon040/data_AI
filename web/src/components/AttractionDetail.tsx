@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { findRealPlace, hasKakaoRestKey, kakaoDirectionsUrl, kakaoSearchUrl, type PlaceDetail } from "../lib/kakaoLocal";
 import type { Attraction, Region } from "../lib/types";
+import type { AccessParty } from "../lib/liveAccess";
+import { AccessibilityInfo } from "./AccessibilityInfo";
 
 const TAG_LABELS: Record<string, string> = {
   history: "역사",
@@ -21,12 +23,15 @@ export function AttractionDetail({
   locationLabel,
   seasonalTiming,
   seasonalDescription,
+  party,
 }: {
   attraction: Attraction;
   region: Region | null;
   locationLabel?: string;
   seasonalTiming?: string;
   seasonalDescription?: string;
+  /** 주면 "이용 편의 정보" 칸(한국관광공사 무장애 여행정보)을 함께 보여 준다 */
+  party?: AccessParty;
 }) {
   const [lookup, setLookup] = useState<{ attraction: Attraction; place: PlaceDetail | null } | null>(null);
   const place = lookup?.attraction === attraction ? lookup.place : undefined;
@@ -92,6 +97,8 @@ export function AttractionDetail({
           카카오맵에서 보기
         </a>
       </div>
+
+      {party && <AccessibilityInfo attraction={attraction} party={party} />}
     </div>
   );
 }

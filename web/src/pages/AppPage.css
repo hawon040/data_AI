@@ -253,19 +253,30 @@
   font-size: 11px;
   line-height: 1.5;
 }
+/* 관광지 상세 패널 안의 "이용 편의 정보" 칸 */
 .accessibility-info {
-  padding: 16px 20px;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--blue);
-  border-radius: 16px;
-  background: var(--surface);
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
-.accessibility-info .field-label {
-  margin: 0 0 4px;
-}
-.accessibility-info h3 {
+.accessibility-info h5 {
   margin: 0;
-  font-size: 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.accessibility-source {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.attraction-badge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 700;
 }
 .accessibility-note {
   margin: 8px 0 0;

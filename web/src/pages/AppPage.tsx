@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AccessibilityInfo } from "../components/AccessibilityInfo";
 import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
@@ -18,6 +17,7 @@ import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { WarningBanner } from "../components/WarningBanner";
 import { listWeatherExclusions } from "../lib/weatherExclusions";
 import { airTips } from "../lib/preparationTips";
+import { toAccessSummary, useAttractionAccessMap } from "../lib/liveAccess";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
 import { loadMapPlaces, type MapPlaces, type MapSelection } from "../lib/nationalData";
@@ -227,7 +227,23 @@ export function AppPage() {
       ? weatherPreset.weather
       : regionWeather[displayedRegion.code]?.worst ?? null
     : null;
-  const extraPrepTips = airTips(prepWeather);
+  // 무장애(한국관광공사): 추천 카드 배지와 체크리스트 한 줄에 쓴다. 추천 순서는 바꾸지 않는다.
+  const { withElderly, withChildren } = safetyFilters;
+  const accessParty = useMemo(() => ({ withElderly, withChildren }), [withElderly, withChildren]);
+  const accessTargets = useMemo(() => {
+    const byName = new Map<string, Attraction>();
+    for (const item of [...recommendations, ...exploreRecommendations]) {
+      for (const { attraction } of item.topAttractions) byName.set(attraction.name, attraction);
+    }
+    if (selectedAttraction) byName.set(selectedAttraction.name, selectedAttraction);
+    return [...byName.values()];
+  }, [recommendations, exploreRecommendations, selectedAttraction]);
+  const accessMap = useAttractionAccessMap(accessTargets, accessParty);
+  const accessPrepTip =
+    selectedAttraction && (withElderly || withChildren)
+      ? toAccessSummary(selectedAttraction.name, accessMap[selectedAttraction.name]).prepTip
+      : null;
+  const extraPrepTips = [...airTips(prepWeather), ...(accessPrepTip ? [accessPrepTip] : [])];
   const liveRequestKey =
     displayedRegion && hasKakaoRestKey()
       ? `${displayedRegion.code}:${(people ?? []).map((person) => `${person.gender}-${person.ageGroup}`).join(",")}`
@@ -401,6 +417,9 @@ export function AppPage() {
                 onSelectAttraction={handleSelectAttraction}
                 selectedCode={displayedRegion?.code}
                 weatherSummaryFor={(code) => weatherDecisions[code]?.summary ?? null}
+                attractionBadge={(attraction) =>
+                  toAccessSummary(attraction.name, accessMap[attraction.name]).hasInfo ? "편의 정보" : null
+                }
               />
               {people != null && <WeatherExcludedList items={weatherExclusions} />}
               {selectedAttraction && (
@@ -413,12 +432,7 @@ export function AppPage() {
                   locationLabel={selectedSeasonalPlace?.location}
                   seasonalTiming={selectedSeasonalPlace?.timing}
                   seasonalDescription={selectedSeasonalPlace?.summary}
-                />
-              )}
-              {selectedAttraction && (
-                <AccessibilityInfo
-                  attraction={selectedAttraction}
-                  party={{ withElderly: safetyFilters.withElderly, withChildren: safetyFilters.withChildren }}
+                  party={accessParty}
                 />
               )}
               {displayedRegion && (
