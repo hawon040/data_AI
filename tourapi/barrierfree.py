@@ -14,6 +14,7 @@
 혼자 점검할 때:  py barrierfree.py check                     (청주 기준)
                  py barrierfree.py check 37.75 128.90        (위도 경도)
 결과 보기:       py barrierfree.py 36.64 127.49 senior,child
+웹으로 보기:     py barrierfree.py local                     (내 PC 서버를 켜고 /access 페이지 열기)
 """
 import json
 import os
@@ -272,6 +273,10 @@ if __name__ == "__main__":
     if args[:1] == ["check"]:
         rest = args[1:]
         check(float(rest[0]), float(rest[1])) if len(rest) == 2 else check()
+    elif args[:1] == ["local"]:
+        # 웹 서버는 api.py 것을 그대로 씁니다. 무장애 페이지(/access)를 바로 엽니다.
+        import api
+        api.run_web_app("/access")
     elif len(args) >= 2:
         print(json.dumps(fetch_nearby_access(args[0], args[1], args[2] if len(args) > 2 else ""),
                          ensure_ascii=False, indent=2))

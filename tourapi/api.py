@@ -997,6 +997,7 @@ NAV_ITEMS = [
     ("/", "홈"),
     ("/area", "지역 안전 종합"),
     ("/weather", "날씨 맞춤 추천"),
+    ("/access", "일행 맞춤 무장애"),
     ("/safety", "관광지 안전정보"),
     ("/tourspot", "전국 관광지"),
     ("/demand", "관광 자원 수요"),
@@ -1255,6 +1256,7 @@ HOME_PAGE = _build_page(
   <div class="hub">
     <a href="/area"><strong>지역 안전 종합</strong><span>지역별 응급의료기관·대피소·관광지 수용인원·관광수요를 한 화면에, 내 위치 주변 검색까지</span></a>
     <a href="/weather"><strong>날씨 맞춤 추천</strong><span>단기·중기예보, 기상특보, 미세먼지로 실내·야외 추천(어르신·아이 동반 기준 따로)</span></a>
+    <a href="/access"><strong>일행 맞춤 무장애 정보</strong><span>어르신·아이·휠체어·유아차에 필요한 편의시설 정보가 있는 주변 관광지(한국관광공사 무장애 여행정보)</span></a>
     <a href="/safety"><strong>관광지 안전정보</strong><span>지진해일대피소, 응급의료기관, 관광지 위치와 수용인원</span></a>
     <a href="/tourspot"><strong>전국 관광지</strong><span>전국관광지정보표준데이터 892곳의 시설·수용인원</span></a>
     <a href="/demand"><strong>관광 자원 수요</strong><span>시군구별 관광수요지수로 사람이 몰리는 지역 비교</span></a>
@@ -2211,10 +2213,196 @@ WEATHER_PAGE = _build_page(
 )
 
 
+ACCESS_PAGE = _build_page(
+    "/access",
+    "일행 맞춤 무장애 정보",
+    "어르신·아이·휠체어·유아차와 함께 갈 때 필요한 편의시설(주차·엘리베이터·화장실·유아차 대여 등) 정보가 있는 관광지를 가까운 곳부터 보여 줍니다.",
+    r"""
+  <div class="toolbar">
+    <label for="asido">시도</label>
+    <select id="asido"></select>
+    <label for="agungu">시군구</label>
+    <select id="agungu"></select>
+    <button id="alocate" type="button">내 위치</button>
+  </div>
+  <details class="note">
+    <summary>위도·경도 직접 입력</summary>
+    <div class="toolbar">
+      <label for="alat">위도</label>
+      <input id="alat" inputmode="decimal" size="8">
+      <label for="alon">경도</label>
+      <input id="alon" inputmode="decimal" size="8">
+    </div>
+    <p>시군구를 고르면 시청·군청 부근 좌표가 자동으로 들어갑니다.</p>
+  </details>
+  <div class="toolbar" role="group" aria-label="일행 구성">
+    <span>함께 가는 사람</span>
+    <label><input type="checkbox" name="with" value="senior" checked> 어르신</label>
+    <label><input type="checkbox" name="with" value="child"> 아이</label>
+    <label><input type="checkbox" name="with" value="wheelchair"> 휠체어</label>
+    <label><input type="checkbox" name="with" value="stroller"> 유아차</label>
+    <label for="aradius">반경</label>
+    <select id="aradius">
+      <option value="3000">3km</option>
+      <option value="5000" selected>5km</option>
+      <option value="10000">10km</option>
+      <option value="20000">20km</option>
+    </select>
+    <button id="asearch">조회</button>
+  </div>
+  <p class="note">출처: 한국관광공사 무장애 여행정보(KorWithService2) 위치기반 목록·무장애 상세정보(공공데이터포털). '맞는 정도'는 일행에게 필요한 시설 중 관광공사에 정보가 등록된 비율이며, 시설이 실제로 갖춰졌는지를 보장하지 않습니다. 결과는 6시간 동안 저장해 두고 씁니다.</p>
+  <div id="report"></div>
+  <div id="adetail"></div>
+""",
+    r"""
+    // 시도 → [[시군구, 위도, 경도], ...] (tourapi/sigungu.py)
+    const sigungu = __SIGUNGU__;
+    const report = document.querySelector("#report");
+    const detail = document.querySelector("#adetail");
+    const asido = document.querySelector("#asido");
+    const agungu = document.querySelector("#agungu");
+    const alat = document.querySelector("#alat");
+    const alon = document.querySelector("#alon");
+    const aradius = document.querySelector("#aradius");
+
+    for (const name of Object.keys(sigungu)) addText(asido, "option", name).value = name;
+
+    // 시도를 바꾸면 그 시도의 시군구만 다시 채웁니다.
+    function fillGungu(selected) {
+      agungu.replaceChildren();
+      for (const [name] of sigungu[asido.value]) addText(agungu, "option", name).value = name;
+      if (selected) agungu.value = selected;
+      applyGungu();
+    }
+
+    // 고른 시군구의 대표 좌표를 위도·경도 칸에 넣습니다.
+    function applyGungu() {
+      const row = sigungu[asido.value].find(([name]) => name === agungu.value);
+      if (row) [, alat.value, alon.value] = row;
+    }
+
+    asido.value = "충북";
+    fillGungu("청주시");
+
+    const party = () => [...document.querySelectorAll('input[name="with"]:checked')].map(box => box.value);
+
+    function addTable(parent, headers, rows) {
+      const wrap = addText(parent, "div", "");
+      wrap.className = "table-wrap";
+      const table = addText(wrap, "table", "");
+      const head = addText(addText(table, "thead", ""), "tr", "");
+      for (const header of headers) addText(head, "th", header);
+      const body = addText(table, "tbody", "");
+      return rows.map(cells => {
+        const tr = addText(body, "tr", "");
+        return cells.map(cell => addText(tr, "td", cell ?? "-"));
+      });
+    }
+
+    async function showDetail(place) {
+      detail.replaceChildren();
+      const section = addText(detail, "section", "");
+      addText(section, "h2", `${place.title} 무장애 정보`);
+      addText(section, "p", place.address || "").className = "note";
+      const wait = addText(section, "p", "불러오는 중...");
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      try {
+        const data = await getJson(`/api/access/detail?${new URLSearchParams({ contentId: place.contentId })}`);
+        wait.remove();
+        const keys = Object.keys(data.available);
+        if (!keys.length) {
+          addText(section, "p", "관광공사에 등록된 무장애 정보가 없습니다.").className = "note";
+          return;
+        }
+        addTable(section, ["항목", "내용"], keys.map(key => [data.labels[key] || key, cleanText(data.available[key])]));
+      } catch (exception) {
+        wait.textContent = exception.message;
+        wait.className = "far";
+      }
+    }
+
+    async function load() {
+      startLoading();
+      report.replaceChildren();
+      detail.replaceChildren();
+      const params = new URLSearchParams({
+        lat: alat.value.trim(), lon: alon.value.trim(), radius: aradius.value, with: party().join(",")
+      });
+      try {
+        const data = await getJson(`/api/access/nearby?${params}`);
+        status.textContent = "";
+        const who = data.needs.length ? data.needs.join("·") : "일행 조건 없음";
+        addText(report, "p", `${asido.value} ${agungu.value} (${alat.value}, ${alon.value}) 반경 ${data.radiusM / 1000}km · ${who}`).className = "note";
+        if (!data.places.length) {
+          addText(report, "p", "이 반경 안에 무장애 정보가 등록된 관광지가 없습니다. 반경을 넓혀 보세요.").className = "note";
+          return;
+        }
+        const withNeeds = data.needs.length > 0;
+        const rows = addTable(report, ["관광지", "거리", "맞는 정도", "정보가 있는 시설", "정보가 없는 시설"],
+          data.places.map(p => [
+            p.title,
+            `${p.distanceKm}km`,
+            p.fitScore === null ? "-" : `${p.fitScore}%`,
+            (withNeeds ? p.fitHave : p.facilities).join(", ") || "없음",
+            withNeeds ? (p.fitMissing.join(", ") || "없음") : "-"
+          ]));
+        rows.forEach((cells, index) => {
+          const place = data.places[index];
+          cells[0].replaceChildren();
+          const button = addText(cells[0], "button", place.title);
+          button.type = "button";
+          button.addEventListener("click", () => showDetail(place));
+        });
+        addText(report, "p", `관광지 이름을 누르면 등록된 무장애 정보를 모두 볼 수 있습니다. ${data.note}`).className = "note";
+        const failed = Object.keys(data.errors || {});
+        if (failed.length) addText(report, "p", `${failed.length}곳의 상세 정보를 불러오지 못했습니다.`).className = "note";
+      } catch (exception) {
+        showError(exception);
+      }
+    }
+
+    function locate() {
+      if (!navigator.geolocation) {
+        showError(new Error("이 브라우저에서는 위치 정보를 쓸 수 없습니다."));
+        return;
+      }
+      status.textContent = "현재 위치를 확인하는 중...";
+      navigator.geolocation.getCurrentPosition(position => {
+        const y = position.coords.latitude, x = position.coords.longitude;
+        // 대표 좌표가 가장 가까운 시군구를 골라 시도·시군구를 맞춥니다.
+        let best = null;
+        for (const [sido, rows] of Object.entries(sigungu)) {
+          for (const [name, la, lo] of rows) {
+            const d = (la - y) ** 2 + ((lo - x) * Math.cos(y * Math.PI / 180)) ** 2;
+            if (!best || d < best.d) best = { sido, name, d };
+          }
+        }
+        asido.value = best.sido;
+        fillGungu(best.name);
+        alat.value = y.toFixed(4);
+        alon.value = x.toFixed(4);
+        load();
+      }, () => showError(new Error("위치 권한이 거부되었거나 위치를 확인하지 못했습니다.")));
+    }
+
+    asido.addEventListener("change", () => { fillGungu(); load(); });
+    agungu.addEventListener("change", () => { applyGungu(); load(); });
+    aradius.addEventListener("change", load);
+    for (const box of document.querySelectorAll('input[name="with"]')) box.addEventListener("change", load);
+    for (const input of [alat, alon]) input.addEventListener("keydown", event => { if (event.key === "Enter") load(); });
+    document.querySelector("#asearch").addEventListener("click", load);
+    document.querySelector("#alocate").addEventListener("click", locate);
+    load();
+""".replace("__SIGUNGU__", json.dumps(SIGUNGU, ensure_ascii=False)),
+    listing=False,
+)
+
+
 PAGES = {
     "/": HOME_PAGE,
     "/area": AREA_PAGE,
     "/weather": WEATHER_PAGE,
+    "/access": ACCESS_PAGE,
     "/safety": SAFETY_PAGE,
     "/tourspot": TOURSPOT_PAGE,
     "/demand": DEMAND_PAGE,
