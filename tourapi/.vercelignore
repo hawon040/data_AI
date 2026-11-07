@@ -3,3 +3,5 @@ __pycache__
 .env*
 .vercel
 package.json
+logs
+fluent-bit

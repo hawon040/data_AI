@@ -1986,7 +1986,7 @@ WEATHER_PAGE = _build_page(
     </select>
     <button id="search">조회</button>
   </div>
-  <p class="note">출처: 기상청 단기예보·중기예보·기상특보 조회서비스, 한국환경공단 에어코리아 대기오염정보(공공데이터포털). 판단 기준은 팀 기준(안)이며 기상청·환경부 공식 기준이 아닙니다. 예보는 30분 동안 저장해 두고 씁니다.</p>
+  <p class="note">출처: 기상청 단기예보·중기예보·기상특보 조회서비스, 한국환경공단 에어코리아 대기오염정보(공공데이터포털). 판단 기준은 팀 기준(안)이며 기상청·환경부 공식 기준이 아닙니다. 예보는 1시간 동안 저장해 두고 씁니다.</p>
   <div id="report"></div>
 """,
     r"""
@@ -2294,8 +2294,47 @@ weather.use_cache(_module_cache(weather.WEATHER_CACHE_SECONDS, 2 * 24 * 60 * 60)
 barrierfree.use_cache(_module_cache(barrierfree.CACHE_SECONDS, 7 * 24 * 60 * 60))
 
 
+# ---------------------------------------------------------------------------
+# 접근 로그: 환경변수 ACCESS_LOG가 있을 때만 요청마다 JSON 한 줄을 logs/access.jsonl에 남깁니다.
+# Vercel에는 ACCESS_LOG를 넣지 않아 기록하지 않습니다(파일 시스템이 읽기 전용).
+# 쿼리 값(위도·경도·서비스키 등)은 남기지 않고 파라미터 이름만 남깁니다.
+# tourapi/fluent-bit/fluent-bit.conf가 이 파일을 읽어 갑니다.
+# ---------------------------------------------------------------------------
+ACCESS_LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", "access.jsonl")
+_access_log_lock = threading.Lock()
+
+
+def _access_level(status):
+    if status >= 500:
+        return "ERROR"
+    if status >= 400:
+        return "WARN"
+    return "INFO"
+
+
+def _write_access_log(path, query, status, started):
+    if not os.environ.get("ACCESS_LOG"):
+        return
+    record = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(started)),
+        "level": _access_level(status),
+        "path": path[:200],
+        "params": sorted(parse_qs(query, keep_blank_values=True)),
+        "status": status,
+        "ms": round((time.time() - started) * 1000, 1),
+    }
+    try:
+        with _access_log_lock:
+            os.makedirs(os.path.dirname(ACCESS_LOG_PATH), exist_ok=True)
+            with open(ACCESS_LOG_PATH, "a", encoding="utf-8") as log_file:
+                log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as error:   # 로그를 못 남겨도 응답은 그대로 보냅니다.
+        print(f"[접근 로그] 기록 실패: {error}")
+
+
 class TourRequestHandler(BaseHTTPRequestHandler):
     def _send(self, status_code, body, content_type):
+        self._status = status_code
         self.send_response(status_code)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -2308,7 +2347,21 @@ class TourRequestHandler(BaseHTTPRequestHandler):
         self._send(status_code, body, "application/json; charset=utf-8")
 
     def do_GET(self):
+        started = time.time()
         parsed_url = urlparse(self.path)
+        self._status = 500
+        try:
+            self._handle_get(parsed_url)
+        except Exception as error:   # 예상하지 못한 오류도 500으로 응답하고 로그에 남깁니다.
+            print(f"[웹 서버] 처리 중 오류: {error!r}")
+            try:
+                self._send_json(500, {"error": "서버에서 오류가 났습니다. 잠시 후 다시 시도해 주세요."})
+            except OSError:
+                pass
+        finally:
+            _write_access_log(parsed_url.path.rstrip("/") or "/", parsed_url.query, self._status, started)
+
+    def _handle_get(self, parsed_url):
         path = parsed_url.path.rstrip("/") or "/"
 
         if path in PAGES:
