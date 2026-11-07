@@ -36,9 +36,11 @@ DETAIL_LIMIT = 10                # 상세(무장애 정보)는 가까운 순 10�
 FIELDS = {
     # 이동이 불편한 분(어르신·휠체어)
     "parking": "장애인 주차",
-    "route": "대중교통·접근로",
+    "route": "접근로",
     "publictransport": "대중교통",
     "ticketoffice": "매표소",
+    "promotion": "홍보물",
+    "room": "객실",
     "wheelchair": "휠체어 대여·이용",
     "exit": "출입 통로",
     "elevator": "엘리베이터",
@@ -57,7 +59,7 @@ FIELDS = {
     # 청각
     "signguide": "수어 안내",
     "videoguide": "자막 영상",
-    "hearingroom": "청각 보조 공간",
+    "hearingroom": "객실(청각)",
     "hearinghandicapetc": "청각장애 기타",
     # 영유아 가족
     "stroller": "유아차 대여·이용",
