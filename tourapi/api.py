@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 import webbrowser
 import xml.etree.ElementTree as ET
 from weather import WEATHER_ROUTES
+from barrierfree import ACCESS_ROUTES
 from sigungu import SIGUNGU
 
 
@@ -2259,6 +2260,7 @@ for _service in ("eng", "pet"):
         ),
     })
 API_ROUTES.update(WEATHER_ROUTES)
+API_ROUTES.update(ACCESS_ROUTES)
 
 
 class TourRequestHandler(BaseHTTPRequestHandler):
