@@ -3,11 +3,11 @@ import { LandingNav } from "./Landing";
 import "./Landing.css";
 
 const STATS = [
-  { value: "2.1배", label: "추천 정밀도 (인기순 대비)", note: "가상 지역 시뮬레이션 100회 평균" },
-  { value: "97.8%", label: "동행자 전원 만족 비율", note: "최솟값 방식" },
+  { value: "2.1배", label: "추천 정밀도 (인기순 대비)", note: "가상 세계 100개 평균" },
+  { value: "97.8%", label: "동행자 전원 만족 비율", note: "최솟값 방식 · 가상 세계 100개 평균" },
   { value: "600/600", label: "파이썬·웹앱 수식 계산 일치", note: "최대 오차 3.9×10⁻¹⁶" },
   {
-    value: "128위",
+    value: "128.5위",
     label: "가중치만 바꿔도 흔들린 안전 순위 폭 (250곳 중)",
     note: "그래서 점수 대신 대비·대응 정보로 전환",
   },
