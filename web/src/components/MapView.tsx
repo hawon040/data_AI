@@ -331,17 +331,8 @@ export function MapView({
     const shown = highlightedCodes.size > 0 ? regions.filter((r) => highlightedCodes.has(r.code)) : regions;
     return (
       <div className="map-fallback">
-        <p>
-          {status === "no-key" ? (
-            <>
-              지도를 보려면 카카오 개발자 센터에서 JavaScript 키를 발급받아{" "}
-              <code>web/.env.local</code>에 <code>VITE_KAKAO_MAP_KEY</code>로 설정하세요.
-            </>
-          ) : (
-            "카카오맵을 불러오지 못했습니다. API 키와 플랫폼(Web) 도메인 등록을 확인하세요."
-          )}{" "}
-          지도가 없어도 추천된 실제 장소는 아래에서 볼 수 있습니다.
-        </p>
+        {/* 지도 키 설정 방법은 web/README.md에 있다. 사용자에게는 개발자용 안내를 보여 주지 않는다. */}
+        <p className="map-fallback-message">지도를 불러오지 못했어요. 아래 목록에서 장소를 확인하세요.</p>
         <ul className="fallback-region-list">
           {shown.map((r) => {
             const top = topAttractionsOf(r, people, 4);

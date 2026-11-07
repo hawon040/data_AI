@@ -52,7 +52,7 @@ function RecommendationCard({
       <p className="evidence-line">{shortEvidence(item, weatherSummary)}</p>
       {item.topAttractions.length > 0 && (
         <div className="attraction-chips">
-          {item.topAttractions.map(({ attraction, matchScore }) => (
+          {item.topAttractions.map(({ attraction }) => (
             <button
               key={attraction.name}
               type="button"
@@ -64,7 +64,6 @@ function RecommendationCard({
               }}
             >
               {attraction.name}
-              <span className="attraction-score">{Math.round(matchScore)}</span>
             </button>
           ))}
         </div>

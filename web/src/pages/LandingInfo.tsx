@@ -1,38 +1,41 @@
 import { Link, useNavigate } from "react-router-dom";
 import { LandingNav } from "./Landing";
-import { SAFETY_GRADES, SAFETY_GRADE_LABELS } from "../lib/safetyGrades";
 import "./Landing.css";
 
 const STATS = [
-  { value: "2.5배", label: "추천 정확도 (인기도 단독 대비)" },
-  { value: "68.3%", label: "동행자 전원 만족 비율" },
-  { value: "22%", label: "안전지수 오차 감소" },
-  { value: "10개", label: "시범 권역 (충청·강원)" },
+  { value: "2.1배", label: "추천 정밀도 (인기순 대비)", note: "가상 지역 시뮬레이션 100회 평균" },
+  { value: "97.8%", label: "동행자 전원 만족 비율", note: "최솟값 방식" },
+  { value: "600/600", label: "파이썬·웹앱 수식 계산 일치", note: "최대 오차 3.9×10⁻¹⁶" },
+  {
+    value: "128위",
+    label: "가중치만 바꿔도 흔들린 안전 순위 폭 (250곳 중)",
+    note: "그래서 점수 대신 대비·대응 정보로 전환",
+  },
 ];
 
 const FEATURES = [
   {
     num: "01",
-    title: "동행자 교집합 추천",
-    desc: "동행자 각각의 특화지수 중 최솟값을 기준으로, 모두가 평균 이상으로 만족하는 여행지만 골라낸다.",
+    title: "일행 모두가 만족하는 추천",
+    desc: "일행 각자의 선호 중 가장 낮은 값을 기준으로, 누구도 소외되지 않는 여행지를 고릅니다.",
     tag: "COMPANION MATCH",
   },
   {
     num: "02",
-    title: "여행자 관점 안전지수",
-    desc: "거주 인구가 아닌 관광객 체류를 반영한 유효인구로 보정 — 5단계 등급과 신뢰구간으로 투명하게 공개한다.",
-    tag: "SAFETY INDEX",
+    title: "대비 정보",
+    desc: "관광지에서 가까운 응급실·대피소·관광안내소와, 관광지 유형별 주의사항·준비물을 보여 줍니다.",
+    tag: "PREPAREDNESS",
   },
   {
     num: "03",
-    title: "여행 중 실시간 모드",
-    desc: "현재 위치 기준으로 지금 근처의 추천과 시간대별 안전 정보, 기상특보를 함께 띄운다.",
-    tag: "IN-TRIP (예정)",
+    title: "날씨 맞춤 추천",
+    desc: "비·눈·추위·더위·미세먼지·기상특보가 있으면 실내 장소를 먼저 추천합니다. 어르신·아이와 함께면 기준을 더 엄격하게 적용합니다.",
+    tag: "WEATHER",
   },
   {
     num: "04",
-    title: "광고 없는 추천 원칙",
-    desc: "리뷰나 협찬이 아니라 통신 데이터로 집계한 실제 이동만을 근거로 한다. 돈으로 순위를 바꿀 수 없다.",
+    title: "광고 없는 추천",
+    desc: "공공데이터만 근거로 하며, 광고나 협찬으로 순위를 바꾸지 않습니다.",
     tag: "NO ADS",
   },
 ];
@@ -41,18 +44,18 @@ const INFO_PAGES = {
   service: {
     eyebrow: "TRAVEL SERVICE",
     title: "여행에 필요한 것만, 한눈에",
-    description: "가고 싶은 곳을 찾고, 방문 전에 지역 안전 정보까지 살펴보세요.",
+    description: "가고 싶은 곳을 찾고, 방문 전에 날씨와 가까운 응급실·대피소까지 살펴보세요.",
   },
   methodology: {
-    eyebrow: "SAFETY METHODOLOGY",
-    title: "관광지에서 안전까지",
+    eyebrow: "METHODOLOGY",
+    title: "추천에서 대비·대응까지",
     description:
-      "먼저 취향에 맞는 관광지를 찾고, 방문 전에 그 지역의 안전 정보를 참고할 수 있습니다. 안전 등급은 참고 정보이며 관광지 추천 순위를 결정하지 않습니다.",
+      "먼저 일행과 날씨에 맞는 관광지를 고르고, 방문 전에 가까운 응급실·대피소와 날씨 변화에 대비합니다.",
   },
   validation: {
     eyebrow: "PROJECT RESULTS",
     title: "데이터로 확인한 추천",
-    description: "추천 방식과 안전 지표 산출을 가상 지역 시뮬레이션으로 검토했습니다.",
+    description: "추천 방식과 수식 계산을 가상 지역 시뮬레이션과 교차 계산으로 검토했습니다.",
   },
 } as const;
 
@@ -98,42 +101,27 @@ export function LandingInfo({ section }: { section: LandingInfoSection }) {
                 <span>01</span>
                 <div>
                   <strong>관광지 추천</strong>
-                  <p>동행자 연령대 선호와 관광지 인기도를 바탕으로 후보를 제안합니다.</p>
+                  <p>일행 구성·관심사·날씨로 후보를 고릅니다.</p>
                 </div>
               </li>
               <li>
                 <span>02</span>
                 <div>
-                  <strong>지역 안전 정보</strong>
-                  <p>여행자 체류를 고려한 지역 안전 지표와 5단계 등급을 보여줍니다. 1등급이 가장 안전하고, 5등급은 안전하지 않음을 뜻합니다.</p>
+                  <strong>대비</strong>
+                  <p>가까운 응급실·대피소·관광안내소와 유형별 주의사항을 확인합니다.</p>
                 </div>
               </li>
               <li>
                 <span>03</span>
                 <div>
-                  <strong>참고 후 선택</strong>
-                  <p>관광 정보를 살펴보고 일정과 취향에 맞춰 여행지를 선택합니다.</p>
+                  <strong>대응</strong>
+                  <p>방문일 예보와 기상특보에 따라 실내 대안을 함께 보여 줍니다.</p>
                 </div>
               </li>
             </ol>
-            <section className="safety-grade-guide" aria-labelledby="safety-grade-guide-title">
-              <div className="safety-grade-guide-heading">
-                <h2 id="safety-grade-guide-title">안전등급 기준</h2>
-                <span aria-label="위로 갈수록 안전">↑ 위로 갈수록 안전</span>
-              </div>
-              <ol className="safety-grade-pyramid" aria-label="안전등급은 위로 갈수록 더 안전합니다">
-                {SAFETY_GRADES.map((grade) => (
-                  <li className={`safety-grade-level safety-grade-level-${grade}`} key={grade}>
-                    <strong>{grade}등급</strong>
-                    <span>{SAFETY_GRADE_LABELS[grade]}</span>
-                  </li>
-                ))}
-              </ol>
-              <p className="safety-grade-caveat">
-                등급은 지역 단위 지표를 바탕으로 한 참고 정보이며, 특정 장소나 개인의 안전을 보장하지 않습니다.
-              </p>
-            </section>
-            <p className="methodology-note">현재 방문·안전 지표는 시범용 샘플 데이터입니다.</p>
+            <p className="methodology-note">
+              안전 정보는 참고용이며 특정 장소나 개인의 안전을 보장하지 않습니다. 기상 정보는 기상청·에어코리아 발표를 따릅니다.
+            </p>
           </div>
         )}
 
@@ -144,17 +132,18 @@ export function LandingInfo({ section }: { section: LandingInfoSection }) {
                 <article className="stat-cell" key={stat.label}>
                   <div className="stat-value">{stat.value}</div>
                   <div className="stat-label">{stat.label}</div>
+                  <div className="stat-note">{stat.note}</div>
                 </article>
               ))}
             </div>
             <p className="validation-caveat">
-              시뮬레이션 결과이며 실제 지역의 성과나 안전을 보장하지 않습니다.
+              시뮬레이션은 정답을 아는 가상 지역으로 방식 간 차이를 확인한 실험이며, 실제 지역의 정확도가 아닙니다.
             </p>
           </>
         )}
 
         <div className="landing-info-cta">
-          <p>취향에 맞는 여행지를 추천받고, 지역 안전 정보도 함께 확인하세요.</p>
+          <p>날씨와 일행에 맞는 여행지를 추천받고, 가까운 응급실·대피소도 함께 확인하세요.</p>
           <button className="pill-button primary" onClick={() => navigate("/app")}>
             관광지 추천받기
           </button>

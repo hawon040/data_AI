@@ -139,17 +139,6 @@
   font-size: 11px;
   font-weight: 700;
 }
-.section-menu-divider {
-  height: 1px;
-  margin: 8px 10px;
-  background: var(--border);
-}
-.section-menu-about {
-  color: var(--text-secondary);
-}
-.section-menu-about span:first-child {
-  min-width: 22px;
-}
 @keyframes section-menu-enter {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -573,6 +562,13 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+.stat-note {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
 .stats-caveat {
   grid-column: 1 / -1;
   text-align: center;
@@ -934,61 +930,6 @@
   font-size: 14px;
   line-height: 1.7;
 }
-.safety-grade-guide {
-  margin-top: 24px;
-  padding: 22px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: #fff;
-}
-.safety-grade-guide-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.safety-grade-guide-heading h2 {
-  margin: 0;
-  font-size: 18px;
-}
-.safety-grade-guide-heading > span {
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 700;
-}
-.safety-grade-pyramid {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.safety-grade-level {
-  display: flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border-radius: 8px;
-  font-size: 14px;
-}
-.safety-grade-level strong {
-  font-weight: 800;
-}
-.safety-grade-level-1 { width: 38%; background: var(--grade-1); color: #062c20; }
-.safety-grade-level-2 { width: 52%; background: var(--grade-2); color: #102b10; }
-.safety-grade-level-3 { width: 66%; background: var(--grade-3); color: #30220a; }
-.safety-grade-level-4 { width: 82%; background: var(--grade-4); color: #fff; }
-.safety-grade-level-5 { width: 100%; background: var(--grade-5); color: #fff; }
-.safety-grade-caveat {
-  margin: 14px 0 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.65;
-}
 .landing-methodology-content .methodology-note {
   margin-top: 22px;
 }
@@ -1019,10 +960,6 @@
 }
 
 @media (max-width: 720px) {
-  .safety-grade-level-1 { width: 78%; }
-  .safety-grade-level-2 { width: 84%; }
-  .safety-grade-level-3 { width: 90%; }
-  .safety-grade-level-4 { width: 96%; }
   .stats-band {
     padding: 36px 24px 24px;
   }

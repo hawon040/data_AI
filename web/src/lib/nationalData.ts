@@ -94,13 +94,20 @@ export type MapSelection =
   | { type: "medical"; place: MedicalPlace };
 
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${TOURAPI_BASE}${path}`);
+  // 서버 켜는 방법은 web/README.md에 있다. 자세한 원인은 개발자 도구 콘솔에만 남긴다.
+  const failed = (detail: unknown) => {
+    console.warn(`tourapi ${path} 요청 실패`, detail);
+    return new Error("실시간 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+  };
+  let response: Response;
+  try {
+    response = await fetch(`${TOURAPI_BASE}${path}`);
+  } catch (error) {
+    throw failed(error);
+  }
   const body = await response.json().catch(() => null);
   if (!response.ok || body === null) {
-    throw new Error(
-      body?.error ??
-        "tourapi 서버에 연결하지 못했습니다. tourapi 폴더에서 `py api.py local`로 서버를 켰는지 확인하세요.",
-    );
+    throw failed(`HTTP ${response.status} ${body?.error ?? ""}`);
   }
   return body as T;
 }

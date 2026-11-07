@@ -639,12 +639,6 @@
   text-decoration: underline;
   cursor: pointer;
 }
-.attraction-score {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--teal);
-  font-family: "DM Sans", sans-serif;
-}
 
 .safety-badge {
   font-size: 11px;
@@ -683,17 +677,21 @@
   pointer-events: none;
 }
 .map-fallback {
-  height: 620px;
+  /* 지도 대신 목록만 보여 줄 때는 지도 크기의 빈 영역을 남기지 않는다. */
+  height: auto;
+  max-height: 620px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
   font-size: 13px;
   color: var(--text-secondary);
   overflow-y: auto;
 }
-.map-fallback code {
-  color: var(--teal);
+.map-fallback-message {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 .fallback-region-list {
   font-size: 12px;
@@ -739,9 +737,11 @@
   }
 }
 @media (max-width: 680px) {
-  .map-view-wrap,
-  .map-fallback {
+  .map-view-wrap {
     height: 420px;
+  }
+  .map-fallback {
+    max-height: 420px;
   }
   .map-info-rail {
     max-height: none;

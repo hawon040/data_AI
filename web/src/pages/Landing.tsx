@@ -236,7 +236,7 @@ export function LandingNav() {
           <path d="M12 3 19 6v5c0 4.6-2.9 8.1-7 10-4.1-1.9-7-5.4-7-10V6l7-3Z" />
           <path d="m9 12 2 2 4-4" />
         </svg>
-        안전지수 안내
+        안전 정보 안내
       </Link>
       {menuOpen && (
         <div className="section-menu" id="landing-section-menu">
@@ -252,15 +252,6 @@ export function LandingNav() {
               <span>{label}</span>
             </Link>
           ))}
-          <div className="section-menu-divider" />
-          <Link
-            className="section-menu-item section-menu-about"
-            to="/about"
-            onClick={() => setMenuOpen(false)}
-          >
-            <span>정보</span>
-            <span>구현 방식 &amp; 신뢰성</span>
-          </Link>
         </div>
       )}
     </nav>
@@ -358,7 +349,7 @@ export function Landing() {
             얼마나 안전한지 한 번에
           </h1>
           <p className="hero-lead">
-            성·연령 방문 데이터로 맞춤 관광지를 추천하고 안전지수를 함께 보여드려요.
+            날씨와 일행에 맞는 관광지를 추천하고, 가까운 응급실·대피소까지 함께 알려드려요.
           </p>
         <div className={`hero-actions${launching ? " is-launching" : ""}`}>
           <button
@@ -400,9 +391,9 @@ export function Landing() {
             <p className="footer-desc">
               맞춤 관광지 추천부터 여행자 관점의 안전 정보까지.
               <br />
-              성·연령 방문 데이터 기반 맞춤 관광지 추천 플랫폼
+              날씨·일행 맞춤 관광지 추천과 가까운 응급실·대피소 안내
               <br />
-              관광 노출 보정 안전지수 — 창업 도전 프로젝트
+              빅데이터와 AI 2조 프로젝트
             </p>
           </div>
         </div>
