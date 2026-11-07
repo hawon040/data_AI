@@ -48,6 +48,8 @@ interface WeatherResponse {
   warnings: { kinds?: string[]; active?: string[]; elsewhereInSido?: string[] } | null;
   /** 초단기실황(방문일이 오늘일 때만) */
   now?: { time?: string; temp?: number | null; precipType?: string | null } | null;
+  /** weather.py decide() 결과 중 준비물 */
+  recommend?: { tips?: string[] } | null;
   /** 하위 API별 실패 (short·short_prev·mid·warnings·air·now → 오류 문구). 문구는 화면에 내보내지 않는다. */
   errors?: Record<string, string>;
 }
@@ -87,6 +89,8 @@ export interface DayWeather {
   warningsHere: string[];
   /** 같은 시도의 다른 시군에만 있는 특보 (예: "한파주의보(영동)") */
   warningsNearby: string[];
+  /** weather.py decide()의 준비물 (예: "우산", "방한용품") */
+  tips: string[];
   /** 이 날 불러오지 못한 칸 */
   failed: WeatherPart[];
   /** 서버에 아예 연결하지 못했는지 */
@@ -97,6 +101,8 @@ export interface RegionWeather {
   days: DayWeather[];
   /** 예보가 있는 날들 중 항목별로 가장 나쁜 값. 예보가 하나도 없으면 null */
   worst: WeatherSnapshot | null;
+  /** 일정 전체의 weather.py 준비물(겹치지 않게 합친 것) */
+  tips: string[];
 }
 
 export const EMPTY_WEATHER: WeatherSnapshot = {
@@ -149,8 +155,9 @@ export function toDayWeather(date: string, response: WeatherResponse): DayWeathe
       : null;
   const warningsHere = response.warnings?.active ?? [];
   const warningsNearby = response.warnings?.elsewhereInSido ?? [];
+  const tips = response.recommend?.tips ?? [];
   if (!forecast) {
-    return { date, snapshot: null, source: null, now, airObservedAt, warningsHere, warningsNearby, failed, unreachable: false };
+    return { date, snapshot: null, source: null, now, airObservedAt, warningsHere, warningsNearby, tips, failed, unreachable: false };
   }
   const issued = monthDayTime(forecast.issued ?? "");
   const sources = [`기상청 ${forecast.source}${issued ? ` ${issued}` : ""} 발표`];
@@ -173,6 +180,7 @@ export function toDayWeather(date: string, response: WeatherResponse): DayWeathe
     airObservedAt,
     warningsHere,
     warningsNearby,
+    tips,
     failed,
     unreachable: false,
   };
@@ -209,9 +217,10 @@ export function worstOf(snapshots: WeatherSnapshot[]): WeatherSnapshot | null {
 const CLIENT_CACHE_MS = 30 * 60 * 1000;
 const dayRequests = new Map<string, { at: number; request: Promise<DayWeather> }>();
 
-/** 지역 하나의 하루 예보. 같은 지역·날짜는 30분 동안 다시 부르지 않는다(실패하면 다음에 다시 부른다). */
-function loadDay(region: Region, date: string): Promise<DayWeather> {
-  const key = `${region.code}|${date}`;
+/** 지역 하나의 하루 예보. 같은 지역·날짜·일행은 30분 동안 다시 부르지 않는다(실패하면 다음에 다시 부른다).
+ * withParam(senior,child)은 weather.py decide()의 준비물(tips)이 어르신·아이 기준을 따르게 할 때 쓴다. */
+function loadDay(region: Region, date: string, withParam: string): Promise<DayWeather> {
+  const key = `${region.code}|${date}|${withParam}`;
   const cached = dayRequests.get(key);
   let request = cached && Date.now() - cached.at < CLIENT_CACHE_MS ? cached.request : undefined;
   if (!request) {
@@ -221,6 +230,7 @@ function loadDay(region: Region, date: string): Promise<DayWeather> {
       sido: SIDO_KEYS[region.province] ?? region.province,
       gungu: region.name,
       date: date.replace(/-/g, ""),
+      with: withParam,
     });
     request = fetch(`${TOURAPI_BASE}/api/weather?${params}`)
       .then(async (response) => {
@@ -231,7 +241,7 @@ function loadDay(region: Region, date: string): Promise<DayWeather> {
         // 서버가 꺼졌거나 오류면 이 날은 "예보 확인 필요". 자세한 원인은 콘솔에만 남긴다.
         console.warn(`날씨 예보를 불러오지 못함 (${region.name} ${date})`, error);
         dayRequests.delete(key);
-        return { date, snapshot: null, source: null, now: null, airObservedAt: null, warningsHere: [], warningsNearby: [], failed: [], unreachable: true };
+        return { date, snapshot: null, source: null, now: null, airObservedAt: null, warningsHere: [], warningsNearby: [], tips: [], failed: [], unreachable: true };
       });
     dayRequests.set(key, { at: Date.now(), request });
   }
@@ -239,7 +249,11 @@ function loadDay(region: Region, date: string): Promise<DayWeather> {
 }
 
 /** 지역 하나의 일정 전체 예보. */
-export async function loadRegionWeather(region: Region, dates: string[]): Promise<RegionWeather> {
-  const days = await Promise.all(dates.map((date) => loadDay(region, date)));
-  return { days, worst: worstOf(days.flatMap((day) => (day.snapshot ? [day.snapshot] : []))) };
+export async function loadRegionWeather(region: Region, dates: string[], withParam = ""): Promise<RegionWeather> {
+  const days = await Promise.all(dates.map((date) => loadDay(region, date, withParam)));
+  return {
+    days,
+    worst: worstOf(days.flatMap((day) => (day.snapshot ? [day.snapshot] : []))),
+    tips: [...new Set(days.flatMap((day) => day.tips))],
+  };
 }

@@ -16,7 +16,7 @@ import { WeatherNotice } from "../components/WeatherNotice";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { WarningBanner } from "../components/WarningBanner";
 import { listWeatherExclusions } from "../lib/weatherExclusions";
-import { airTips } from "../lib/preparationTips";
+import { airTips, weatherTipSentences } from "../lib/preparationTips";
 import { toAccessSummary, useAttractionAccessMap } from "../lib/liveAccess";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
@@ -110,7 +110,9 @@ export function AppPage() {
   const weatherDemo = tripPreferences.weatherDemo;
   const { duration, visitDate, nights } = tripPreferences;
   const tripDays = useMemo(() => tripDates({ duration, visitDate, nights }), [duration, visitDate, nights]);
-  const weatherKey = `${destinationRegions.map((region) => region.code).join(",")}|${tripDays.join(",")}`;
+  // 어르신·아이 동반이면 weather.py가 준비물(tips)을 엄격 기준으로 낸다(판정은 웹 weatherRules가 따로 한다).
+  const weatherWith = [safetyFilters.withElderly && "senior", safetyFilters.withChildren && "child"].filter(Boolean).join(",");
+  const weatherKey = `${destinationRegions.map((region) => region.code).join(",")}|${tripDays.join(",")}|${weatherWith}`;
   const useLiveWeather = people != null && !weatherDemo && destinationRegions.length > 0;
   const [liveWeather, setLiveWeather] = useState<{ key: string; byRegion: Record<string, RegionWeather> }>({
     key: "",
@@ -120,14 +122,14 @@ export function AppPage() {
     if (!useLiveWeather) return;
     let cancelled = false;
     Promise.all(
-      destinationRegions.map(async (region) => [region.code, await loadRegionWeather(region, tripDays)] as const),
+      destinationRegions.map(async (region) => [region.code, await loadRegionWeather(region, tripDays, weatherWith)] as const),
     ).then((entries) => {
       if (!cancelled) setLiveWeather({ key: weatherKey, byRegion: Object.fromEntries(entries) });
     });
     return () => {
       cancelled = true;
     };
-  }, [useLiveWeather, weatherKey, destinationRegions, tripDays]);
+  }, [useLiveWeather, weatherKey, destinationRegions, tripDays, weatherWith]);
   const weatherLoading = useLiveWeather && liveWeather.key !== weatherKey;
   const regionWeather = useMemo(
     () => (liveWeather.key === weatherKey ? liveWeather.byRegion : {}),
@@ -243,7 +245,12 @@ export function AppPage() {
     selectedAttraction && (withElderly || withChildren)
       ? toAccessSummary(selectedAttraction.name, accessMap[selectedAttraction.name]).prepTip
       : null;
-  const extraPrepTips = [...airTips(prepWeather), ...(accessPrepTip ? [accessPrepTip] : [])];
+  const prepWeatherTips = displayedRegion && !weatherDemo ? regionWeather[displayedRegion.code]?.tips ?? [] : [];
+  const extraPrepTips = [
+    ...weatherTipSentences(prepWeatherTips),
+    ...airTips(prepWeather),
+    ...(accessPrepTip ? [accessPrepTip] : []),
+  ];
   const liveRequestKey =
     displayedRegion && hasKakaoRestKey()
       ? `${displayedRegion.code}:${(people ?? []).map((person) => `${person.gender}-${person.ageGroup}`).join(",")}`

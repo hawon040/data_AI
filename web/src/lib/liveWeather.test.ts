@@ -81,6 +81,12 @@ describe("toDayWeather — 초단기실황·API별 실패", () => {
     expect(day.warningsNearby).toEqual(["강풍주의보(태안)"]);
     expect(day.snapshot?.warnings).toEqual(["한파"]);
   });
+  it("weather.py decide()의 준비물(tips)을 그대로 받는다", () => {
+    expect(toDayWeather("2026-11-08", response({ recommend: { tips: ["우산", "미끄럼 주의"] } })).tips).toEqual([
+      "우산",
+      "미끄럼 주의",
+    ]);
+  });
   it("오늘이 아니면 now는 null", () => {
     expect(toDayWeather("2026-11-08", response()).now).toBeNull();
   });
