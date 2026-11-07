@@ -1094,6 +1094,13 @@
 .legend-spot { border-radius: 50%; background: #3563d9; }
 .legend-shelter { border-radius: 3px; background: #0f9d6b; }
 .legend-pick { border-radius: 50%; background: #00c9a7; }
+.fallback-tabs {
+  margin-top: 4px;
+}
+.fallback-tabs label[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
 .fallback-national-heading {
   margin: 8px 0 0;
   color: var(--text-secondary);

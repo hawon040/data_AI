@@ -27,6 +27,124 @@ function loadKakaoSdk(appKey: string): Promise<void> {
   });
 }
 
+type FallbackTab = "spot" | "pet" | "medical";
+const FALLBACK_LIMIT = 30;
+
+/**
+ * 지도 키가 없을 때 쓰는 장소 목록. 지도 마커 대신 '관광지 / 반려동물 동반 / 의료관광' 탭으로 나누고,
+ * 항목을 누르면 마커를 눌렀을 때와 같은 onSelectPlace를 불러 같은 상세 패널이 열린다.
+ */
+function FallbackPlaceTabs({
+  spots,
+  pets,
+  medical,
+  onSelectPlace,
+}: {
+  spots: NationalSpot[];
+  pets: PetPlace[];
+  medical: MedicalPlace[];
+  onSelectPlace?: (selection: MapSelection) => void;
+}) {
+  const [tab, setTab] = useState<FallbackTab>("spot");
+  const tabs: { id: FallbackTab; label: string; count: number }[] = [
+    { id: "spot", label: "관광지", count: spots.length },
+    { id: "pet", label: "반려동물 동반", count: pets.length },
+    { id: "medical", label: "의료관광", count: medical.length },
+  ];
+  if (tabs.every((t) => t.count === 0)) return null;
+  const active = tabs.find((t) => t.id === tab && t.count > 0) ?? tabs.find((t) => t.count > 0)!;
+
+  return (
+    <>
+      <div className="segmented is-three fallback-tabs" role="tablist" aria-label="목록 종류">
+        {tabs.map((t) => (
+          <label key={t.id} aria-disabled={t.count === 0}>
+            <input
+              type="radio"
+              name="fallback-tab"
+              role="tab"
+              aria-selected={active.id === t.id}
+              checked={active.id === t.id}
+              disabled={t.count === 0}
+              onChange={() => setTab(t.id)}
+            />
+            <span>
+              {t.label} {t.count.toLocaleString("ko-KR")}
+            </span>
+          </label>
+        ))}
+      </div>
+      {active.id === "spot" && (
+        <>
+          <p className="fallback-national-heading">
+            전국 관광지 {spots.length.toLocaleString("ko-KR")}곳 (수용인원 많은 순)
+          </p>
+          <ul className="fallback-region-list">
+            {[...spots]
+              .sort((a, b) => (b.capacity ?? 0) - (a.capacity ?? 0))
+              .slice(0, FALLBACK_LIMIT)
+              .map((spot) => (
+                <li key={`${spot.name}-${spot.lat}`}>
+                  <button
+                    type="button"
+                    className="fallback-attraction-link"
+                    onClick={() => onSelectPlace?.({ type: "spot", place: spot })}
+                  >
+                    {spot.name}
+                  </button>{" "}
+                  — {spot.province} {spot.district}
+                </li>
+              ))}
+          </ul>
+        </>
+      )}
+      {active.id === "pet" && (
+        <>
+          <p className="fallback-national-heading">
+            반려동물 동반 장소 {pets.length.toLocaleString("ko-KR")}곳
+            {pets.length > FALLBACK_LIMIT && ` 중 ${FALLBACK_LIMIT}곳`} (한국관광공사 반려동물 동반여행)
+          </p>
+          <ul className="fallback-region-list">
+            {pets.slice(0, FALLBACK_LIMIT).map((place) => (
+              <li key={place.contentId || `${place.name}-${place.lat}`}>
+                <button
+                  type="button"
+                  className="fallback-attraction-link"
+                  onClick={() => onSelectPlace?.({ type: "pet", place })}
+                >
+                  {place.name}
+                </button>{" "}
+                — {[place.kind, place.address].filter(Boolean).join(" · ")}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {active.id === "medical" && (
+        <>
+          <p className="fallback-national-heading">
+            의료관광 기관 {medical.length.toLocaleString("ko-KR")}곳 (한국관광공사 의료관광정보)
+          </p>
+          <ul className="fallback-region-list">
+            {medical.slice(0, FALLBACK_LIMIT).map((place) => (
+              <li key={place.contentId || `${place.name}-${place.lat}`}>
+                <button
+                  type="button"
+                  className="fallback-attraction-link"
+                  onClick={() => onSelectPlace?.({ type: "medical", place })}
+                >
+                  {place.name}
+                </button>{" "}
+                — {place.address}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  );
+}
+
 export function MapView({
   regions,
   highlightedCodes,
@@ -360,30 +478,7 @@ export function MapView({
             );
           })}
         </ul>
-        {nationalSpots.length > 0 && (
-          <>
-            <p className="fallback-national-heading">
-              전국 관광지 {nationalSpots.length.toLocaleString("ko-KR")}곳 (수용인원 많은 순)
-            </p>
-            <ul className="fallback-region-list">
-              {[...nationalSpots]
-                .sort((a, b) => (b.capacity ?? 0) - (a.capacity ?? 0))
-                .slice(0, 30)
-                .map((spot) => (
-                  <li key={`${spot.name}-${spot.lat}`}>
-                    <button
-                      type="button"
-                      className="fallback-attraction-link"
-                      onClick={() => onSelectPlace?.({ type: "spot", place: spot })}
-                    >
-                      {spot.name}
-                    </button>{" "}
-                    — {spot.province} {spot.district}
-                  </li>
-                ))}
-            </ul>
-          </>
-        )}
+        <FallbackPlaceTabs spots={nationalSpots} pets={pets} medical={medical} onSelectPlace={onSelectPlace} />
       </div>
     );
   }
