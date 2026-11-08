@@ -2,8 +2,11 @@
  * 실시간 정보로 여행 체크리스트(TripPreparation)에 더하는 안내.
  *  - weather.py decide()의 준비물(tips: 우산·방한용품·자외선 차단 등) → 문장으로 바꿔 합친다
  *  - 에어코리아 미세먼지 나쁨 이상 → 마스크 안내
+ *  - 추천된 관광지 종류(바다·산·계곡, attractionSetting.classifyAttraction) → 종류별 준비물
  * 기존 문구(getPreparationTips)와 뜻이 겹치면(같은 주제 낱말) 하나만 남긴다.
  */
+import { classifyAttraction, TERRAIN_LABELS, type Terrain } from "./attractionSetting";
+import type { Attraction } from "./types";
 import type { WeatherSnapshot } from "./weatherRules";
 
 export const MASK_TIP = "미세먼지가 나쁨 이상이에요. 마스크를 준비하세요.";
@@ -32,6 +35,16 @@ const TOPICS: string[][] = [
   ["한낮"],
   ["마스크"],
   ["대피소"],
+  ["등산화"],
+  ["간식"],
+  ["바람막이"],
+  ["하산"],
+  ["보조배터리"],
+  ["물때"],
+  ["여벌 옷"],
+  ["구명조끼"],
+  ["불어나는 물"],
+  ["등산 스틱", "쉬운 코스"],
 ];
 
 function topicsOf(tip: string): Set<number> {
@@ -59,4 +72,56 @@ export function mergeTips(base: string[], extra: string[]): string[] {
     if (!overlaps) merged.push(tip);
   }
   return merged;
+}
+
+/** 관광지 종류별 준비물 (팀 안내 문구, 공식 기준 아님) */
+const TERRAIN_TIP_TEXT: Record<Terrain, string[]> = {
+  mountain: [
+    "등산화를 신으세요.",
+    "물과 간식을 챙기세요.",
+    "바람막이를 챙기세요.",
+    "해 지기 전에 하산하세요.",
+    "보조배터리를 챙기세요.",
+  ],
+  sea: [
+    "자외선 차단제를 챙기세요.",
+    "여벌 옷과 수건을 챙기세요.",
+    "물때를 확인하세요.",
+    "갯바위에서는 미끄럼에 주의하세요.",
+  ],
+  valley: [
+    "미끄럼 방지 신발을 신으세요.",
+    "여벌 옷을 챙기세요.",
+    "비 온 뒤에는 불어나는 물에 주의하세요.",
+  ],
+};
+const ELDERLY_MOUNTAIN_TIP = "어르신과 함께라면 등산 스틱을 챙기고 쉬운 코스를 고르세요.";
+const CHILD_WATER_TIP = "아이는 물가에서 구명조끼를 입히세요.";
+const TERRAIN_ORDER: Terrain[] = ["mountain", "sea", "valley"];
+
+/**
+ * 추천된 관광지 가운데 바다·산·계곡이 있을 때만, 어느 관광지 때문인지 붙여 종류별 준비물을 만든다.
+ * 예: "정동진(바다): 물때를 확인하세요."  관광지가 셋 이상이면 "경포해변·안목해변 카페거리 외 2곳(바다): …"
+ */
+export function terrainTips(
+  attractions: Pick<Attraction, "name" | "category">[],
+  party: { withElderly: boolean; withChildren: boolean },
+): string[] {
+  const names = new Map<Terrain, string[]>();
+  for (const attraction of attractions) {
+    for (const terrain of classifyAttraction(attraction).terrains) {
+      const list = names.get(terrain) ?? [];
+      if (!list.includes(attraction.name)) list.push(attraction.name);
+      names.set(terrain, list);
+    }
+  }
+  return TERRAIN_ORDER.flatMap((terrain) => {
+    const list = names.get(terrain);
+    if (!list?.length) return [];
+    const who = list.length <= 2 ? list.join("·") : `${list.slice(0, 2).join("·")} 외 ${list.length - 2}곳`;
+    const tips = [...TERRAIN_TIP_TEXT[terrain]];
+    if (terrain === "mountain" && party.withElderly) tips.push(ELDERLY_MOUNTAIN_TIP);
+    if (terrain !== "mountain" && party.withChildren) tips.push(CHILD_WATER_TIP);
+    return tips.map((tip) => `${who}(${TERRAIN_LABELS[terrain]}): ${tip}`);
+  });
 }

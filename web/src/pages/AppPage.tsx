@@ -16,7 +16,7 @@ import { WeatherNotice } from "../components/WeatherNotice";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { WarningBanner } from "../components/WarningBanner";
 import { listWeatherExclusions } from "../lib/weatherExclusions";
-import { airTips, weatherTipSentences } from "../lib/preparationTips";
+import { airTips, terrainTips, weatherTipSentences } from "../lib/preparationTips";
 import { toAccessSummary, useAttractionAccessMap } from "../lib/liveAccess";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
@@ -246,9 +246,12 @@ export function AppPage() {
       ? toAccessSummary(selectedAttraction.name, accessMap[selectedAttraction.name]).prepTip
       : null;
   const prepWeatherTips = displayedRegion && !weatherDemo ? regionWeather[displayedRegion.code]?.tips ?? [] : [];
+  // 관광지 종류별 준비물: 날씨 규칙을 적용한 뒤 추천 결과에 남은 바다·산·계곡 관광지만 본다.
+  const recommendedAttractions = recommendations.flatMap((item) => item.topAttractions.map(({ attraction }) => attraction));
   const extraPrepTips = [
     ...weatherTipSentences(prepWeatherTips),
     ...airTips(prepWeather),
+    ...terrainTips(recommendedAttractions, accessParty),
     ...(accessPrepTip ? [accessPrepTip] : []),
   ];
   const liveRequestKey =
