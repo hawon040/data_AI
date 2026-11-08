@@ -1,7 +1,8 @@
 """안전 관련 data.go.kr 데이터셋 설정.
 
 10주차 방향 전환(2026-11-05)으로 범죄율·사고율 기반 지역 안전도 점수는 서비스에서
-뺐다. 경찰청 범죄 통계 설정은 지웠고(2026-11-06), 응급의료기관·지진해일대피소처럼
+뺐다. 경찰청 범죄 통계 설정은 지웠고(2026-11-06), API를 연결한 적 없는 도로교통공단
+보행자 사고·소방청 화재 설정도 지웠다(2026-11-08). 응급의료기관·지진해일대피소처럼
 "대비 정보"로 보여 줄 항목만 연동한다.
 """
 from __future__ import annotations
@@ -9,20 +10,6 @@ from __future__ import annotations
 from ..datagokr_client import DatasetConfig
 
 SAFETY_DATASETS: dict[str, DatasetConfig] = {
-    "pedestrian_accidents": DatasetConfig(
-        name="도로교통공단 - 보행자 사고 통계",
-        portal_url="https://www.data.go.kr",
-        search_hint="도로교통공단 보행자 사고",
-        endpoint=None,
-        operation=None,
-    ),
-    "fire_incidents": DatasetConfig(
-        name="소방청 - 화재 발생 통계",
-        portal_url="https://www.data.go.kr",
-        search_hint="소방청 화재 발생 통계",
-        endpoint=None,
-        operation=None,
-    ),
     "emergency_facilities": DatasetConfig(
         # 응급의료기관 위치정보 조회: 좌표(WGS84_LON, WGS84_LAT 필수) 주변 기관 목록.
         # 응답 필드: dutyName, dutyAddr, dutyTel1, latitude, longitude, distance, hpid.
