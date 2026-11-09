@@ -2567,7 +2567,9 @@ def run_web_app(path="/"):
     print(f"{SITE_NAME} 웹 화면: {url}")
     print(f"공유용 링크 (Vercel): {DEPLOY_URL}")
     print("종료하려면 이 창에서 Ctrl+C를 누르세요.")
-    webbrowser.open(url)
+    # web의 npm run dev:all은 이 환경변수를 켜서 브라우저 창을 띄우지 않는다.
+    if not os.environ.get("TOURAPI_NO_BROWSER"):
+        webbrowser.open(url)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

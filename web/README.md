@@ -14,8 +14,14 @@ TourLink(빅데이터와 AI 2조 프로젝트)의 웹앱이다. React + TypeScri
 
 ```bash
 npm install
-npm run dev
+npm run dev:all   # tourapi(8000)와 vite(5173)를 함께 켠다
+npm run dev       # vite만 켠다
 ```
+
+`npm run dev:all`은 `tourapi` 폴더의 `py api.py local`과 vite를 동시에 실행한다.
+한쪽이 꺼지면 다른 쪽도 함께 꺼지고, api.py가 브라우저 창을 열지 않는다
+(`TOURAPI_NO_BROWSER=1`). 서비스키는 환경변수 `API_KEY`에서 읽으므로 먼저 설정해 둔다.
+실행 뒤 http://localhost:5173/app 을 연다.
 
 카카오맵을 보려면 [카카오 개발자센터](https://developers.kakao.com)에서
 JavaScript 키를 발급받아 `.env.local`에 설정한다 (`.env.example` 참고):

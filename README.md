@@ -29,8 +29,8 @@ data_AI/
 ## 빠른 실행
 
 ```bash
-# 웹앱
-cd web && npm install && npm run dev
+# 웹앱 + tourapi 서버를 명령 하나로 (http://localhost:5173/app)
+cd web && npm install && npm run dev:all
 npm test                      # 날씨 규칙·근거 문구 테스트
 
 # 공공데이터 조회 웹 (web의 지도 레이어가 이 서버를 부른다)
