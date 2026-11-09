@@ -38,11 +38,13 @@ function FallbackPlaceTabs({
   spots,
   pets,
   medical,
+  province,
   onSelectPlace,
 }: {
   spots: NationalSpot[];
   pets: PetPlace[];
   medical: MedicalPlace[];
+  province: string;
   onSelectPlace?: (selection: MapSelection) => void;
 }) {
   const [tab, setTab] = useState<FallbackTab>("spot");
@@ -74,6 +76,9 @@ function FallbackPlaceTabs({
           </label>
         ))}
       </div>
+      {province === "all" && pets.length === 0 && (
+        <p className="fallback-tab-hint">도를 고르면 반려동물 동반 장소가 보여요</p>
+      )}
       {active.id === "spot" && (
         <>
           <p className="fallback-national-heading">
@@ -157,6 +162,7 @@ export function MapView({
   shelters = [],
   pets = [],
   medical = [],
+  province = "all",
   selectedPlace = null,
   onSelectPlace,
 }: {
@@ -178,6 +184,8 @@ export function MapView({
   pets?: PetPlace[];
   /** 의료 관광기관 */
   medical?: MedicalPlace[];
+  /** 입력 폼에서 고른 도("all"이면 전국) */
+  province?: string;
   selectedPlace?: { name: string; lat: number; lng: number } | null;
   onSelectPlace?: (selection: MapSelection) => void;
 }) {
@@ -478,7 +486,13 @@ export function MapView({
             );
           })}
         </ul>
-        <FallbackPlaceTabs spots={nationalSpots} pets={pets} medical={medical} onSelectPlace={onSelectPlace} />
+        <FallbackPlaceTabs
+          spots={nationalSpots}
+          pets={pets}
+          medical={medical}
+          province={province}
+          onSelectPlace={onSelectPlace}
+        />
       </div>
     );
   }

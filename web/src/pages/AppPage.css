@@ -1101,6 +1101,11 @@
   opacity: 0.45;
   cursor: default;
 }
+.fallback-tab-hint {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
 .fallback-national-heading {
   margin: 8px 0 0;
   color: var(--text-secondary);

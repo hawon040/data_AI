@@ -352,6 +352,7 @@ export function AppPage() {
               shelters={tripPreferences.province === "all" ? [] : mapData?.shelters ?? []}
               pets={mapData?.pets ?? []}
               medical={mapData?.medical ?? []}
+              province={tripPreferences.province}
               selectedPlace={mapSelection?.place ?? null}
               onSelectPlace={handleMapSelect}
             />
