@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
@@ -105,9 +105,10 @@ export function AppPage() {
       ),
     [tripPreferences.province, tripPreferences.regionCode],
   );
-  // 방문일 날씨: 기본은 지역마다 실제 예보(tourapi /api/weather), 시연 모드면 예시 날씨 하나를 모든 지역에 쓴다.
+  // 방문일 날씨: 기본은 지역마다 실제 예보(tourapi /api/weather), 주소에 ?demo=weather가 있으면 예시 날씨 하나를 모든 지역에 쓴다.
+  const [searchParams] = useSearchParams();
+  const weatherDemo = searchParams.get("demo") === "weather";
   const weatherPreset = findWeatherPreset(tripPreferences.weatherPreset);
-  const weatherDemo = tripPreferences.weatherDemo;
   const { duration, visitDate, nights } = tripPreferences;
   const tripDays = useMemo(() => tripDates({ duration, visitDate, nights }), [duration, visitDate, nights]);
   // 어르신·아이 동반이면 weather.py가 준비물(tips)을 엄격 기준으로 낸다(판정은 웹 weatherRules가 따로 한다).
@@ -295,6 +296,7 @@ export function AppPage() {
         regions={SAMPLE_REGIONS}
         provinces={mapData?.provinces}
         preferences={tripPreferences}
+        weatherDemo={weatherDemo}
         onPreferencesChange={(preferences) => {
           setTripPreferences(preferences);
           setMapSelection(null);

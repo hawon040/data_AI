@@ -28,9 +28,7 @@ export interface TripPreferences {
   visitDate: string;
   /** 1박 이상일 때 박 수. 종료일 = 방문일 + nights. 당일치기면 쓰지 않는다. */
   nights: TripNights;
-  /** 시연 모드: 켜면 실제 예보 대신 weatherPreset(lib/weatherPresets.ts) 예시 날씨를 쓴다. */
-  weatherDemo: boolean;
-  /** 시연 모드에서 쓸 날씨 예시 id */
+  /** 시연 모드(주소에 ?demo=weather)에서 쓸 날씨 예시 id (lib/weatherPresets.ts) */
   weatherPreset: string;
 }
 
@@ -57,7 +55,6 @@ export const DEFAULT_TRIP_PREFERENCES: TripPreferences = {
   duration: "day",
   visitDate: todayIso(),
   nights: 1,
-  weatherDemo: false,
   weatherPreset: "clear",
 };
 

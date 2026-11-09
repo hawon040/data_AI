@@ -324,23 +324,6 @@
   color: var(--text-secondary);
   line-height: 1.5;
 }
-.weather-demo-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.weather-demo-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-.weather-demo-hint {
-  margin: 0;
-  padding: 10px 0;
-  color: var(--text-muted);
-  font-size: 12px;
-}
 .indoor-alternatives {
   display: flex;
   flex-wrap: wrap;

@@ -21,6 +21,8 @@ interface Props {
   provinces?: string[];
   preferences: TripPreferences;
   onPreferencesChange: (preferences: TripPreferences) => void;
+  /** 주소에 ?demo=weather가 있을 때만 켜지고, 그때만 예시 날씨 선택이 보인다. */
+  weatherDemo: boolean;
 }
 
 function PersonPicker({
@@ -62,7 +64,7 @@ function PersonPicker({
   );
 }
 
-export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [], preferences, onPreferencesChange }: Props) {
+export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [], preferences, onPreferencesChange, weatherDemo }: Props) {
   const [skipSelf, setSkipSelf] = useState(false);
   const [self, setSelf] = useState<Person>({ gender: "F", ageGroup: "20s" });
   const [companions, setCompanions] = useState<Person[]>([]);
@@ -116,27 +118,14 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
                 }}
               />
             </label>
-            <div className="weather-demo-field">
-              <label className="weather-demo-toggle">
-                <input
-                  type="checkbox"
-                  checked={preferences.weatherDemo}
-                  onChange={(e) => updatePreference("weatherDemo", e.target.checked)}
-                />
-                <span className="field-title">시연 모드 (예시 날씨)</span>
-              </label>
-              {preferences.weatherDemo ? (
-                <select
-                  aria-label="시연용 날씨 예시"
-                  value={preferences.weatherPreset}
-                  onChange={(e) => updatePreference("weatherPreset", e.target.value)}
-                >
+            {weatherDemo && (
+              <label>
+                <span className="field-title">예시 날씨</span>
+                <select value={preferences.weatherPreset} onChange={(e) => updatePreference("weatherPreset", e.target.value)}>
                   {WEATHER_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
                 </select>
-              ) : (
-                <p className="weather-demo-hint">기상청·에어코리아 실제 예보로 추천해요.</p>
-              )}
-            </div>
+              </label>
+            )}
             <label>
               <span className="field-title">
                 여행 월
