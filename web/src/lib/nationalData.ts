@@ -87,6 +87,25 @@ export interface MapPlaces {
   errors: Record<string, string>;
 }
 
+/**
+ * 지도 대신 나오는 목록의 순서: 추천된 지역의 관광지를 앞에, 나머지를 뒤에 둔다. 각각은 수용인원 많은 순이다.
+ * 지역 이름이 "청주시 상당구"처럼 구까지 있어도 관광지의 시·군("청주시")과 맞춘다.
+ */
+export function splitRecommendedSpots(
+  spots: NationalSpot[],
+  recommended: { province: string; name: string }[],
+): { recommended: NationalSpot[]; others: NationalSpot[] } {
+  const inRecommended = (spot: NationalSpot) =>
+    recommended.some(
+      (region) => region.province === spot.province && spot.district !== "" && region.name.startsWith(spot.district),
+    );
+  const byCapacity = (list: NationalSpot[]) => [...list].sort((a, b) => (b.capacity ?? 0) - (a.capacity ?? 0));
+  return {
+    recommended: byCapacity(spots.filter(inRecommended)),
+    others: byCapacity(spots.filter((spot) => !inRecommended(spot))),
+  };
+}
+
 /** 지도에서 고른 장소 — 종류별로 오른쪽 패널 내용이 다르다. */
 export type MapSelection =
   | { type: "spot"; place: NationalSpot }

@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { topAttractionsOf } from "../lib/recommend";
-import type { MapSelection, MedicalPlace, NationalShelter, NationalSpot, PetPlace } from "../lib/nationalData";
+import {
+  splitRecommendedSpots,
+  type MapSelection,
+  type MedicalPlace,
+  type NationalShelter,
+  type NationalSpot,
+  type PetPlace,
+} from "../lib/nationalData";
 import type { Attraction, Person, Region } from "../lib/types";
 
 const KAKAO_KEY = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
@@ -39,12 +46,15 @@ function FallbackPlaceTabs({
   pets,
   medical,
   province,
+  recommendedRegions,
   onSelectPlace,
 }: {
   spots: NationalSpot[];
   pets: PetPlace[];
   medical: MedicalPlace[];
   province: string;
+  /** 추천된 지역 — 전국을 볼 때 이 지역의 관광지를 먼저 보여 준다. */
+  recommendedRegions: Region[];
   onSelectPlace?: (selection: MapSelection) => void;
 }) {
   const [tab, setTab] = useState<FallbackTab>("spot");
@@ -55,6 +65,8 @@ function FallbackPlaceTabs({
   ];
   if (tabs.every((t) => t.count === 0)) return null;
   const active = tabs.find((t) => t.id === tab && t.count > 0) ?? tabs.find((t) => t.count > 0)!;
+  const isNationwide = province === "all";
+  const ordered = splitRecommendedSpots(spots, isNationwide ? recommendedRegions : []);
 
   return (
     <>
@@ -82,11 +94,11 @@ function FallbackPlaceTabs({
       {active.id === "spot" && (
         <>
           <p className="fallback-national-heading">
-            전국 관광지 {spots.length.toLocaleString("ko-KR")}곳 (수용인원 많은 순)
+            {isNationwide ? "전국" : province} 관광지 {spots.length.toLocaleString("ko-KR")}곳
+            {ordered.recommended.length > 0 && ` · 추천 지역 ${ordered.recommended.length}곳 먼저`} (수용인원 많은 순)
           </p>
           <ul className="fallback-region-list">
-            {[...spots]
-              .sort((a, b) => (b.capacity ?? 0) - (a.capacity ?? 0))
+            {[...ordered.recommended, ...ordered.others]
               .slice(0, FALLBACK_LIMIT)
               .map((spot) => (
                 <li key={`${spot.name}-${spot.lat}`}>
@@ -491,6 +503,7 @@ export function MapView({
           pets={pets}
           medical={medical}
           province={province}
+          recommendedRegions={highlightedCodes.size > 0 ? shown : []}
           onSelectPlace={onSelectPlace}
         />
       </div>
