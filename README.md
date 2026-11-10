@@ -61,4 +61,5 @@ python -m venv .venv && .venv/Scripts/python -m pip install -e ".[dev,lake]"
 | `DATA_GO_KR_SERVICE_KEY` | tourism_platform (일반 인증키 **Decoding**) |
 | `API_KEY`, `KCISA_API_KEY` | tourapi/api.py |
 | `TOUR_API_SERVICE_KEY` | web/api (Vercel 서버리스) |
+| `REDIS_URL` | tourapi 공유 캐시 (없으면 Redis 없이 동작). 예: `redis://127.0.0.1:6379/0` |
 | `VITE_KAKAO_MAP_KEY`, `VITE_KAKAO_REST_API_KEY` | web (`web/.env.local`) |

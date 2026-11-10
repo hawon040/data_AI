@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 import webbrowser
 import xml.etree.ElementTree as ET
 import barrierfree
+import rediscache
 import weather
 from weather import WEATHER_ROUTES
 from barrierfree import ACCESS_ROUTES
@@ -147,6 +148,7 @@ def _db_save(db, name, value, as_value=False, keep_seconds=None):
 def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_seconds=None):
     """Return loader() through a memory cache and MongoDB (db_seconds).
 
+    조회 순서는 메모리 → Redis(rediscache.py, REDIS_URL이 있을 때) → MongoDB → API 입니다.
     메모리 캐시는 CACHE_SECONDS와 db_seconds 중 짧은 시간만 둡니다.
     API 호출이 실패하면 MongoDB에 남은 예전 데이터라도 돌려줍니다.
     as_value·keep_seconds는 _db_save 설명을 보세요.
@@ -158,6 +160,11 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_se
         if entry is not None and time.time() - entry[1] < min(CACHE_SECONDS, db_seconds):
             return entry[0]
 
+        shared = rediscache.get(name)  # 인스턴스끼리 나눠 쓰는 Redis 캐시 (REDIS_URL이 있을 때만)
+        if shared is not None:
+            _caches[name] = (shared[0], shared[1])  # 저장 시각을 그대로 써서 메모리에서 TTL이 두 번 더해지지 않게 한다
+            return shared[0]
+
         db = _mongo_db()
         stored = None
         if db is not None:
@@ -167,24 +174,36 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_se
                 print(f"[MongoDB] {name} 읽기 실패: {error}")
         if stored is not None and time.time() - stored[1] < db_seconds:
             _caches[name] = (stored[0], time.time())
+            rediscache.set(name, stored[0], db_seconds - (time.time() - stored[1]))
             return stored[0]
 
+        # 캐시가 빈 순간 여러 인스턴스가 한꺼번에 API를 부르지 않게, 먼저 온 한 곳만 부르고 나머지는 결과를 기다린다.
+        refresh = rediscache.Lock(name)
         try:
-            value = loader()
-        except (RuntimeError, ValueError):
-            if stored is None:
-                raise
-            print(f"[MongoDB] {name} API 호출에 실패해 저장된 데이터를 씁니다.")
-            _caches[name] = (stored[0], time.time())
-            return stored[0]
-
-        if db is not None:
+            if refresh.enabled and not refresh.held:
+                waited = rediscache.wait_for(name)
+                if waited is not None:
+                    _caches[name] = (waited[0], waited[1])
+                    return waited[0]
             try:
-                _db_save(db, name, value, as_value, keep_seconds)
-            except Exception as error:
-                print(f"[MongoDB] {name} 저장 실패: {error}")
-        _caches[name] = (value, time.time())
-        return value
+                value = loader()
+            except (RuntimeError, ValueError):
+                if stored is None:
+                    raise
+                print(f"[MongoDB] {name} API 호출에 실패해 저장된 데이터를 씁니다.")
+                _caches[name] = (stored[0], time.time())
+                return stored[0]
+
+            if db is not None:
+                try:
+                    _db_save(db, name, value, as_value, keep_seconds)
+                except Exception as error:
+                    print(f"[MongoDB] {name} 저장 실패: {error}")
+            rediscache.set(name, value, db_seconds)
+            _caches[name] = (value, time.time())
+            return value
+        finally:
+            refresh.release()
 
 
 def fetch_db_status():

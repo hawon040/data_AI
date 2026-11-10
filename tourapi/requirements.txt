@@ -1,2 +1,4 @@
-# 표준 라이브러리 외에는 MongoDB 드라이버만 씁니다. MongoDB가 없으면 메모리 캐시로 동작합니다.
+# 표준 라이브러리 외에는 MongoDB·Redis 드라이버만 씁니다. 둘 다 없어도 메모리 캐시로 동작합니다.
+# Redis는 환경변수 REDIS_URL이 있을 때만 씁니다.
 pymongo>=4.6
+redis>=5.0
