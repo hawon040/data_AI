@@ -9,7 +9,6 @@
  * 참고 — 공공데이터가 초기 추천을 맡고 사용자 기록이 정교화한다는 것과 같은 원리).
  */
 import type { AgeGroup, AttractionTag, Person } from "./types";
-import { adjustedAffinity, findRatingStat, type UsageSummary } from "./usageAdjust";
 
 const AGE_TAG_AFFINITY: Record<AgeGroup, Partial<Record<AttractionTag, number>>> = {
   "10s": { cafe: 1.2, activity: 1.2, theme_park: 1.3, food: 1.1, history: 0.7, resort: 0.8 },
@@ -31,22 +30,9 @@ function personAffinity(person: Person, tags: AttractionTag[]): number {
 /**
  * 동행자 전원의 선호도 중 최솟값을 쓴다 — 지역 선택의 최솟값 방식(문서 4.4)과
  * 같은 원리로, 한 사람만 좋아하는 관광지가 상위로 올라오는 것을 막는다.
- *
- * usage와 attractionName을 주면 사용자 평가(usageAdjust.adjustedAffinity)로 각자의 선호도를 보정한다.
- * 평가가 없는 관광지는 보정 없이 기본 가중치 그대로다.
  */
-export function attractionMatchScore(
-  basePopularity: number,
-  tags: AttractionTag[],
-  people: Person[],
-  usage?: UsageSummary | null,
-  attractionName?: string,
-): number {
+export function attractionMatchScore(basePopularity: number, tags: AttractionTag[], people: Person[]): number {
   if (people.length === 0) return basePopularity;
-  const affinities = people.map((p) => {
-    const prior = personAffinity(p, tags);
-    if (!usage?.available || !attractionName) return prior;
-    return adjustedAffinity(prior, findRatingStat(usage, attractionName, p.ageGroup), usage.ageRatings[p.ageGroup]);
-  });
+  const affinities = people.map((p) => personAffinity(p, tags));
   return basePopularity * Math.min(...affinities);
 }

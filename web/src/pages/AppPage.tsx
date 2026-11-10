@@ -2,9 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
-import { UsageConsent } from "../components/UsageConsent";
-import { loadUsageSummary } from "../lib/usageApi";
-import { EMPTY_USAGE, type UsageSummary } from "../lib/usageAdjust";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
 import { MapView } from "../components/MapView";
 import { DemandCard } from "../components/DemandCard";
@@ -56,17 +53,6 @@ export function AppPage() {
   }>({ requestKey: null, items: [] });
   const [tripPreferences, setTripPreferences] = useState<TripPreferences>(DEFAULT_TRIP_PREFERENCES);
   const [carouselPaused, setCarouselPaused] = useState(false);
-  // 서비스 사용자 기록 요약. 서버가 꺼져 있거나 저장소가 없으면 빈 값이라 추천은 기본값으로 계산한다.
-  const [usage, setUsage] = useState<UsageSummary>(EMPTY_USAGE);
-  useEffect(() => {
-    let cancelled = false;
-    loadUsageSummary().then((summary) => {
-      if (!cancelled) setUsage(summary);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   const [mapPlaces, setMapPlaces] = useState<{ province: string; data: MapPlaces | null; error: string | null }>({
     province: "",
     data: null,
@@ -193,13 +179,13 @@ export function AppPage() {
           topAttractions: topAttractionsOf(region, []),
         }));
     } else {
-      candidates = getRecommendations(people, SAMPLE_REGIONS, SAMPLE_REGIONS.length, usage);
+      candidates = getRecommendations(people, SAMPLE_REGIONS, SAMPLE_REGIONS.length);
     }
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
     return filterRecommendations(candidates, people, tripPreferences).filter((item) =>
       locationCodes.has(item.region.code),
     );
-  }, [destinationRegions, people, tripPreferences, usage]);
+  }, [destinationRegions, people, tripPreferences]);
   const recommendations: RecommendationItem[] = useMemo(
     () => applyRegionWeather(preWeatherRecommendations).slice(0, 5),
     [preWeatherRecommendations, applyRegionWeather],
@@ -305,8 +291,6 @@ export function AppPage() {
           ← TourLink
         </Link>
       </header>
-
-      <UsageConsent />
 
       <CompanionForm
         regions={SAMPLE_REGIONS}
@@ -462,7 +446,6 @@ export function AppPage() {
                   seasonalTiming={selectedSeasonalPlace?.timing}
                   seasonalDescription={selectedSeasonalPlace?.summary}
                   party={accessParty}
-                  people={people ?? undefined}
                 />
               )}
               {displayedRegion && (

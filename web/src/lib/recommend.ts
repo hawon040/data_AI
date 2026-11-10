@@ -2,9 +2,8 @@
  * 동행자 교집합 추천 (문서 4.4) + 필터 버블을 막는 탐색 추천 (문서 4.8).
  */
 import { attractionMatchScore } from "./attractionAffinity";
-import { blendedNationalShares, buildPriors, regionLQ, type UsageSummary } from "./usageAdjust";
 import { groupScore, locationQuotient, nationalShares, specializationScore } from "./indices";
-import { AGE_GROUP_LABELS, groupKey, type Attraction, type GroupKey, type Person, type Region, type RecommendationItem } from "./types";
+import { AGE_GROUP_LABELS, groupKey, type Attraction, type Person, type Region, type RecommendationItem } from "./types";
 
 function personLabel(p: Person): string {
   const gender = p.gender === "F" ? "여성" : "남성";
@@ -22,11 +21,11 @@ function evidenceSentence(person: Person, lq: number): string {
  * 재사용한다 — 출처가 달라도 같은 한 가지 기준(인기 지표 x 선호 가중치)으로
  * 매긴다.
  */
-export function rankAttractions(attractions: Attraction[], people: Person[], n = 4, usage?: UsageSummary | null) {
+export function rankAttractions(attractions: Attraction[], people: Person[], n = 4) {
   return attractions
     .map((attraction) => ({
       attraction,
-      matchScore: attractionMatchScore(attraction.popularityScore, attraction.tags, people, usage, attraction.name),
+      matchScore: attractionMatchScore(attraction.popularityScore, attraction.tags, people),
     }))
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, n);
@@ -37,8 +36,8 @@ export function rankAttractions(attractions: Attraction[], people: Person[], n =
  * (문서 4.3의 2단계 추천: 1단계는 지역을, 2단계는 그 지역 안의 관광지를
  * 고른다). people이 비어 있으면 기저 인기 지표만으로 정렬한다.
  */
-export function topAttractionsOf(region: Region, people: Person[], n = 4, usage?: UsageSummary | null) {
-  return rankAttractions(region.attractions, people, n, usage);
+export function topAttractionsOf(region: Region, people: Person[], n = 4) {
+  return rankAttractions(region.attractions, people, n);
 }
 
 /**
@@ -49,31 +48,18 @@ export function getRecommendations(
   people: Person[],
   regions: Region[],
   topN = 5,
-  usage?: UsageSummary | null,
 ): RecommendationItem[] {
   if (people.length === 0) {
     throw new Error("최소 1명의 성별·연령대가 필요합니다");
   }
-  // 사용자 기록이 있으면 기본값(샘플 방문자 비중)과 섞은 값으로 계산한다 — 기록이 없는 지역은 기본값 그대로다.
-  const useRecords = usage?.available === true;
   const shares = nationalShares(regions);
-  const priors = useRecords ? buildPriors(regions) : null;
-  const blendedShares = useRecords
-    ? blendedNationalShares(usage.regionGroupCounts, priors!, Object.keys(shares) as GroupKey[])
-    : null;
 
   const items: RecommendationItem[] = regions.map((region) => {
-    let userRecords = 0;
-    let reliability = 0;
     const perPersonLQ = people.map((person) => {
       const key = groupKey(person);
-      if (useRecords) {
-        const blended = regionLQ(usage.regionGroupCounts, blendedShares!, region.code, key, priors![region.code]);
-        userRecords = blended.records;
-        reliability = blended.reliability;
-        return { person, lq: blended.lq };
-      }
-      const lq = locationQuotient(region.groupVisitors[key] ?? 0, region.totalVisitors, shares[key]);
+      const sG = shares[key];
+      const vIg = region.groupVisitors[key] ?? 0;
+      const lq = locationQuotient(vIg, region.totalVisitors, sG);
       return { person, lq };
     });
 
@@ -87,11 +73,8 @@ export function getRecommendations(
       .slice()
       .sort((a, b) => a.lq - b.lq) // 가장 덜 만족하는 동행자부터 보여준다
       .map(({ person, lq }) => evidenceSentence(person, lq));
-    if (userRecords > 0) {
-      evidence.push(`이 서비스 사용자 기록 ${Math.round(userRecords)}건 반영 (${Math.round(reliability * 100)}%)`);
-    }
 
-    return { region, score, perPersonLQ, evidence, topAttractions: topAttractionsOf(region, people, 4, usage) };
+    return { region, score, perPersonLQ, evidence, topAttractions: topAttractionsOf(region, people) };
   });
 
   return items.sort((a, b) => b.score - a.score).slice(0, topN);

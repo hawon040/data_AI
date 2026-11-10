@@ -3,7 +3,7 @@
     {
       "src": "api/index.py",
       "use": "@vercel/python",
-      "config": { "includeFiles": ["api.py", "weather.py", "sigungu.py", "barrierfree.py", "rediscache.py", "usage_events.py"], "maxDuration": 30 }
+      "config": { "includeFiles": ["api.py", "weather.py", "sigungu.py", "barrierfree.py", "rediscache.py"], "maxDuration": 30 }
     }
   ],
   "routes": [
