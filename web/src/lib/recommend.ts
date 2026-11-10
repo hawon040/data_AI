@@ -6,8 +6,7 @@ import { groupScore, locationQuotient, nationalShares, specializationScore } fro
 import { AGE_GROUP_LABELS, groupKey, type Attraction, type Person, type Region, type RecommendationItem } from "./types";
 
 function personLabel(p: Person): string {
-  const gender = p.gender === "F" ? "여성" : "남성";
-  return `${AGE_GROUP_LABELS[p.ageGroup]} ${gender}`;
+  return AGE_GROUP_LABELS[p.ageGroup];
 }
 
 function evidenceSentence(person: Person, lq: number): string {
@@ -50,7 +49,7 @@ export function getRecommendations(
   topN = 5,
 ): RecommendationItem[] {
   if (people.length === 0) {
-    throw new Error("최소 1명의 성별·연령대가 필요합니다");
+    throw new Error("최소 1명의 연령대가 필요합니다");
   }
   const shares = nationalShares(regions);
 

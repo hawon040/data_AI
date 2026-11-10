@@ -544,9 +544,6 @@
   align-items: center;
 }
 .person-picker select {
-  width: 76px;
-}
-.person-picker select + select {
   width: 92px;
 }
 .remove-btn {

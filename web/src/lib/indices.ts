@@ -1,5 +1,5 @@
 /**
- * 성·연령 방문 특화지수(LQ)와 동행자 교집합 추천 점수 (신청서 문서 4.2, 4.4).
+ * 연령대 방문 특화지수(LQ)와 동행자 교집합 추천 점수 (신청서 문서 4.2, 4.4).
  * Python 구현(tourism_platform/src/tourism_platform/indices/)과 동일한 수식을 쓴다.
  */
 import type { GroupKey, Region } from "./types";

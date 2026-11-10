@@ -4,13 +4,14 @@ from __future__ import annotations
 from ..datagokr_client import DatasetConfig
 
 TOURISM_DATASETS: dict[str, DatasetConfig] = {
-    "visitor_by_gender_age": DatasetConfig(
+    "visitor_by_age": DatasetConfig(
         # 공식 매뉴얼(한국관광공사_TourAPI 활용매뉴얼(관광빅데이터)_v4.1)과 실제 호출(2026-11-03)로
-        # 확인했다: DataLabService는 성별·연령대 분포를 제공하지 않는다 — 시군구×요일×방문자유형
+        # 확인했다: DataLabService는 연령대(성별 포함) 분포를 제공하지 않는다 — 시군구×요일×방문자유형
         # (현지인/외지인/외국인)만 준다(아래 visitor_by_region_daily).
-        # AreaTarDivService는 매뉴얼에 없어 실체를 확인하지 못했다. LQ 특화지수(성별×연령대 12개 그룹)
-        # 전제 자체가 재검토 대상일 수 있다 — 추측으로 다른 걸 끼워 넣지 않고 None으로 둔다.
-        name="한국관광 데이터랩 - 지역별 방문자 성·연령 분포",
+        # AreaTarDivService는 매뉴얼에 없어 실체를 확인하지 못했다. 추측으로 다른 걸 끼워 넣지 않고 None으로 둔다.
+        # LQ 특화지수는 연령대 6개 그룹으로 계산한다(2026-11-10 성별 제외). 성별·연령대로 나뉜 자료를
+        # 찾으면 같은 연령대의 남녀 값을 더해 연령대별로 쓴다.
+        name="한국관광 데이터랩 - 지역별 방문자 연령대 분포",
         portal_url="https://www.data.go.kr/data/15101972/openapi.do",
         endpoint=None,  # TODO: AreaTarDivService 실체 확인 또는 대안 데이터 탐색
         operation=None,

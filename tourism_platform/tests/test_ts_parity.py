@@ -18,14 +18,15 @@ WEB_DIR = Path(__file__).resolve().parents[2] / "web"
 CLI = WEB_DIR / "scripts" / "indices_cli.ts"
 REL_TOL = 1e-12
 
-GROUPS = [f"{g}_{a}" for a in ("10s", "20s", "30s", "40s", "50s", "60plus") for g in ("M", "F")]
+# 그룹은 연령대 6개다(2026-11-10 성별 제외). 같은 연령대 두 명(["20s", "20s"])도 넣는다.
+GROUPS = ["10s", "20s", "30s", "40s", "50s", "60plus"]
 COMPANION_SETS = [
-    ["F_20s"],
-    ["M_60plus"],
-    ["F_20s", "M_20s"],
-    ["F_30s", "M_30s", "F_10s"],
-    ["M_50s", "F_50s", "M_60plus", "F_60plus"],
-    ["F_20s", "M_60plus"],
+    ["20s"],
+    ["60plus"],
+    ["20s", "20s"],
+    ["30s", "10s"],
+    ["50s", "60plus"],
+    ["20s", "60plus"],
     GROUPS,
 ]
 

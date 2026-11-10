@@ -5,20 +5,16 @@
  * (tourism_platform/src/tourism_platform/data/apis/tourism.py visitor_by_region_daily)으로 교체해야 한다.
  * 안전 지표(safety)는 10주차부터 화면에 쓰지 않는다(config/features.ts).
  */
+// 타입만 가져온다: scripts/indices_cli.ts를 node로 바로 실행할 때 값 import는 경로를 찾지 못한다.
 import type { GroupKey, Region } from "../lib/types";
 
-const GROUP_ORDER: GroupKey[] = [
-  "M_10s", "F_10s",
-  "M_20s", "F_20s",
-  "M_30s", "F_30s",
-  "M_40s", "F_40s",
-  "M_50s", "F_50s",
-  "M_60plus", "F_60plus",
-];
+// 2026-11-10 성별을 빼면서, 예전의 성별·연령대 12개 값을 같은 연령대의 남녀 값끼리 더해 6개로 합쳤다.
+const GROUP_ORDER: GroupKey[] = ["10s", "20s", "30s", "40s", "50s", "60plus"];
 
+/** 연령대별 방문자 수 (10대, 20대, 30대, 40대, 50대, 60대 이상 순) */
 function groups(values: number[]): Record<GroupKey, number> {
   if (values.length !== GROUP_ORDER.length) {
-    throw new Error("groups() expects exactly 12 values (2 genders x 6 age groups)");
+    throw new Error("groups() expects exactly 6 values (one per age group)");
   }
   return Object.fromEntries(GROUP_ORDER.map((k, i) => [k, values[i]])) as Record<GroupKey, number>;
 }
@@ -37,7 +33,7 @@ const raw: RawRegion[] = [
     lat: 36.8151,
     lng: 127.1139,
     type: "urban",
-    groupVisitors: groups([80, 80, 150, 160, 170, 165, 160, 150, 140, 135, 110, 120]),
+    groupVisitors: groups([160, 310, 335, 310, 275, 230]),
     experienceScore: 62,
     highlight: "수도권과 가까운 교통 요지 — 모든 연령대가 고르게 찾는다",
     attractions: [
@@ -69,7 +65,7 @@ const raw: RawRegion[] = [
     lat: 36.6424,
     lng: 127.4890,
     type: "urban",
-    groupVisitors: groups([70, 75, 190, 195, 150, 140, 120, 115, 100, 95, 80, 85]),
+    groupVisitors: groups([145, 385, 290, 235, 195, 165]),
     experienceScore: 58,
     highlight: "대학가 상권과 맛집이 많아 20대 방문 비중이 높다",
     attractions: [
@@ -101,7 +97,7 @@ const raw: RawRegion[] = [
     lat: 36.4465,
     lng: 127.1189,
     type: "nature",
-    groupVisitors: groups([40, 42, 55, 58, 60, 62, 95, 98, 130, 128, 150, 155]),
+    groupVisitors: groups([82, 113, 122, 193, 258, 305]),
     experienceScore: 71,
     highlight: "백제 역사 유적 — 50대 이상 방문 비중이 특히 높다",
     attractions: [
@@ -132,7 +128,7 @@ const raw: RawRegion[] = [
     lat: 36.2757,
     lng: 126.9099,
     type: "nature",
-    groupVisitors: groups([35, 36, 40, 41, 45, 46, 78, 80, 120, 118, 140, 142]),
+    groupVisitors: groups([71, 81, 91, 158, 238, 282]),
     experienceScore: 68,
     highlight: "고즈넉한 유적지 — 학생 단체·중장년층 방문이 많다",
     attractions: [
@@ -163,7 +159,7 @@ const raw: RawRegion[] = [
     lat: 36.9845,
     lng: 128.3656,
     type: "nature",
-    groupVisitors: groups([30, 28, 60, 58, 90, 88, 100, 95, 110, 105, 95, 98]),
+    groupVisitors: groups([58, 118, 178, 195, 215, 193]),
     experienceScore: 74,
     highlight: "패러글라이딩·짚와이어 등 액티비티로 30~40대가 즐겨 찾는다",
     attractions: [
@@ -195,7 +191,7 @@ const raw: RawRegion[] = [
     lat: 37.8813,
     lng: 127.7298,
     type: "urban",
-    groupVisitors: groups([55, 58, 140, 150, 120, 118, 100, 98, 90, 88, 70, 72]),
+    groupVisitors: groups([113, 290, 238, 198, 178, 142]),
     experienceScore: 65,
     highlight: "닭갈비 거리와 호숫가 산책로 — 20대 커플·친구 방문이 많다",
     attractions: [
@@ -227,7 +223,7 @@ const raw: RawRegion[] = [
     lat: 37.7519,
     lng: 128.8761,
     type: "urban",
-    groupVisitors: groups([65, 70, 200, 210, 160, 158, 130, 128, 110, 108, 85, 90]),
+    groupVisitors: groups([135, 410, 318, 258, 218, 175]),
     experienceScore: 80,
     highlight: "해변 카페거리 — 전 연령대가 찾지만 특히 20대 비중이 압도적",
     attractions: [
@@ -259,7 +255,7 @@ const raw: RawRegion[] = [
     lat: 38.2070,
     lng: 128.5918,
     type: "urban",
-    groupVisitors: groups([50, 52, 130, 140, 150, 148, 120, 118, 95, 92, 75, 78]),
+    groupVisitors: groups([102, 270, 298, 238, 187, 153]),
     experienceScore: 76,
     highlight: "설악산과 항구 — 가족 단위 30~40대 방문이 두드러진다",
     attractions: [
@@ -291,7 +287,7 @@ const raw: RawRegion[] = [
     lat: 37.3705,
     lng: 128.3900,
     type: "nature",
-    groupVisitors: groups([45, 40, 70, 65, 130, 128, 140, 135, 90, 85, 60, 58]),
+    groupVisitors: groups([85, 135, 258, 275, 175, 118]),
     experienceScore: 83,
     highlight: "스키·캠핑 등 아웃도어 콘텐츠 — 자녀 동반 30~40대 가족이 많다",
     attractions: [
@@ -323,7 +319,7 @@ const raw: RawRegion[] = [
     lat: 37.3806,
     lng: 128.6608,
     type: "nature",
-    groupVisitors: groups([25, 22, 45, 40, 60, 55, 70, 68, 100, 98, 120, 118]),
+    groupVisitors: groups([47, 85, 115, 138, 198, 238]),
     experienceScore: 66,
     highlight: "레일바이크와 카지노 — 50대 이상 방문 비중이 특화되어 있다",
     attractions: [

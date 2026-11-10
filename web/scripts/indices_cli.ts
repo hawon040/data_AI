@@ -3,7 +3,7 @@
  *
  *   node --experimental-strip-types scripts/indices_cli.ts < cases.json
  *
- * 입력(JSON, stdin): { cases: [{ vIg, vI, sG, k, lqValues }], companionSets: [["F_20s", "M_60plus"], ...] }
+ * 입력(JSON, stdin): { cases: [{ vIg, vI, sG, k, lqValues }], companionSets: [["20s", "60plus"], ...] }
  * 출력(JSON, stdout): { cases: [{ lq, spec, group } | { error }], samples: {...} }
  * samples에는 샘플 10개 지역(src/data/sampleRegions.ts)의 원자료와 웹앱이 계산한 값이 들어 있다.
  * 비교는 tourism_platform/tests/test_ts_parity.py가 한다.

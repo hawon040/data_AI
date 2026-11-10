@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AGE_GROUPS, AGE_GROUP_LABELS, type AgeGroup, type Gender, type Person, type Region } from "../lib/types";
+import { AGE_GROUPS, AGE_GROUP_LABELS, type AgeGroup, type Person, type Region } from "../lib/types";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import { WEATHER_PRESETS } from "../lib/weatherPresets";
 import {
@@ -39,13 +39,7 @@ function PersonPicker({
   return (
     <div className="person-picker">
       <select
-        value={person.gender}
-        onChange={(e) => onChange({ ...person, gender: e.target.value as Gender })}
-      >
-        <option value="F">여성</option>
-        <option value="M">남성</option>
-      </select>
-      <select
+        aria-label="연령대"
         value={person.ageGroup}
         onChange={(e) => onChange({ ...person, ageGroup: e.target.value as AgeGroup })}
       >
@@ -66,7 +60,7 @@ function PersonPicker({
 
 export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [], preferences, onPreferencesChange, weatherDemo }: Props) {
   const [skipSelf, setSkipSelf] = useState(false);
-  const [self, setSelf] = useState<Person>({ gender: "F", ageGroup: "20s" });
+  const [self, setSelf] = useState<Person>({ ageGroup: "20s" });
   const [companions, setCompanions] = useState<Person[]>([]);
   const [withChildren, setWithChildren] = useState(false);
   const [nightPlan, setNightPlan] = useState(false);
@@ -252,7 +246,7 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
                 <button
                   type="button"
                   className="add-companion"
-                  onClick={() => setCompanions([...companions, { gender: "M", ageGroup: "20s" }])}
+                  onClick={() => setCompanions([...companions, { ageGroup: "20s" }])}
                 >
                   + 동행자 추가
                 </button>
@@ -263,7 +257,7 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
           <div className="checkboxes">
             <label>
               <input type="checkbox" checked={skipSelf} onChange={(e) => setSkipSelf(e.target.checked)} />
-              내 성별·연령 생략
+              내 연령 생략
             </label>
             <label>
               <input type="checkbox" checked={withChildren} onChange={(e) => setWithChildren(e.target.checked)} />

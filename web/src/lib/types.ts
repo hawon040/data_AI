@@ -1,4 +1,3 @@
-export type Gender = "M" | "F";
 export type AgeGroup = "10s" | "20s" | "30s" | "40s" | "50s" | "60plus";
 
 export const AGE_GROUPS: AgeGroup[] = ["10s", "20s", "30s", "40s", "50s", "60plus"];
@@ -11,15 +10,16 @@ export const AGE_GROUP_LABELS: Record<AgeGroup, string> = {
   "60plus": "60대 이상",
 };
 
+/** 동행자 한 명. 연령대만 받는다(2026-11-10 팀 결정으로 성별은 입력·추천에서 뺐다). */
 export interface Person {
-  gender: Gender;
   ageGroup: AgeGroup;
 }
 
-export type GroupKey = `${Gender}_${AgeGroup}`;
+/** 방문자 집단 = 연령대 6개 */
+export type GroupKey = AgeGroup;
 
 export function groupKey(p: Person): GroupKey {
-  return `${p.gender}_${p.ageGroup}`;
+  return p.ageGroup;
 }
 
 export type CompanionType = "alone" | "friends" | "family" | "with_kids";

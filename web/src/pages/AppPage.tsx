@@ -167,7 +167,7 @@ export function AppPage() {
     if (people == null) return [];
     let candidates: RecommendationItem[];
     if (people.length === 0) {
-      // 성별·연령대 미입력 — 전체 인기도(방문자 수)만으로 정렬한다.
+      // 연령대 미입력 — 전체 인기도(방문자 수)만으로 정렬한다.
       candidates = SAMPLE_REGIONS
         .slice()
         .sort((a, b) => b.totalVisitors - a.totalVisitors)
@@ -257,7 +257,7 @@ export function AppPage() {
   ];
   const liveRequestKey =
     displayedRegion && hasKakaoRestKey()
-      ? `${displayedRegion.code}:${(people ?? []).map((person) => `${person.gender}-${person.ageGroup}`).join(",")}`
+      ? `${displayedRegion.code}:${(people ?? []).map((person) => person.ageGroup).join(",")}`
       : null;
   const liveAttractions =
     liveRequestKey && liveResults.requestKey === liveRequestKey ? liveResults.items : [];
