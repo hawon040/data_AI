@@ -86,6 +86,20 @@ _mongo = {"db": None, "checked_at": 0}
 _mongo_lock = threading.Lock()
 
 
+def _mask_uri(uri):
+    """접속 주소에서 아이디·비밀번호를 ***로 바꾸고 호스트만 남깁니다(경로·옵션은 뺍니다).
+
+    예: mongodb+srv://user:pw@cluster0.xxxx.mongodb.net/?retryWrites=true
+        → mongodb+srv://***@cluster0.xxxx.mongodb.net
+    """
+    scheme, sep, rest = (uri or "").partition("://")
+    if not sep:
+        return "***"
+    authority = rest.split("/", 1)[0].split("?", 1)[0]
+    _userinfo, at, hosts = authority.rpartition("@")
+    return f"{scheme}://***@{hosts}" if at else f"{scheme}://{hosts}"
+
+
 def _mongo_db():
     """Return the tourlink database, or None when MongoDB is unavailable."""
     with _mongo_lock:
@@ -103,7 +117,7 @@ def _mongo_db():
             print(f"[MongoDB] 연결하지 못해 메모리 캐시만 사용합니다: {error}")
             return None
         _mongo["db"] = client[MONGO_DB]
-        print(f"[MongoDB] {MONGO_URI} / {MONGO_DB} 에 연결했습니다.")
+        print(f"[MongoDB] {_mask_uri(MONGO_URI)} / {MONGO_DB} 에 연결했습니다.")
         return _mongo["db"]
 
 
@@ -211,7 +225,7 @@ def fetch_db_status():
     """MongoDB에 저장된 데이터셋과 저장 시각을 보여줍니다."""
     db = _mongo_db()
     if db is None:
-        return {"connected": False, "uri": MONGO_URI, "database": MONGO_DB, "datasets": []}
+        return {"connected": False, "host": _mask_uri(MONGO_URI), "database": MONGO_DB, "datasets": []}
     datasets = [
         {
             "name": meta["_id"],
@@ -221,7 +235,7 @@ def fetch_db_status():
         }
         for meta in db["_meta"].find({}, {"value": 0}).sort("_id", 1)
     ]
-    return {"connected": True, "uri": MONGO_URI, "database": MONGO_DB, "datasets": datasets}
+    return {"connected": True, "host": _mask_uri(MONGO_URI), "database": MONGO_DB, "datasets": datasets}
 
 
 def _require_key(key, name):
