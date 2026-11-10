@@ -14,6 +14,8 @@ from urllib.request import Request, urlopen
 import webbrowser
 import xml.etree.ElementTree as ET
 import barrierfree
+import rediscache
+import usage_events
 import weather
 from weather import WEATHER_ROUTES
 from barrierfree import ACCESS_ROUTES
@@ -147,6 +149,7 @@ def _db_save(db, name, value, as_value=False, keep_seconds=None):
 def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_seconds=None):
     """Return loader() through a memory cache and MongoDB (db_seconds).
 
+    조회 순서는 메모리 → Redis(rediscache.py, REDIS_URL이 있을 때) → MongoDB → API 입니다.
     메모리 캐시는 CACHE_SECONDS와 db_seconds 중 짧은 시간만 둡니다.
     API 호출이 실패하면 MongoDB에 남은 예전 데이터라도 돌려줍니다.
     as_value·keep_seconds는 _db_save 설명을 보세요.
@@ -158,6 +161,11 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_se
         if entry is not None and time.time() - entry[1] < min(CACHE_SECONDS, db_seconds):
             return entry[0]
 
+        shared = rediscache.get(name)  # 인스턴스끼리 나눠 쓰는 Redis 캐시 (REDIS_URL이 있을 때만)
+        if shared is not None:
+            _caches[name] = (shared[0], shared[1])  # 저장 시각을 그대로 써서 메모리에서 TTL이 두 번 더해지지 않게 한다
+            return shared[0]
+
         db = _mongo_db()
         stored = None
         if db is not None:
@@ -167,24 +175,36 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_se
                 print(f"[MongoDB] {name} 읽기 실패: {error}")
         if stored is not None and time.time() - stored[1] < db_seconds:
             _caches[name] = (stored[0], time.time())
+            rediscache.set(name, stored[0], db_seconds - (time.time() - stored[1]))
             return stored[0]
 
+        # 캐시가 빈 순간 여러 인스턴스가 한꺼번에 API를 부르지 않게, 먼저 온 한 곳만 부르고 나머지는 결과를 기다린다.
+        refresh = rediscache.Lock(name)
         try:
-            value = loader()
-        except (RuntimeError, ValueError):
-            if stored is None:
-                raise
-            print(f"[MongoDB] {name} API 호출에 실패해 저장된 데이터를 씁니다.")
-            _caches[name] = (stored[0], time.time())
-            return stored[0]
-
-        if db is not None:
+            if refresh.enabled and not refresh.held:
+                waited = rediscache.wait_for(name)
+                if waited is not None:
+                    _caches[name] = (waited[0], waited[1])
+                    return waited[0]
             try:
-                _db_save(db, name, value, as_value, keep_seconds)
-            except Exception as error:
-                print(f"[MongoDB] {name} 저장 실패: {error}")
-        _caches[name] = (value, time.time())
-        return value
+                value = loader()
+            except (RuntimeError, ValueError):
+                if stored is None:
+                    raise
+                print(f"[MongoDB] {name} API 호출에 실패해 저장된 데이터를 씁니다.")
+                _caches[name] = (stored[0], time.time())
+                return stored[0]
+
+            if db is not None:
+                try:
+                    _db_save(db, name, value, as_value, keep_seconds)
+                except Exception as error:
+                    print(f"[MongoDB] {name} 저장 실패: {error}")
+            rediscache.set(name, value, db_seconds)
+            _caches[name] = (value, time.time())
+            return value
+        finally:
+            refresh.release()
 
 
 def fetch_db_status():
@@ -2403,6 +2423,18 @@ def _page_no(param):
     return page_no
 
 
+USAGE_SUMMARY_SECONDS = 10 * 60
+
+
+def fetch_usage_summary(param):
+    """GET /api/usage/summary — 사용자 기록 요약(10분 캐시). 저장소가 없으면 available:false."""
+    db = _mongo_db()
+    if db is None:
+        return usage_events.empty_summary()
+    return _cached("usage_summary", lambda: usage_events.load_summary(db), db_seconds=USAGE_SUMMARY_SECONDS,
+                   as_value=True)
+
+
 API_ROUTES = {
     "/api/medical": lambda param: fetch_medical_tourism(
         page_no=_page_no(param),
@@ -2446,6 +2478,7 @@ for _service in ("pet",):
             s, param("contentId"), param("contentTypeId")
         ),
     })
+API_ROUTES.update({"/api/usage/summary": fetch_usage_summary})
 API_ROUTES.update(WEATHER_ROUTES)
 API_ROUTES.update(ACCESS_ROUTES)
 
@@ -2554,6 +2587,35 @@ class TourRequestHandler(BaseHTTPRequestHandler):
             self._send_json(502, {"error": str(error)})
         else:
             self._send_json(200, result)
+
+    def do_POST(self):
+        started = time.time()
+        parsed_url = urlparse(self.path)
+        self._status = 500
+        try:
+            path = parsed_url.path.rstrip("/")
+            if path != "/api/usage":
+                self._send_json(404, {"error": "요청한 페이지를 찾을 수 없습니다."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                length = -1
+            if length < 0 or length > usage_events.MAX_BODY_BYTES:
+                self._send_json(413, {"error": "요청이 너무 큽니다."})
+                return
+            body = self.rfile.read(length)
+            forwarded = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+            status, payload = usage_events.handle_post(_mongo_db(), body, forwarded or self.client_address[0])
+            self._send_json(status, payload)
+        except Exception as error:
+            print(f"[웹 서버] 처리 중 오류: {error!r}")
+            try:
+                self._send_json(500, {"error": "서버에서 오류가 났습니다. 잠시 후 다시 시도해 주세요."})
+            except OSError:
+                pass
+        finally:
+            _write_access_log(parsed_url.path.rstrip("/") or "/", parsed_url.query, self._status, started)
 
     def log_message(self, format_string, *args):
         print(f"[웹 서버] {args[0]}")

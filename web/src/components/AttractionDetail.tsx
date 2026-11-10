@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { findRealPlace, hasKakaoRestKey, kakaoDirectionsUrl, kakaoSearchUrl, type PlaceDetail } from "../lib/kakaoLocal";
-import type { Attraction, Region } from "../lib/types";
+import type { Attraction, Person, Region } from "../lib/types";
+import { sendUsageEvent } from "../lib/usageApi";
+import { RatingBox } from "./RatingBox";
 import type { AccessParty } from "../lib/liveAccess";
 import { AccessibilityInfo } from "./AccessibilityInfo";
 
@@ -24,6 +26,7 @@ export function AttractionDetail({
   seasonalTiming,
   seasonalDescription,
   party,
+  people,
 }: {
   attraction: Attraction;
   region: Region | null;
@@ -32,6 +35,8 @@ export function AttractionDetail({
   seasonalDescription?: string;
   /** 주면 "이용 편의 정보" 칸(한국관광공사 무장애 여행정보)을 함께 보여 준다 */
   party?: AccessParty;
+  /** 주면 평가 칸과 길찾기 기록(동의한 경우만)을 쓴다 */
+  people?: Person[];
 }) {
   const [lookup, setLookup] = useState<{ attraction: Attraction; place: PlaceDetail | null } | null>(null);
   const place = lookup?.attraction === attraction ? lookup.place : undefined;
@@ -90,7 +95,18 @@ export function AttractionDetail({
       )}
 
       <div className="ad-actions">
-        <a className="pill-mini" href={directionsUrl} target="_blank" rel="noreferrer">
+        <a
+          className="pill-mini"
+          href={directionsUrl}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => {
+            if (!people || !region) return;
+            people.forEach((person, personIndex) =>
+              void sendUsageEvent({ kind: "directions", regionCode: region.code, attraction: attraction.name, person, personIndex }),
+            );
+          }}
+        >
           길찾기
         </a>
         <a className="pill-mini ghost" href={placeUrl} target="_blank" rel="noreferrer">
@@ -99,6 +115,7 @@ export function AttractionDetail({
       </div>
 
       {party && <AccessibilityInfo attraction={attraction} party={party} />}
+      {people && region && <RatingBox people={people} regionCode={region.code} attraction={attraction.name} />}
     </div>
   );
 }
