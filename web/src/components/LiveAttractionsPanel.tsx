@@ -30,7 +30,7 @@ export function LiveAttractionsPanel({
         <p className="live-loading">주변 장소를 찾는 중…</p>
       ) : (
         <div className="attraction-chips">
-          {items.map(({ attraction, matchScore }) => (
+          {items.map(({ attraction }) => (
             <button
               key={`${attraction.name}-${attraction.lat}`}
               type="button"
@@ -38,7 +38,6 @@ export function LiveAttractionsPanel({
               onClick={() => onSelectAttraction(attraction)}
             >
               {attraction.name}
-              <span className="attraction-score">{Math.round(matchScore)}</span>
             </button>
           ))}
         </div>

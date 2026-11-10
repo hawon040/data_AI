@@ -1,0 +1,7 @@
+# Vercel 연결 정보·로컬 비밀값 (커밋하지 않음)
+.vercel
+.env*
+__pycache__/
+
+# 접근 로그와 Fluent Bit 상태·출력 (커밋하지 않음)
+logs/

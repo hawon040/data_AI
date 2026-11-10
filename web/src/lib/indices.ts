@@ -25,6 +25,7 @@ export function nationalShares(regions: Region[]): Record<GroupKey, number> {
 
 /** LQ_ig = (V_ig + k·s_g) / (V_i + k) / s_g */
 export function locationQuotient(vIg: number, vI: number, sG: number, k = DEFAULT_K): number {
+  if (vI + k <= 0) throw new Error("vI + k must be positive");
   if (sG <= 0) throw new Error("sG must be positive");
   const smoothedShare = (vIg + k * sG) / (vI + k);
   return smoothedShare / sG;
@@ -32,11 +33,13 @@ export function locationQuotient(vIg: number, vI: number, sG: number, k = DEFAUL
 
 /** Score_ig = LQ_ig × log(V_i) */
 export function specializationScore(lqIg: number, vI: number): number {
+  if (vI <= 0) throw new Error("vI must be positive");
   return lqIg * Math.log(vI);
 }
 
 /** Score_i^group = min_g(LQ_ig) × log(V_i) — 평균이 아닌 최솟값으로 동행자 전원을 배려한다. */
 export function groupScore(lqValues: number[], vI: number): number {
   if (lqValues.length === 0) throw new Error("lqValues must not be empty");
+  if (vI <= 0) throw new Error("vI must be positive");
   return Math.min(...lqValues) * Math.log(vI);
 }

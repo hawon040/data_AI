@@ -1,7 +1,7 @@
 [project]
 name = "tourism-platform"
 version = "0.1.0"
-description = "성·연령 방문 데이터 기반 맞춤 관광지 추천 + 안전지수 플랫폼 — 핵심 계산 모듈"
+description = "TourLink — 일행·날씨 맞춤 관광지 추천과 대비 정보 계산 모듈"
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.26",
@@ -12,6 +12,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4"]
+lake = ["pymongo>=4.6", "pyarrow>=15", "tabulate>=0.9"]
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -1,16 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
 import { MapView } from "../components/MapView";
+import { DemandCard } from "../components/DemandCard";
+import { NationalSpotPanel } from "../components/NationalSpotPanel";
+import { RandomTripPicker } from "../components/RandomTripPicker";
 import { RecommendationList } from "../components/RecommendationList";
+import { SeasonalDiscovery } from "../components/SeasonalDiscovery";
 import { SafetyPanel } from "../components/SafetyPanel";
+import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
+import { TripPreparation } from "../components/TripPreparation";
+import { WeatherNotice } from "../components/WeatherNotice";
+import { WeatherExcludedList } from "../components/WeatherExcludedList";
+import { WarningBanner } from "../components/WarningBanner";
+import { listWeatherExclusions } from "../lib/weatherExclusions";
+import { airTips, terrainTips, weatherTipSentences } from "../lib/preparationTips";
+import { toAccessSummary, useAttractionAccessMap } from "../lib/liveAccess";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
+import { loadMapPlaces, type MapPlaces, type MapSelection } from "../lib/nationalData";
 import { getExploreRecommendations, getRecommendations, rankAttractions, topAttractionsOf } from "../lib/recommend";
+import type { SeasonalDestination } from "../lib/seasonalDestinations";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import type { Attraction, Person, RecommendationItem, Region } from "../lib/types";
+import {
+  DEFAULT_TRIP_PREFERENCES,
+  filterRecommendations,
+  getSeason,
+  todayIso,
+  type TripPreferences,
+} from "../lib/tripPreferences";
+import { findWeatherPreset } from "../lib/weatherPresets";
+import { EMPTY_WEATHER, loadRegionWeather, tripDates, type RegionWeather } from "../lib/liveWeather";
+import { applyWeatherRules, decideWeather, type WeatherDecision } from "../lib/weatherRules";
 import "./AppPage.css";
 
 export function AppPage() {
@@ -22,16 +46,131 @@ export function AppPage() {
   });
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [selectedAttraction, setSelectedAttraction] = useState<Attraction | null>(null);
-  const [liveAttractions, setLiveAttractions] = useState<{ attraction: Attraction; matchScore: number }[]>([]);
-  const [liveLoading, setLiveLoading] = useState(false);
+  const [selectedSeasonalPlace, setSelectedSeasonalPlace] = useState<SeasonalDestination | null>(null);
+  const [liveResults, setLiveResults] = useState<{
+    requestKey: string | null;
+    items: { attraction: Attraction; matchScore: number }[];
+  }>({ requestKey: null, items: [] });
+  const [tripPreferences, setTripPreferences] = useState<TripPreferences>(DEFAULT_TRIP_PREFERENCES);
+  const [carouselPaused, setCarouselPaused] = useState(false);
+  const [mapPlaces, setMapPlaces] = useState<{ province: string; data: MapPlaces | null; error: string | null }>({
+    province: "",
+    data: null,
+    error: null,
+  });
+  const [mapSelection, setMapSelection] = useState<MapSelection | null>(null);
 
-  const recommendations: RecommendationItem[] = useMemo(() => {
+  // 고른 시도(또는 전국)의 공공데이터를 tourapi/api.py 서버에서 실시간으로 불러온다.
+  useEffect(() => {
+    let cancelled = false;
+    const province = tripPreferences.province;
+    loadMapPlaces(province)
+      .then((data) => {
+        if (!cancelled) setMapPlaces({ province, data, error: null });
+      })
+      .catch((error: Error) => {
+        if (!cancelled) setMapPlaces({ province, data: null, error: error.message });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tripPreferences.province]);
+  const mapData = mapPlaces.province === tripPreferences.province ? mapPlaces.data : null;
+  const mapLoading = mapPlaces.province !== tripPreferences.province;
+
+  // 맞춤 추천 시범 지역의 시·군·구를 고르면 지도 관광지도 그 시군구로 좁힌다.
+  const pilotDistrict =
+    tripPreferences.regionCode === "all"
+      ? null
+      : SAMPLE_REGIONS.find((region) => region.code === tripPreferences.regionCode)?.name ?? null;
+  const nationalSpots = useMemo(
+    () =>
+      (mapData?.spots ?? []).filter(
+        (spot) => !pilotDistrict || (spot.district !== "" && pilotDistrict.startsWith(spot.district)),
+      ),
+    [mapData, pilotDistrict],
+  );
+  const handleMapSelect = useCallback((selection: MapSelection) => {
+    setMapSelection(selection);
+    setSelectedAttraction(null);
+    setSelectedSeasonalPlace(null);
+  }, []);
+
+  const destinationRegions = useMemo(
+    () =>
+      SAMPLE_REGIONS.filter(
+        (region) =>
+          (tripPreferences.province === "all" || region.province === tripPreferences.province) &&
+          (tripPreferences.regionCode === "all" || region.code === tripPreferences.regionCode),
+      ),
+    [tripPreferences.province, tripPreferences.regionCode],
+  );
+  // 방문일 날씨: 기본은 지역마다 실제 예보(tourapi /api/weather), 주소에 ?demo=weather가 있으면 예시 날씨 하나를 모든 지역에 쓴다.
+  const [searchParams] = useSearchParams();
+  const weatherDemo = searchParams.get("demo") === "weather";
+  const weatherPreset = findWeatherPreset(tripPreferences.weatherPreset);
+  const { duration, visitDate, nights } = tripPreferences;
+  const tripDays = useMemo(() => tripDates({ duration, visitDate, nights }), [duration, visitDate, nights]);
+  // 어르신·아이 동반이면 weather.py가 준비물(tips)을 엄격 기준으로 낸다(판정은 웹 weatherRules가 따로 한다).
+  const weatherWith = [safetyFilters.withElderly && "senior", safetyFilters.withChildren && "child"].filter(Boolean).join(",");
+  const weatherKey = `${destinationRegions.map((region) => region.code).join(",")}|${tripDays.join(",")}|${weatherWith}`;
+  const useLiveWeather = people != null && !weatherDemo && destinationRegions.length > 0;
+  const [liveWeather, setLiveWeather] = useState<{ key: string; byRegion: Record<string, RegionWeather> }>({
+    key: "",
+    byRegion: {},
+  });
+  useEffect(() => {
+    if (!useLiveWeather) return;
+    let cancelled = false;
+    Promise.all(
+      destinationRegions.map(async (region) => [region.code, await loadRegionWeather(region, tripDays, weatherWith)] as const),
+    ).then((entries) => {
+      if (!cancelled) setLiveWeather({ key: weatherKey, byRegion: Object.fromEntries(entries) });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [useLiveWeather, weatherKey, destinationRegions, tripDays, weatherWith]);
+  const weatherLoading = useLiveWeather && liveWeather.key !== weatherKey;
+  const regionWeather = useMemo(
+    () => (liveWeather.key === weatherKey ? liveWeather.byRegion : {}),
+    [liveWeather, weatherKey],
+  );
+
+  /** 지역 코드별 날씨 판정. 예보가 없거나 아직 못 불러온 지역은 날씨 조건 없이 판정한다. */
+  const weatherDecisions = useMemo(() => {
+    const party = { withElderly: safetyFilters.withElderly, withChildren: safetyFilters.withChildren };
+    const today = todayIso();
+    return Object.fromEntries(
+      SAMPLE_REGIONS.map((region) => [
+        region.code,
+        decideWeather(
+          weatherDemo ? weatherPreset.weather : regionWeather[region.code]?.worst ?? EMPTY_WEATHER,
+          party,
+          visitDate,
+          today,
+        ),
+      ]),
+    ) as Record<string, WeatherDecision>;
+  }, [weatherDemo, weatherPreset, regionWeather, safetyFilters.withElderly, safetyFilters.withChildren, visitDate]);
+  const applyRegionWeather = useCallback(
+    (items: RecommendationItem[]) =>
+      items.flatMap((item) => applyWeatherRules([item], weatherDecisions[item.region.code])),
+    [weatherDecisions],
+  );
+  const weatherRestricted = destinationRegions.some(
+    (region) => weatherDecisions[region.code].indoorOnly || weatherDecisions[region.code].excludedTerrains.length > 0,
+  );
+
+  // 날씨 규칙을 적용하기 전 추천(지역 범위까지 거른 것). 날씨 때문에 빠진 곳을 보여 줄 때도 쓴다.
+  const preWeatherRecommendations: RecommendationItem[] = useMemo(() => {
     if (people == null) return [];
+    let candidates: RecommendationItem[];
     if (people.length === 0) {
       // 성별·연령대 미입력 — 전체 인기도(방문자 수)만으로 정렬한다.
-      return SAMPLE_REGIONS.slice()
+      candidates = SAMPLE_REGIONS
+        .slice()
         .sort((a, b) => b.totalVisitors - a.totalVisitors)
-        .slice(0, 5)
         .map((region) => ({
           region,
           score: Math.log(region.totalVisitors),
@@ -39,113 +178,288 @@ export function AppPage() {
           evidence: [`전체 방문자 수 ${region.totalVisitors.toLocaleString()}명`],
           topAttractions: topAttractionsOf(region, []),
         }));
+    } else {
+      candidates = getRecommendations(people, SAMPLE_REGIONS, SAMPLE_REGIONS.length);
     }
-    return getRecommendations(people, SAMPLE_REGIONS, 5);
-  }, [people]);
+    const locationCodes = new Set(destinationRegions.map((region) => region.code));
+    return filterRecommendations(candidates, people, tripPreferences).filter((item) =>
+      locationCodes.has(item.region.code),
+    );
+  }, [destinationRegions, people, tripPreferences]);
+  const recommendations: RecommendationItem[] = useMemo(
+    () => applyRegionWeather(preWeatherRecommendations).slice(0, 5),
+    [preWeatherRecommendations, applyRegionWeather],
+  );
+  const weatherExclusions = useMemo(
+    () => listWeatherExclusions(preWeatherRecommendations.slice(0, 5), (code) => weatherDecisions[code]),
+    [preWeatherRecommendations, weatherDecisions],
+  );
 
   const exploreRecommendations = useMemo(() => {
-    if (people == null || people.length === 0) return [];
+    if (people == null || people.length === 0 || destinationRegions.length === 0) return [];
     const excludeCodes = new Set(recommendations.map((r) => r.region.code));
-    return getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes);
-  }, [people, recommendations]);
+    const locationCodes = new Set(destinationRegions.map((region) => region.code));
+    return applyRegionWeather(
+      filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes), people, tripPreferences),
+    ).filter((item) => locationCodes.has(item.region.code));
+  }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather]);
 
   const highlightedCodes = useMemo(
     () => new Set([...recommendations, ...exploreRecommendations].map((r) => r.region.code)),
     [recommendations, exploreRecommendations],
   );
-
-  // 추천이 나오면 1위 지역을 자동으로 선택해 지도에 관광지 핀과 안전 정보를
-  // 바로 보여준다 — 카드를 눌러야만 지도가 움직이면 지도를 안 쓰게 된다.
-  useEffect(() => {
-    if (recommendations.length > 0 && selectedRegion == null) {
-      setSelectedRegion(recommendations[0].region);
+  const handleSelectAttraction = useCallback((attraction: Attraction) => {
+    const region = SAMPLE_REGIONS.find((candidate) =>
+      candidate.attractions.some((item) => item.name === attraction.name),
+    );
+    setSelectedRegion(region ?? null);
+    setSelectedAttraction(attraction);
+    setSelectedSeasonalPlace(null);
+    setMapSelection(null);
+  }, []);
+  const displayedRegion = selectedSeasonalPlace ? null : selectedRegion ?? recommendations[0]?.region ?? null;
+  // 날씨 안내는 지금 보고 있는 지역(없으면 1위 추천, 그것도 없으면 첫 대상 지역) 기준으로 보여 준다.
+  const weatherRegion =
+    (displayedRegion && destinationRegions.find((region) => region.code === displayedRegion.code)) ||
+    recommendations[0]?.region ||
+    destinationRegions[0] ||
+    null;
+  // 여행 체크리스트에 더할 실시간 안내: 고른 관광지 지역의 날씨(일정 중 가장 나쁜 값)
+  const prepWeather = displayedRegion
+    ? weatherDemo
+      ? weatherPreset.weather
+      : regionWeather[displayedRegion.code]?.worst ?? null
+    : null;
+  // 무장애(한국관광공사): 추천 카드 배지와 체크리스트 한 줄에 쓴다. 추천 순서는 바꾸지 않는다.
+  const { withElderly, withChildren } = safetyFilters;
+  const accessParty = useMemo(() => ({ withElderly, withChildren }), [withElderly, withChildren]);
+  const accessTargets = useMemo(() => {
+    const byName = new Map<string, Attraction>();
+    for (const item of [...recommendations, ...exploreRecommendations]) {
+      for (const { attraction } of item.topAttractions) byName.set(attraction.name, attraction);
     }
-  }, [recommendations, selectedRegion]);
+    if (selectedAttraction) byName.set(selectedAttraction.name, selectedAttraction);
+    return [...byName.values()];
+  }, [recommendations, exploreRecommendations, selectedAttraction]);
+  const accessMap = useAttractionAccessMap(accessTargets, accessParty);
+  const accessPrepTip =
+    selectedAttraction && (withElderly || withChildren)
+      ? toAccessSummary(selectedAttraction.name, accessMap[selectedAttraction.name]).prepTip
+      : null;
+  const prepWeatherTips = displayedRegion && !weatherDemo ? regionWeather[displayedRegion.code]?.tips ?? [] : [];
+  // 관광지 종류별 준비물: 날씨 규칙을 적용한 뒤 추천 결과에 남은 바다·산·계곡 관광지만 본다.
+  const recommendedAttractions = recommendations.flatMap((item) => item.topAttractions.map(({ attraction }) => attraction));
+  const extraPrepTips = [
+    ...weatherTipSentences(prepWeatherTips),
+    ...airTips(prepWeather),
+    ...terrainTips(recommendedAttractions, accessParty),
+    ...(accessPrepTip ? [accessPrepTip] : []),
+  ];
+  const liveRequestKey =
+    displayedRegion && hasKakaoRestKey()
+      ? `${displayedRegion.code}:${(people ?? []).map((person) => `${person.gender}-${person.ageGroup}`).join(",")}`
+      : null;
+  const liveAttractions =
+    liveRequestKey && liveResults.requestKey === liveRequestKey ? liveResults.items : [];
+  const liveLoading = liveRequestKey != null && liveResults.requestKey !== liveRequestKey;
 
   // 지도에 더 다양한 관광지 데이터를 보여달라는 요청(사용자 피드백)에 따라,
   // 선택된 지역 주변을 카카오 카테고리 검색으로 실시간으로 더 찾아와서
   // 큐레이션 목록과 별도로 보여준다. REST 키가 없으면 조용히 건너뛴다.
   useEffect(() => {
-    if (!selectedRegion || !hasKakaoRestKey()) {
-      setLiveAttractions([]);
-      return;
-    }
+    if (!displayedRegion || !liveRequestKey) return;
     let cancelled = false;
-    setLiveLoading(true);
-    findNearbyAttractions(selectedRegion.lat, selectedRegion.lng)
+    findNearbyAttractions(displayedRegion.lat, displayedRegion.lng)
       .then((places) => {
         if (cancelled) return;
-        const curatedNames = new Set(selectedRegion.attractions.map((a) => a.name));
+        const curatedNames = new Set(displayedRegion.attractions.map((a) => a.name));
         const deduped = places.filter((p) => !curatedNames.has(p.name));
-        setLiveAttractions(rankAttractions(deduped, people ?? [], 6));
+        setLiveResults({ requestKey: liveRequestKey, items: rankAttractions(deduped, people ?? [], 6) });
       })
       .catch(() => {
-        if (!cancelled) setLiveAttractions([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLiveLoading(false);
+        if (!cancelled) setLiveResults({ requestKey: liveRequestKey, items: [] });
       });
     return () => {
       cancelled = true;
     };
-  }, [selectedRegion, people]);
+  }, [displayedRegion, liveRequestKey, people]);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-season={getSeason(tripPreferences.month)}>
       <header className="app-header">
         <Link to="/" className="back-link">
-          ← TrueTrip
+          ← TourLink
         </Link>
-        <p className="sample-notice">
-          시범 권역(충청권·강원권 일부) 샘플 데이터입니다. 실제 방문자·안전 데이터는{" "}
-          <code>tourism_platform</code> 파이썬 패키지의 계산 결과로 교체합니다.
-        </p>
       </header>
+
+      <CompanionForm
+        regions={SAMPLE_REGIONS}
+        provinces={mapData?.provinces}
+        preferences={tripPreferences}
+        weatherDemo={weatherDemo}
+        onPreferencesChange={(preferences) => {
+          setTripPreferences(preferences);
+          setMapSelection(null);
+          setSelectedRegion(null);
+          setSelectedAttraction(null);
+          setSelectedSeasonalPlace(null);
+        }}
+        onSubmit={(p, filters) => {
+          setPeople(p);
+          setSafetyFilters(filters);
+          setSelectedRegion(null);
+          setSelectedAttraction(null);
+          setSelectedSeasonalPlace(null);
+        }}
+      />
 
       <main className="app-main">
         <aside className="sidebar">
-          <CompanionForm
-            onSubmit={(p, filters) => {
-              setPeople(p);
-              setSafetyFilters(filters);
+          <SeasonalDiscovery
+            month={tripPreferences.month}
+            paused={carouselPaused}
+            onTogglePaused={() => setCarouselPaused((value) => !value)}
+            onSelect={(destination) => {
               setSelectedRegion(null);
-              setSelectedAttraction(null);
+              setSelectedAttraction(destination.attraction);
+              setSelectedSeasonalPlace(destination);
             }}
           />
-          <RecommendationList
-            items={recommendations}
-            exploreItems={exploreRecommendations}
-            onSelect={(region) => {
+          <RandomTripPicker
+            regions={SAMPLE_REGIONS}
+            people={people ?? []}
+            onPick={(region, attraction) => {
               setSelectedRegion(region);
-              setSelectedAttraction(null);
+              setSelectedAttraction(attraction);
+              setSelectedSeasonalPlace(null);
             }}
-            onSelectAttraction={setSelectedAttraction}
-            selectedCode={selectedRegion?.code}
           />
         </aside>
 
         <section className="content">
-          <MapView
-            regions={SAMPLE_REGIONS}
-            highlightedCodes={highlightedCodes}
-            selectedCode={selectedRegion?.code}
-            onSelectRegion={(region) => {
-              setSelectedRegion(region);
-              setSelectedAttraction(null);
-            }}
-            onSelectAttraction={setSelectedAttraction}
-            people={people ?? []}
-            liveAttractions={liveAttractions.map((x) => x.attraction)}
-          />
-          {selectedAttraction && <AttractionDetail attraction={selectedAttraction} />}
-          {selectedRegion && (
-            <LiveAttractionsPanel
-              loading={liveLoading}
-              items={liveAttractions}
-              onSelectAttraction={setSelectedAttraction}
+          <div className="map-workspace">
+            <MapView
+              regions={SAMPLE_REGIONS}
+              highlightedCodes={highlightedCodes}
+              selectedCode={displayedRegion?.code}
+              onSelectRegion={(region) => {
+                setSelectedRegion(region);
+                setSelectedAttraction(null);
+                setSelectedSeasonalPlace(null);
+              }}
+              onSelectAttraction={handleSelectAttraction}
+              people={people ?? []}
+              liveAttractions={liveAttractions.map((x) => x.attraction)}
+              nationalSpots={nationalSpots}
+              shelters={tripPreferences.province === "all" ? [] : mapData?.shelters ?? []}
+              pets={mapData?.pets ?? []}
+              medical={mapData?.medical ?? []}
+              province={tripPreferences.province}
+              selectedPlace={mapSelection?.place ?? null}
+              onSelectPlace={handleMapSelect}
             />
-          )}
-          {selectedRegion && <SafetyPanel region={selectedRegion} filters={safetyFilters} />}
+            <div className="map-info-rail">
+              {(mapLoading || mapPlaces.error) && (
+                <p className={`map-data-status${mapPlaces.error && !mapLoading ? " is-error" : ""}`} role="status">
+                  {mapLoading ? "공공데이터를 불러오는 중…" : mapPlaces.error}
+                </p>
+              )}
+              {mapSelection && mapData && (
+                <NationalSpotPanel
+                  selection={mapSelection}
+                  data={mapData}
+                  onClose={() => setMapSelection(null)}
+                />
+              )}
+              {mapData?.demand && tripPreferences.province !== "all" && (
+                <DemandCard demand={mapData.demand} />
+              )}
+              {people != null && destinationRegions.length > 0 && (
+                weatherDemo ? (
+                  <WeatherNotice
+                    mode="demo"
+                    regionName={weatherRegion?.name ?? null}
+                    decision={weatherDecisions[weatherRegion?.code ?? destinationRegions[0].code]}
+                    demoLabel={weatherPreset.label}
+                    demoWeather={weatherPreset.weather}
+                  />
+                ) : weatherLoading || !weatherRegion ? (
+                  <WeatherNotice mode="loading" regionName={weatherRegion?.name ?? null} />
+                ) : (
+                  <WeatherNotice
+                    mode="live"
+                    regionName={weatherRegion.name}
+                    decision={weatherDecisions[weatherRegion.code]}
+                    days={regionWeather[weatherRegion.code]?.days ?? []}
+                  />
+                )
+              )}
+              {people != null && weatherRegion && (
+                <WarningBanner
+                  regionName={weatherRegion.name}
+                  here={
+                    weatherDemo
+                      ? weatherPreset.weather.warnings.map((kind) => `${kind}특보`)
+                      : [...new Set((regionWeather[weatherRegion.code]?.days ?? []).flatMap((day) => day.warningsHere))]
+                  }
+                  nearby={
+                    weatherDemo
+                      ? []
+                      : [...new Set((regionWeather[weatherRegion.code]?.days ?? []).flatMap((day) => day.warningsNearby))]
+                  }
+                  terrainExcluded={weatherDecisions[weatherRegion.code].excludedTerrains.length > 0}
+                />
+              )}
+              <RecommendationList
+                items={recommendations}
+                exploreItems={exploreRecommendations}
+                emptyMessage={
+                  destinationRegions.length === 0
+                    ? "이 지역은 맞춤 추천 시범 데이터가 없어요. 지도에서 전국 관광지를 눌러 안전 정보를 확인하세요."
+                    : people == null
+                      ? "여행 조건을 정하고 동행자를 입력한 뒤 추천받아 보세요."
+                      : weatherRestricted
+                        ? "방문일 날씨 기준에 맞는 관광지가 이 조건에는 없어요. 지역 범위나 목적을 넓히거나 다른 날짜를 골라 보세요."
+                        : "현재 조건에 맞는 여행지가 없어요. 목적이나 지역 범위를 넓혀 보세요."
+                }
+                onSelect={(region) => {
+                  setSelectedRegion(region);
+                  setSelectedAttraction(null);
+                  setSelectedSeasonalPlace(null);
+                }}
+                onSelectAttraction={handleSelectAttraction}
+                selectedCode={displayedRegion?.code}
+                weatherSummaryFor={(code) => weatherDecisions[code]?.summary ?? null}
+                attractionBadge={(attraction) =>
+                  toAccessSummary(attraction.name, accessMap[attraction.name]).hasInfo ? "편의 정보" : null
+                }
+              />
+              {people != null && <WeatherExcludedList items={weatherExclusions} />}
+              {selectedAttraction && (
+                <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} extraTips={extraPrepTips} />
+              )}
+              {selectedAttraction && (
+                <AttractionDetail
+                  attraction={selectedAttraction}
+                  region={displayedRegion}
+                  locationLabel={selectedSeasonalPlace?.location}
+                  seasonalTiming={selectedSeasonalPlace?.timing}
+                  seasonalDescription={selectedSeasonalPlace?.summary}
+                  party={accessParty}
+                />
+              )}
+              {displayedRegion && (
+                <LiveAttractionsPanel
+                  loading={liveLoading}
+                  items={liveAttractions}
+                  onSelectAttraction={handleSelectAttraction}
+                />
+              )}
+              {SHOW_REGION_SAFETY_SCORE && displayedRegion && (
+                <SafetyPanel region={displayedRegion} filters={safetyFilters} />
+              )}
+            </div>
+          </div>
         </section>
       </main>
     </div>

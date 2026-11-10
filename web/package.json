@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "cross-env TOURAPI_NO_BROWSER=1 PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8 concurrently --kill-others --names api,web --prefix-colors blue,green \"cd ../tourapi && py api.py local\" \"vite --strictPort\"",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -19,8 +21,11 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.7",
+    "cross-env": "^10.1.0",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vitest": "^4.1.12"
   }
 }

@@ -1,9 +1,9 @@
 /**
  * 시범 권역 샘플 데이터 (문서 5.2: 충청권(천안 포함) + 강원권 일부).
  *
- * 전부 데모용 합성 데이터다. 실제 방문자 수는 한국관광 데이터랩,
- * 안전 지표는 tourism_platform 파이썬 패키지의 계산 결과로 교체해야 한다
- * (연동 방법은 tourism_platform/data/loaders.py 참고).
+ * 전부 데모용 합성 데이터다. 실제 방문자 수는 한국관광 데이터랩
+ * (tourism_platform/src/tourism_platform/data/apis/tourism.py visitor_by_region_daily)으로 교체해야 한다.
+ * 안전 지표(safety)는 10주차부터 화면에 쓰지 않는다(config/features.ts).
  */
 import type { GroupKey, Region } from "../lib/types";
 
@@ -253,7 +253,7 @@ const raw: RawRegion[] = [
     },
   },
   {
-    code: "51230",
+    code: "51210", // 2026-11-05 데이터랩 실데이터로 확인해 고침 (51230은 삼척시)
     name: "속초시",
     province: "강원특별자치도",
     lat: 38.2070,
@@ -285,7 +285,7 @@ const raw: RawRegion[] = [
     },
   },
   {
-    code: "51830",
+    code: "51760", // 2026-11-05 데이터랩 실데이터로 확인해 고침 (51830은 양양군)
     name: "평창군",
     province: "강원특별자치도",
     lat: 37.3705,

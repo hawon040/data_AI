@@ -19,22 +19,6 @@
     --series-2:       #eb6834; /* orange - slot 2 */
     --success-text:   #006300;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:where(:not([data-theme="light"])) {
-      color-scheme: dark;
-      --surface-1:      #1a1a19;
-      --page-plane:     #0d0d0d;
-      --text-primary:   #ffffff;
-      --text-secondary: #c3c2b7;
-      --text-muted:     #898781;
-      --grid-line:      #2c2c2a;
-      --baseline:       #383835;
-      --border-ring:    rgba(255,255,255,0.10);
-      --series-1:       #3987e5;
-      --series-2:       #d95926;
-      --success-text:   #0ca30c;
-    }
-  }
   :root[data-theme="dark"] {
     color-scheme: dark;
     --surface-1:      #1a1a19;
@@ -147,7 +131,6 @@
   .grid-line { stroke: var(--grid-line); stroke-width: 1; }
   .line-path { fill: none; stroke-width: 2; }
   .point { r: 3.5; stroke: var(--surface-1); stroke-width: 2; }
-  .bar { }
   .direct-label { fill: var(--text-secondary); font-size: 11px; }
 
   .tooltip {

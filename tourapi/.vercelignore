@@ -1,0 +1,7 @@
+__pycache__
+*.pyc
+.env*
+.vercel
+package.json
+logs
+fluent-bit

@@ -1,186 +1,384 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { SEASONAL_DESTINATIONS, type SeasonalDestination } from "../lib/seasonalDestinations";
 import "./Landing.css";
 
-const NAV_LINKS = ["서비스", "방법론", "검증 결과"];
+const NAV_LINKS = [
+  { path: "/service", label: "서비스" },
+  { path: "/methodology", label: "방법론" },
+  { path: "/validation", label: "검증 결과" },
+] as const;
+type MonthlySlide = SeasonalDestination & { month: number };
 
-const STATS = [
-  { value: "2.5배", label: "추천 정확도 (인기도 단독 대비)" },
-  { value: "68.3%", label: "동행자 전원 만족 비율" },
-  { value: "22%", label: "안전지수 오차 감소" },
-  { value: "10개", label: "시범 권역 (충청·강원)" },
+const SEASONAL_SLIDES: MonthlySlide[] = [
+  {
+    ...SEASONAL_DESTINATIONS.winter[1],
+    month: 1,
+    id: "january-buramsan-snow",
+    timing: "불암산 · 한겨울 설경",
+    location: "서울특별시 노원구",
+    title: "불암산 눈 덮인 능선",
+    summary: "눈으로 덮인 불암산의 겨울 능선이에요.",
+    image: "/seasonal/kogl-buramsan-winter-optimized.jpg",
+    imageAlt: "눈 쌓인 불암산의 겨울 산 능선",
+    creator: "서울특별시 노원구",
+    license: "공공누리 제1유형",
+    licenseUrl: "https://www.kogl.or.kr/info/licenseType1.do",
+    sourceUrl: "https://www.kogl.or.kr/recommend/recommendDivDetail.do?recommendIdx=59887",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.winter[1],
+    month: 2,
+    id: "february-taebaeksan-rime",
+    timing: "태백산 · 상고대",
+    location: "강원특별자치도 태백시",
+    title: "태백산 겨울 상고대",
+    summary: "나뭇가지마다 서리가 내려앉은 태백산의 겨울 풍경이에요.",
+    image: "/seasonal/taebaeksan-winter-landscape.jpg",
+    imageAlt: "상고대와 눈으로 덮인 태백산 능선",
+    creator: "Franguiche",
+    license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Parc_National_Taebaeksan_en_hiver.jpg",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.spring[0],
+    month: 3,
+    id: "march-jinhae-blossom",
+    timing: "진해 · 봄 벚꽃",
+    location: "경상남도 창원시 진해구",
+    title: "진해 벚꽃길",
+    summary: "벚꽃이 피어나기 시작하는 진해의 봄 풍경이에요.",
+    image: "/seasonal/jinhae-spring-panorama.jpg",
+    imageAlt: "벚꽃으로 뒤덮인 진해의 봄 풍경",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.spring[0],
+    month: 4,
+    id: "april-korean-cherry-blossom",
+    timing: "한국의 벚꽃 · 봄 절정",
+    location: "대한민국",
+    title: "벚꽃 터널",
+    summary: "화사한 벚꽃이 터널처럼 이어지는 봄 풍경이에요.",
+    image: "/seasonal/korean-cherry-blossom-panorama.jpg",
+    imageAlt: "분홍빛 벚꽃이 하늘을 덮은 봄 풍경",
+    creator: "Ckim777",
+    license: "CC BY-SA 3.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Korean_Cherry_Blossom.jpg",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.spring[0],
+    month: 5,
+    id: "may-ansan-blossom",
+    timing: "안산 · 봄 산책길",
+    location: "경기도 안산시",
+    title: "안산 벚꽃 산책길",
+    summary: "운하 곁에 벚꽃이 이어지는 안산의 봄 풍경이에요.",
+    image: "/seasonal/ansan-spring-panorama.jpg",
+    imageAlt: "운하를 따라 벚꽃이 핀 안산의 봄 풍경",
+    creator: "Ken Eckert",
+    license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Korean_Cherry_Blossoms_in_Ansan.jpg",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.summer[1],
+    month: 6,
+    id: "june-jeju-coast",
+    timing: "제주 · 초여름 해안",
+    location: "제주특별자치도",
+    title: "제주 푸른 해안",
+    summary: "초록빛 해안과 푸른 바다가 펼쳐지는 제주의 초여름 풍경이에요.",
+    image: "/seasonal/jeju-summer-coast-landscape.jpg",
+    imageAlt: "푸른 바다와 초록빛 해안이 이어지는 제주 풍경",
+    creator: "Sgroey",
+    license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Black_sand_beach_Jeju.jpg",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.summer[1],
+    month: 7,
+    id: "july-jungmun-beach",
+    timing: "중문 · 한여름 바다",
+    location: "제주특별자치도 서귀포시",
+    title: "중문 색달해변",
+    summary: "검은 화산암과 푸른 물결이 어우러지는 한여름 해변이에요.",
+    image: "/seasonal/jungmun-summer-beach.jpg",
+    imageAlt: "제주 중문 색달해변의 바다와 검은 화산암",
+    creator: "Giuseppe Milo",
+    license: "CC BY 3.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/3.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Jungmun_Saekdal_Beach_South_Korea_Seascape_Photography_(255046171).jpeg",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.summer[1],
+    month: 8,
+    id: "august-daebudo-coast",
+    timing: "대부도 · 여름 해안",
+    location: "경기도 안산시 대부도",
+    title: "대부도 여름 바다",
+    summary: "넓게 펼쳐진 바닷가와 푸른 숲이 어우러진 여름 풍경이에요.",
+    image: "/seasonal/daebudo-summer-coast-39.jpg",
+    imageAlt: "대부도의 바다와 숲이 이어지는 여름 풍경",
+    creator: "UserLPiotrus",
+    license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Daebudo_summer_2016_39.JPG",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.autumn[1],
+    month: 9,
+    id: "september-naejangsan-autumn",
+    timing: "내장산 · 초가을 단풍",
+    location: "전북특별자치도 정읍시",
+    title: "내장산 단풍 케이블카",
+    summary: "단풍이 물들기 시작하는 내장산의 초가을 풍경이에요.",
+    image: "/seasonal/naejangsan-autumn.jpg",
+    imageAlt: "초가을 단풍으로 물들기 시작한 내장산",
+    creator: "Jeongtaeyoung",
+    license: "CC BY-SA 3.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Naejangsan_Mountain_cable_car.jpg",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.autumn[1],
+    month: 10,
+    id: "october-chiak-autumn",
+    timing: "치악산 · 단풍 절정",
+    location: "강원특별자치도 원주시",
+    title: "치악산 가을 단풍",
+    summary: "산자락을 황금빛과 붉은빛으로 물들인 치악산의 가을 풍경이에요.",
+    image: "/seasonal/chiak-mountain-autumn-foliage.jpg",
+    imageAlt: "황금빛 단풍이 산자락을 덮은 치악산",
+    creator: "Sohyeon Bak",
+    license: "CC BY-SA 3.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Fall_Foliage_of_Chiak_Mountain.jpg",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.autumn[1],
+    month: 11,
+    id: "november-naejangsan-maples",
+    timing: "내장산 · 늦가을 단풍",
+    location: "전북특별자치도 정읍시",
+    title: "내장산 붉은 단풍",
+    summary: "붉은 단풍이 물과 정자를 감싸는 늦가을 풍경이에요.",
+    image: "/seasonal/naejangsan-autumn-landscape.jpg",
+    imageAlt: "내장산 정자와 붉게 물든 늦가을 단풍",
+    creator: "Tung Thanh Dang",
+    license: "CC BY-SA 3.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Naejangsan_Pavilion_2.jpg",
+  },
+  {
+    ...SEASONAL_DESTINATIONS.winter[1],
+    month: 12,
+    id: "december-taebaeksan-snow",
+    timing: "태백산 · 겨울 설경",
+    location: "강원특별자치도 태백시",
+    title: "눈 덮인 태백산",
+    summary: "눈이 내려앉은 태백산 능선의 겨울 풍경이에요.",
+    image: "/seasonal/taebaeksan-mountain.jpg",
+    imageAlt: "눈으로 덮인 태백산의 겨울 풍경",
+    creator: "칼빈500",
+    license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:태백산눈2019(AMJ).jpg",
+  },
 ];
 
-const FEATURES = [
-  {
-    num: "01",
-    title: "동행자 교집합 추천",
-    desc: "동행자 각각의 특화지수 중 최솟값을 기준으로, 모두가 평균 이상으로 만족하는 여행지만 골라낸다.",
-    tag: "COMPANION MATCH",
-  },
-  {
-    num: "02",
-    title: "여행자 관점 안전지수",
-    desc: "거주 인구가 아닌 관광객 체류를 반영한 유효인구로 보정 — 5단계 등급과 신뢰구간으로 투명하게 공개한다.",
-    tag: "SAFETY INDEX",
-  },
-  {
-    num: "03",
-    title: "여행 중 실시간 모드",
-    desc: "현재 위치 기준으로 지금 근처의 추천과 시간대별 안전 정보, 기상특보를 함께 띄운다.",
-    tag: "IN-TRIP (예정)",
-  },
-  {
-    num: "04",
-    title: "광고 없는 추천 원칙",
-    desc: "리뷰나 협찬이 아니라 통신 데이터로 집계한 실제 이동만을 근거로 한다. 돈으로 순위를 바꿀 수 없다.",
-    tag: "NO ADS",
-  },
-];
+export function LandingNav() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeMenuOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    const closeMenuOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeMenuOutside);
+    window.addEventListener("keydown", closeMenuOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenuOutside);
+      window.removeEventListener("keydown", closeMenuOnEscape);
+    };
+  }, [menuOpen]);
+
+  return (
+    <nav className="landing-nav" ref={menuRef}>
+      <div className="nav-start">
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
+          aria-expanded={menuOpen}
+          aria-controls="landing-section-menu"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <Link to="/" className="brand">
+          <span className="brand-mark">T</span>
+          <span className="brand-name">TourLink</span>
+        </Link>
+      </div>
+      <Link to="/methodology" className="nav-safety-link">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 3 19 6v5c0 4.6-2.9 8.1-7 10-4.1-1.9-7-5.4-7-10V6l7-3Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        안전 정보 안내
+      </Link>
+      {menuOpen && (
+        <div className="section-menu" id="landing-section-menu">
+          <p className="section-menu-heading">페이지 안내</p>
+          {NAV_LINKS.map(({ path, label }, index) => (
+            <Link
+              className="section-menu-item"
+              key={path}
+              to={path}
+              onClick={() => setMenuOpen(false)}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <span>{label}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </nav>
+  );
+}
 
 export function Landing() {
   const navigate = useNavigate();
-  const [activeFeature, setActiveFeature] = useState<number | null>(null);
+  const [launching, setLaunching] = useState(false);
+  const [tickerPaused, setTickerPaused] = useState(false);
+  const [slideState, setSlideState] = useState(() => {
+    const currentMonth = new Date().getMonth() + 1;
+    const index = SEASONAL_SLIDES.findIndex((destination) => destination.month === currentMonth);
+    return { active: Math.max(index, 0), outgoing: null as number | null };
+  });
+  const { active: activeSlide, outgoing: outgoingSlide } = slideState;
+  const destination = SEASONAL_SLIDES[activeSlide];
+
+  useEffect(() => {
+    if (!launching) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => navigate("/app"), reducedMotion ? 0 : 720);
+    return () => window.clearTimeout(timer);
+  }, [launching, navigate]);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => {
+      setSlideState((current) => ({
+        active: (current.active + 1) % SEASONAL_SLIDES.length,
+        outgoing: current.active,
+      }));
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (outgoingSlide === null) return;
+    const timer = window.setTimeout(() => {
+      setSlideState((current) =>
+        current.outgoing === outgoingSlide ? { ...current, outgoing: null } : current,
+      );
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [outgoingSlide]);
 
   return (
     <div className="landing">
-      <nav className="landing-nav">
-        <div className="brand">
-          <div className="brand-mark">T</div>
-          <span className="brand-name">TrueTrip</span>
-        </div>
-        <div className="nav-links">
-          {NAV_LINKS.map((link) => (
-            <a key={link} href={`#${link}`}>
-              {link}
-            </a>
-          ))}
-        </div>
-        <div className="nav-actions">
-          <Link to="/about" className="pill-button ghost compact">
-            구현 방식 &amp; 신뢰성
-          </Link>
-          <button className="pill-button primary compact" onClick={() => navigate("/app")}>
-            추천받으러 가기
-          </button>
-        </div>
-      </nav>
+      <LandingNav />
 
-      <section className="hero">
-        <div className="hero-glow glow-blue" />
-        <div className="hero-glow glow-teal" />
-        <h1>
-          같이 가는 모두가 만족할 여행지를,
-          <br />
-          <span className="gradient-text">진짜 이동 데이터</span>로 찾는다
-        </h1>
-        <p className="hero-sub">
-          성별·연령이 다른 동행자도 모두 평균 이상으로 찾는 곳만 추천하고,
-          <br />
-          여행 중엔 지금 필요한 안전 정보까지 함께 보여준다.
-        </p>
-        <div className="hero-actions">
-          <button className="pill-button primary" onClick={() => navigate("/app")}>
-            지금 추천받기
-          </button>
-          <a className="pill-button ghost" href="#방법론">
-            방법론 알아보기
-          </a>
-        </div>
-      </section>
-
-      <section className="stats-band">
-        {STATS.map((s, i) => (
-          <div key={s.label} className="stat-cell" style={{ borderRight: i < 3 ? "1px solid var(--border)" : "none" }}>
-            <div className="stat-value">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
-          </div>
-        ))}
-        <p className="stats-caveat">
-          참값을 아는 가상 지역으로 측정한 방법론 검증 수치입니다 (몬테카를로 시뮬레이션). 실제 지역 결과가 아닙니다.
-        </p>
-      </section>
-
-      <section id="서비스" className="features">
-        <div className="section-head">
-          <div className="eyebrow">OUR APPROACH</div>
-          <h2>네 가지 핵심 기능</h2>
-        </div>
-        <div className="feature-grid">
-          {FEATURES.map((f, i) => (
-            <div
-              key={f.num}
-              className={`feature-card${activeFeature === i ? " active" : ""}`}
-              onMouseEnter={() => setActiveFeature(i)}
-              onMouseLeave={() => setActiveFeature(null)}
-            >
-              <div className="feature-accent" />
-              <div className="feature-head">
-                <span className="feature-tag">{f.tag}</span>
-                <span className="feature-num">{f.num}</span>
-              </div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
+      <div
+        className="landing-marquee-viewport"
+        role="region"
+        aria-label="가고 싶은 관광지, 안전까지 확인하다"
+      >
+        <div className={`landing-marquee${tickerPaused ? " is-paused" : ""}`} aria-hidden="true">
+          {[0, 1].map((copy) => (
+            <div className="landing-marquee-panel" key={copy} aria-hidden={copy === 1}>
+              <span className="landing-marquee-copy"># 가고 싶은 관광지, 안전까지 확인하다</span>
             </div>
           ))}
         </div>
-      </section>
-
-      <section id="방법론" className="methodology">
-        <div className="methodology-glow" />
-        <div className="methodology-inner">
-          <div className="eyebrow teal">METHODOLOGY</div>
-          <h2>
-            안전도 산출의
-            <br />
-            새로운 기준
-          </h2>
-          <p>
-            거주 인구를 분모로 쓰면 관광객이 몰리는 지역의 위험이 과대평가된다. 관광객 체류를
-            반영한 유효인구, 범죄 심각도·노출도 결합, 경험적 베이즈 축소까지 — 세 가지 보정을
-            거쳐야 여행자 관점의 안전도가 된다.
-          </p>
-          <a className="pill-button teal-btn" href="#검증 결과">
-            검증 결과 보기 →
-          </a>
-        </div>
-      </section>
-
-      <section id="검증 결과" className="validation">
-        <div className="section-head">
-          <div className="eyebrow">VALIDATED BY SIMULATION</div>
-          <h2>오차 검증 요약</h2>
-        </div>
-        <div className="validation-rows">
-          {[
-            { title: "추천 방식", detail: "특화지수 × 로그 규모 결합", result: "정밀도 0.842 (인기도 단독 0.333)" },
-            { title: "동행자 교집합", detail: "최솟값 방식", result: "동행자 전원 만족 68.3% (대표자 1인 24.5%)" },
-            { title: "안전도 분모", detail: "수정 유효인구", result: "RMSE 7.8 (거주인구만 10.2, 이전 이중계산 19.1)" },
-            { title: "3개년 평균 + 베이즈 축소", detail: "소규모 지역 보정", result: "소규모 지역 RMSE 약 15%p 추가 감소" },
-          ].map((row, i) => (
-            <div key={row.title} className="validation-row">
-              <span className="v-num">0{i + 1}</span>
-              <h3>{row.title}</h3>
-              <span className="v-detail">{row.detail}</span>
-              <span className="v-result">{row.result}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="cta-band">
-        <div className="cta-glow" />
-        <div>
-          <h2>
-            내 동행에 맞는 여행지,
-            <br />
-            지금 찾아볼까요?
-          </h2>
-          <p>성별·연령대만 입력하면 바로 확인할 수 있습니다.</p>
-        </div>
-        <button className="pill-button primary" onClick={() => navigate("/app")}>
-          추천받으러 가기
+        <button
+          className="landing-marquee-toggle"
+          type="button"
+          onClick={() => setTickerPaused((paused) => !paused)}
+          aria-label={tickerPaused ? "움직이는 문구 재생" : "움직이는 문구 멈춤"}
+          aria-pressed={tickerPaused}
+        >
+          {tickerPaused ? "재생" : "멈춤"}
         </button>
+      </div>
+
+      <section className="hero" data-season={destination.season}>
+        {outgoingSlide !== null && (
+          <img
+            key={SEASONAL_SLIDES[outgoingSlide].id}
+            className="hero-seasonal-photo outgoing"
+            src={SEASONAL_SLIDES[outgoingSlide].image}
+            alt=""
+            aria-hidden="true"
+          />
+        )}
+        <img
+          key={destination.id}
+          className="hero-seasonal-photo"
+          src={destination.image}
+          alt=""
+          aria-hidden="true"
+        />
+        <div className="hero-content">
+          <h1 className="hero-title">
+            어디로 떠날지,
+            <br />
+            얼마나 안전한지 한 번에
+          </h1>
+          <p className="hero-lead">
+            날씨와 일행에 맞는 관광지를 추천하고, 가까운 응급실·대피소까지 함께 알려드려요.
+          </p>
+        <div className={`hero-actions${launching ? " is-launching" : ""}`}>
+          <button
+            className="pill-button primary trip-launch-button"
+            onClick={() => setLaunching(true)}
+            disabled={launching}
+            aria-busy={launching}
+          >
+            관광지 추천받기
+            <svg className="trip-car" viewBox="0 0 48 40" aria-hidden="true" focusable="false">
+              <path className="trip-car-body" d="M7 25.5h34v7H7zM10 23l4.5-9h16l7.5 9v3H10z" />
+              <path className="trip-car-window" d="m16.2 16-3.5 7h9v-7zm7.7 0v7h11.1l-5.8-7z" />
+              <path className="trip-car-detail" d="M5 26h3m32 0h3" />
+              <circle className="trip-car-wheel" cx="15" cy="33" r="4.2" />
+              <circle className="trip-car-wheel" cx="34" cy="33" r="4.2" />
+              <circle className="trip-car-wheel-core" cx="15" cy="33" r="1.5" />
+              <circle className="trip-car-wheel-core" cx="34" cy="33" r="1.5" />
+            </svg>
+          </button>
+        </div>
+        </div>
+        <div className="hero-seasonal-credit" aria-live="polite">
+            <span>{destination.month}월 · {destination.location} · {destination.title}</span>
+            <span>
+              사진: {destination.creator} ·{" "}
+              <a href={destination.sourceUrl} target="_blank" rel="noreferrer">사진 출처</a> ·{" "}
+              <a href={destination.licenseUrl} target="_blank" rel="noreferrer">{destination.license}</a>
+            </span>
+        </div>
       </section>
 
       <footer className="landing-footer">
@@ -188,12 +386,14 @@ export function Landing() {
           <div>
             <div className="brand">
               <div className="brand-mark small">T</div>
-              <span className="brand-name">TrueTrip</span>
+              <span className="brand-name">TourLink</span>
             </div>
             <p className="footer-desc">
-              성·연령 방문 데이터 기반 맞춤 관광지 추천 플랫폼
+              맞춤 관광지 추천부터 여행자 관점의 안전 정보까지.
               <br />
-              관광 노출 보정 안전지수 — 창업 도전 프로젝트
+              날씨·일행 맞춤 관광지 추천과 가까운 응급실·대피소 안내
+              <br />
+              빅데이터와 AI 2조 프로젝트
             </p>
           </div>
         </div>
@@ -202,6 +402,7 @@ export function Landing() {
           <span>DATA-DRIVEN · NO ADS</span>
         </div>
       </footer>
+
     </div>
   );
 }

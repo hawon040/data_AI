@@ -1,15 +1,13 @@
 import type { Attraction, RecommendationItem, Region } from "../lib/types";
-
-const GRADE_LABEL: Record<number, string> = {
-  1: "매우 안전",
-  2: "안전",
-  3: "보통",
-  4: "주의",
-  5: "각별한 주의",
-};
+import { isSafetyGrade, safetyGradeLabel } from "../lib/safetyGrades";
+import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
+import { shortEvidence } from "../lib/evidence";
 
 function SafetyBadge({ grade }: { grade: number }) {
-  return <span className={`safety-badge grade-${grade}`}>{GRADE_LABEL[grade] ?? "평가 불가"}</span>;
+  if (!isSafetyGrade(grade)) {
+    return <span className="safety-badge">평가 불가</span>;
+  }
+  return <span className={`safety-badge grade-${grade}`}>{safetyGradeLabel(grade)}</span>;
 }
 
 function RecommendationCard({
@@ -18,8 +16,12 @@ function RecommendationCard({
   onSelect,
   onSelectAttraction,
   selected,
+  weatherSummary,
+  attractionBadge,
 }: {
   item: RecommendationItem;
+  weatherSummary: string | null;
+  attractionBadge: (attraction: Attraction) => string | null;
   rank?: number;
   onSelect: (r: Region) => void;
   onSelectAttraction: (a: Attraction) => void;
@@ -41,17 +43,18 @@ function RecommendationCard({
           <div className="region-name">{item.region.name}</div>
           <div className="region-province">{item.region.province}</div>
         </div>
-        <SafetyBadge grade={item.region.safety.grade} />
+        {SHOW_REGION_SAFETY_SCORE && (
+          <div className="safety-reference">
+            <span>안전 참고</span>
+            <SafetyBadge grade={item.region.safety.grade} />
+          </div>
+        )}
       </div>
       <p className="highlight">{item.region.highlight}</p>
-      <ul className="evidence-list">
-        {item.evidence.map((e, i) => (
-          <li key={i}>{e}</li>
-        ))}
-      </ul>
+      <p className="evidence-line">{shortEvidence(item, weatherSummary)}</p>
       {item.topAttractions.length > 0 && (
         <div className="attraction-chips">
-          {item.topAttractions.map(({ attraction, matchScore }) => (
+          {item.topAttractions.map(({ attraction }) => (
             <button
               key={attraction.name}
               type="button"
@@ -63,7 +66,26 @@ function RecommendationCard({
               }}
             >
               {attraction.name}
-              <span className="attraction-score">{Math.round(matchScore)}</span>
+              {attractionBadge(attraction) && <span className="attraction-badge">{attractionBadge(attraction)}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      {item.indoorAlternatives && item.indoorAlternatives.length > 0 && (
+        <div className="indoor-alternatives">
+          <span className="indoor-alternatives-label">비 오면 실내 대안</span>
+          {item.indoorAlternatives.map((attraction) => (
+            <button
+              key={attraction.name}
+              type="button"
+              className="attraction-chip is-indoor"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(item.region);
+                onSelectAttraction(attraction);
+              }}
+            >
+              {attraction.name}
             </button>
           ))}
         </div>
@@ -78,15 +100,23 @@ export function RecommendationList({
   onSelect,
   onSelectAttraction,
   selectedCode,
+  emptyMessage,
+  weatherSummaryFor = () => null,
+  attractionBadge = () => null,
 }: {
   items: RecommendationItem[];
   exploreItems: RecommendationItem[];
   onSelect: (r: Region) => void;
   onSelectAttraction: (a: Attraction) => void;
   selectedCode?: string;
+  emptyMessage: string;
+  /** 지역 코드별 날씨 규칙 요약 (lib/weatherRules.ts WeatherDecision.summary) */
+  weatherSummaryFor?: (regionCode: string) => string | null;
+  /** 관광지 칩 옆 배지(예: 무장애 "편의 정보"). 정보가 있을 때만 문구를 돌려준다. 순서는 바꾸지 않는다. */
+  attractionBadge?: (attraction: Attraction) => string | null;
 }) {
   if (items.length === 0) {
-    return <p className="empty-state">동행자 정보를 입력하고 추천받기를 눌러보세요.</p>;
+    return <p className="empty-state">{emptyMessage}</p>;
   }
   return (
     <div className="recommendation-list">
@@ -99,6 +129,8 @@ export function RecommendationList({
           onSelect={onSelect}
           onSelectAttraction={onSelectAttraction}
           selected={selectedCode === item.region.code}
+          weatherSummary={weatherSummaryFor(item.region.code)}
+          attractionBadge={attractionBadge}
         />
       ))}
 
@@ -112,6 +144,8 @@ export function RecommendationList({
               onSelect={onSelect}
               onSelectAttraction={onSelectAttraction}
               selected={selectedCode === item.region.code}
+              weatherSummary={weatherSummaryFor(item.region.code)}
+              attractionBadge={attractionBadge}
             />
           ))}
         </>

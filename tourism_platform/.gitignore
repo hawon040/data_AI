@@ -5,3 +5,9 @@ __pycache__/
 .pytest_cache/
 build/
 dist/
+
+# 레이크·로그 산출물 (README.md·.gitkeep만 커밋)
+data/raw/api/
+data/processed/*/
+data/gold/*.parquet
+data/logs/
