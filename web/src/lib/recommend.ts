@@ -41,6 +41,25 @@ export function topAttractionsOf(region: Region, people: Person[], n = 4, usage?
   return rankAttractions(region.attractions, people, n, usage);
 }
 
+/** 지역·집단의 특화지수를 계산하는 함수를 만든다. 사용자 기록이 있으면 기본값과 섞고, 없으면 샘플 방문자 비중으로 계산한다. */
+function makeLqResolver(regions: Region[], usage?: UsageSummary | null) {
+  const shares = nationalShares(regions);
+  if (usage?.available !== true) {
+    return (region: Region, key: GroupKey) => ({
+      lq: locationQuotient(region.groupVisitors[key] ?? 0, region.totalVisitors, shares[key]),
+      records: 0,
+      reliability: 0,
+    });
+  }
+  const priors = buildPriors(regions);
+  const blended = blendedNationalShares(usage.regionGroupCounts, priors, Object.keys(shares) as GroupKey[]);
+  return (region: Region, key: GroupKey) => regionLQ(usage.regionGroupCounts, blended, region.code, key, priors[region.code]);
+}
+
+function recordsEvidence(records: number, reliability: number): string[] {
+  return records > 0 ? [`이 서비스 사용자 기록 ${Math.round(records)}건 반영 (${Math.round(reliability * 100)}%)`] : [];
+}
+
 /**
  * people이 1명이면 개인 추천(specializationScore), 2명 이상이면 동행자 교집합
  * 추천(groupScore, 최솟값 방식)을 쓴다.
@@ -55,26 +74,16 @@ export function getRecommendations(
     throw new Error("최소 1명의 성별·연령대가 필요합니다");
   }
   // 사용자 기록이 있으면 기본값(샘플 방문자 비중)과 섞은 값으로 계산한다 — 기록이 없는 지역은 기본값 그대로다.
-  const useRecords = usage?.available === true;
-  const shares = nationalShares(regions);
-  const priors = useRecords ? buildPriors(regions) : null;
-  const blendedShares = useRecords
-    ? blendedNationalShares(usage.regionGroupCounts, priors!, Object.keys(shares) as GroupKey[])
-    : null;
+  const lqOf = makeLqResolver(regions, usage);
 
   const items: RecommendationItem[] = regions.map((region) => {
     let userRecords = 0;
     let reliability = 0;
     const perPersonLQ = people.map((person) => {
-      const key = groupKey(person);
-      if (useRecords) {
-        const blended = regionLQ(usage.regionGroupCounts, blendedShares!, region.code, key, priors![region.code]);
-        userRecords = blended.records;
-        reliability = blended.reliability;
-        return { person, lq: blended.lq };
-      }
-      const lq = locationQuotient(region.groupVisitors[key] ?? 0, region.totalVisitors, shares[key]);
-      return { person, lq };
+      const result = lqOf(region, groupKey(person));
+      userRecords = result.records;
+      reliability = result.reliability;
+      return { person, lq: result.lq };
     });
 
     const lqValues = perPersonLQ.map((x) => x.lq);
@@ -86,10 +95,8 @@ export function getRecommendations(
     const evidence = perPersonLQ
       .slice()
       .sort((a, b) => a.lq - b.lq) // 가장 덜 만족하는 동행자부터 보여준다
-      .map(({ person, lq }) => evidenceSentence(person, lq));
-    if (userRecords > 0) {
-      evidence.push(`이 서비스 사용자 기록 ${Math.round(userRecords)}건 반영 (${Math.round(reliability * 100)}%)`);
-    }
+      .map(({ person, lq }) => evidenceSentence(person, lq))
+      .concat(recordsEvidence(userRecords, reliability));
 
     return { region, score, perPersonLQ, evidence, topAttractions: topAttractionsOf(region, people, 4, usage) };
   });
@@ -107,17 +114,14 @@ export function getExploreRecommendations(
   people: Person[],
   regions: Region[],
   excludeCodes: Set<string>,
+  usage?: UsageSummary | null,
 ): RecommendationItem[] {
-  const shares = nationalShares(regions);
+  const lqOf = makeLqResolver(regions, usage);
   const candidates = regions.filter((r) => !excludeCodes.has(r.code));
   if (candidates.length === 0) return [];
 
   const withScores = candidates.map((region) => {
-    const perPersonLQ = people.map((person) => {
-      const key = groupKey(person);
-      const lq = locationQuotient(region.groupVisitors[key] ?? 0, region.totalVisitors, shares[key]);
-      return { person, lq };
-    });
+    const perPersonLQ = people.map((person) => ({ person, lq: lqOf(region, groupKey(person)).lq }));
     const avgLq = perPersonLQ.reduce((s, x) => s + x.lq, 0) / perPersonLQ.length;
     return { region, perPersonLQ, avgLq };
   });
@@ -134,11 +138,16 @@ export function getExploreRecommendations(
     (x, i, arr): x is NonNullable<typeof x> => x != null && arr.findIndex((y) => y?.region.code === x.region.code) === i,
   );
 
-  return picks.map(({ region, perPersonLQ }) => ({
-    region,
-    score: groupScore(perPersonLQ.map((x) => x.lq), region.totalVisitors),
-    perPersonLQ,
-    evidence: perPersonLQ.map(({ person, lq }) => evidenceSentence(person, lq)),
-    topAttractions: topAttractionsOf(region, people),
-  }));
+  return picks.map(({ region, perPersonLQ }) => {
+    const { records, reliability } = lqOf(region, groupKey(people[0])); // 기록 수는 지역 단위라 집단과 무관하다
+    return {
+      region,
+      score: groupScore(perPersonLQ.map((x) => x.lq), region.totalVisitors),
+      perPersonLQ,
+      evidence: perPersonLQ
+        .map(({ person, lq }) => evidenceSentence(person, lq))
+        .concat(recordsEvidence(records, reliability)),
+      topAttractions: topAttractionsOf(region, people, 4, usage),
+    };
+  });
 }

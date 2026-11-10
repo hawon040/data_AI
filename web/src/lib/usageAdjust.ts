@@ -128,3 +128,20 @@ export function adjustedAffinity(
 export function findRatingStat(usage: UsageSummary | null | undefined, attraction: string, ageGroup: AgeGroup) {
   return usage?.attractionRatings.find((r) => r.attraction === attraction && r.ageGroup === ageGroup);
 }
+
+/** 평가 점수를 화면에 보여 주는 최소 평가 건수. 이보다 적으면 한두 사람의 평가가 드러나므로 숨긴다. */
+export const MIN_RATINGS_TO_SHOW = 5;
+
+export type RatingDisplay = { shown: true; mean: number; count: number } | { shown: false };
+
+/** 관광지·연령대의 평균 평가 점수를 보여 줄지 정한다. 평가가 MIN_RATINGS_TO_SHOW건 미만이면 숨긴다. */
+export function ratingDisplay(
+  usage: UsageSummary | null | undefined,
+  attraction: string,
+  ageGroup: AgeGroup,
+  min = MIN_RATINGS_TO_SHOW,
+): RatingDisplay {
+  const stat = findRatingStat(usage, attraction, ageGroup);
+  if (!stat || stat.count < min) return { shown: false };
+  return { shown: true, mean: Math.round(stat.mean * 10) / 10, count: stat.count };
+}

@@ -1014,6 +1014,17 @@
 .ad-facts strong {
   color: var(--blue);
 }
+.ad-ratings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ad-ratings strong {
+  color: var(--blue);
+}
 .ad-info p,
 .ad-loading,
 .ad-hint {

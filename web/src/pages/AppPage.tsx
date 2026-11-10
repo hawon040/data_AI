@@ -214,9 +214,9 @@ export function AppPage() {
     const excludeCodes = new Set(recommendations.map((r) => r.region.code));
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
     return applyRegionWeather(
-      filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes), people, tripPreferences),
+      filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes, usage), people, tripPreferences),
     ).filter((item) => locationCodes.has(item.region.code));
-  }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather]);
+  }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather, usage]);
 
   const highlightedCodes = useMemo(
     () => new Set([...recommendations, ...exploreRecommendations].map((r) => r.region.code)),
@@ -463,6 +463,7 @@ export function AppPage() {
                   seasonalDescription={selectedSeasonalPlace?.summary}
                   party={accessParty}
                   people={people ?? undefined}
+                  usage={usage}
                 />
               )}
               {displayedRegion && (

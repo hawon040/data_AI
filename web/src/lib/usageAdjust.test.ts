@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
-import { getRecommendations } from "./recommend";
+import { getExploreRecommendations, getRecommendations } from "./recommend";
 import { attractionMatchScore } from "./attractionAffinity";
 import { AGE_GROUPS, type GroupKey, type Person } from "./types";
 import {
   EMPTY_USAGE,
+  MIN_RATINGS_TO_SHOW,
   adjustedAffinity,
   blendedNationalShares,
   buildPriors,
+  ratingDisplay,
   regionLQ,
   type UsageSummary,
 } from "./usageAdjust";
@@ -113,5 +115,45 @@ describe("추천에 반영", () => {
       attractionMatchScore(a.popularityScore, a.tags, people, u, a.name);
     expect(score(attraction, usage)).toBeGreaterThan(score(attraction));
     expect(score(other, usage)).toBe(score(other));
+  });
+});
+
+describe("ratingDisplay", () => {
+  const usage = usageWith({
+    attractionRatings: [
+      { attraction: "가", ageGroup: "60plus", n: 4.2, mean: 4.44, count: MIN_RATINGS_TO_SHOW - 1 },
+      { attraction: "나", ageGroup: "60plus", n: 11.9, mean: 4.46, count: MIN_RATINGS_TO_SHOW },
+    ],
+  });
+
+  it("평가가 5건 미만이면 점수를 숨긴다", () => {
+    expect(ratingDisplay(usage, "가", "60plus")).toEqual({ shown: false });
+  });
+
+  it("5건 이상이면 소수 첫째 자리로 보여 준다", () => {
+    expect(ratingDisplay(usage, "나", "60plus")).toEqual({ shown: true, mean: 4.5, count: 5 });
+  });
+
+  it("평가가 없거나 요약이 없으면 숨긴다", () => {
+    expect(ratingDisplay(usage, "다", "60plus")).toEqual({ shown: false });
+    expect(ratingDisplay(usage, "나", "20s")).toEqual({ shown: false });
+    expect(ratingDisplay(null, "나", "60plus")).toEqual({ shown: false });
+  });
+});
+
+describe("탐색 추천", () => {
+  it("사용자 기록이 없으면 지금과 같은 결과다", () => {
+    const base = getExploreRecommendations(people, SAMPLE_REGIONS, new Set());
+    expect(getExploreRecommendations(people, SAMPLE_REGIONS, new Set(), EMPTY_USAGE).map((i) => i.region.code))
+      .toEqual(base.map((i) => i.region.code));
+  });
+
+  it("기록이 있는 지역의 근거에는 반영한 기록 수가 나온다", () => {
+    const codes = getExploreRecommendations(people, SAMPLE_REGIONS, new Set()).map((i) => i.region.code);
+    expect(codes.length).toBeGreaterThan(0);
+    const counts = Object.fromEntries(codes.map((code) => [code, { F_60plus: 300, M_20s: 300 }]));
+    const items = getExploreRecommendations(people, SAMPLE_REGIONS, new Set(), usageWith({ total: 600, regionGroupCounts: counts }));
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((item) => item.evidence.some((line) => line.includes("사용자 기록 600건 반영")))).toBe(true);
   });
 });

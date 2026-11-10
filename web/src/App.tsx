@@ -3,6 +3,7 @@ import "./theme.css";
 import { AppPage } from "./pages/AppPage";
 import { Landing } from "./pages/Landing";
 import { LandingInfo } from "./pages/LandingInfo";
+import { Privacy } from "./pages/Privacy";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/methodology" element={<LandingInfo section="methodology" />} />
         <Route path="/validation" element={<LandingInfo section="validation" />} />
         <Route path="/app" element={<AppPage />} />
+        <Route path="/privacy" element={<Privacy />} />
       </Routes>
     </BrowserRouter>
   );

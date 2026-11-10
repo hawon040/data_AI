@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { findRealPlace, hasKakaoRestKey, kakaoDirectionsUrl, kakaoSearchUrl, type PlaceDetail } from "../lib/kakaoLocal";
-import type { Attraction, Person, Region } from "../lib/types";
+import { AGE_GROUP_LABELS, type AgeGroup, type Attraction, type Person, type Region } from "../lib/types";
 import { sendUsageEvent } from "../lib/usageApi";
+import { ratingDisplay, type UsageSummary } from "../lib/usageAdjust";
 import { RatingBox } from "./RatingBox";
 import type { AccessParty } from "../lib/liveAccess";
 import { AccessibilityInfo } from "./AccessibilityInfo";
@@ -27,6 +28,7 @@ export function AttractionDetail({
   seasonalDescription,
   party,
   people,
+  usage,
 }: {
   attraction: Attraction;
   region: Region | null;
@@ -37,6 +39,8 @@ export function AttractionDetail({
   party?: AccessParty;
   /** 주면 평가 칸과 길찾기 기록(동의한 경우만)을 쓴다 */
   people?: Person[];
+  /** 주면 이 서비스 사용자의 평가 점수를 연령대별로 보여 준다(평가 5건 이상일 때만) */
+  usage?: UsageSummary;
 }) {
   const [lookup, setLookup] = useState<{ attraction: Attraction; place: PlaceDetail | null } | null>(null);
   const place = lookup?.attraction === attraction ? lookup.place : undefined;
@@ -51,6 +55,9 @@ export function AttractionDetail({
       cancelled = true;
     };
   }, [attraction]);
+
+  const ratingAges = [...new Set((people ?? []).map((person) => person.ageGroup))] as AgeGroup[];
+  const ratings = usage?.available ? ratingAges.map((age) => ({ age, display: ratingDisplay(usage, attraction.name, age) })) : [];
 
   const directionsUrl = kakaoDirectionsUrl(attraction.name, attraction.lat, attraction.lng);
   const placeUrl = place?.placeUrl ?? kakaoSearchUrl(attraction.name);
@@ -74,6 +81,22 @@ export function AttractionDetail({
         <span>{attraction.tags.map((tag) => TAG_LABELS[tag] ?? tag).join(" · ")}</span>
         <span>좌표 {attraction.lat.toFixed(4)}, {attraction.lng.toFixed(4)}</span>
       </div>
+
+      {ratings.length > 0 && (
+        <div className="ad-ratings">
+          {ratings.some((r) => r.display.shown) ? (
+            ratings.map(({ age, display }) =>
+              display.shown ? (
+                <span key={age}>
+                  {AGE_GROUP_LABELS[age]} 평균 <strong>{display.mean.toFixed(1)}점</strong> ({display.count}건)
+                </span>
+              ) : null,
+            )
+          ) : (
+            <span>이 서비스 사용자의 평가가 아직 적어 점수를 표시하지 않아요.</span>
+          )}
+        </div>
+      )}
 
       {hasKakaoRestKey() ? (
         place === undefined ? (
