@@ -2,6 +2,7 @@ import datetime as dt
 
 import pytest
 
+from tourism_platform.indices.location_quotient import location_quotient
 from tourism_platform.usage import affinity, aggregate, events, region
 
 NOW = dt.datetime(2026, 11, 10, tzinfo=dt.timezone.utc)
@@ -126,3 +127,39 @@ def test_rating_stats_downweights_old_ratings_and_ignores_directions():
     assert 3.5 < stat.mean < 5.0 and stat.mean > 3.0  # 최근 5점이 1년 전 1점보다 크게 반영된다
     assert stat.n_eff < 2.0                            # 오래된 평가는 한 건으로 세지 않는다
     assert set(age_means) == {"60plus"}
+
+
+# --- 기본값(prior)과 섞기 ------------------------------------------------------
+
+def _prior(favored="F_60plus", boost=4.0, strength=50.0):
+    weights = {g: (boost if g == favored else 1.0) for g in events.GROUP_KEYS}
+    total = sum(weights.values())
+    return aggregate.Prior(shares={g: w / total for g, w in weights.items()}, strength=strength)
+
+
+def test_zero_records_gives_exactly_the_prior_lq():
+    priors = {"44130": _prior(), "42150": _prior(favored="M_20s")}
+    shares = aggregate.blended_national_shares({}, priors)
+    result = region.region_lq({}, shares, "44130", "F_60plus", priors["44130"])
+    assert result.lq == pytest.approx(priors["44130"].shares["F_60plus"] / shares["F_60plus"])
+    assert result.records == 0 and result.reliability == 0
+
+
+def test_user_records_pull_lq_away_from_the_prior():
+    priors = {"44130": _prior(favored="F_60plus", boost=4.0), "42150": _prior(favored="F_60plus", boost=4.0)}
+    # 이 지역에는 실제로 20대 남성만 온다
+    evs = [ev(anon_id=f"u{i}", gender="M", age_group="20s") for i in range(400)]
+    counts = aggregate.region_group_counts(evs)
+    shares = aggregate.blended_national_shares(counts, priors)
+    before = region.region_lq({}, aggregate.blended_national_shares({}, priors), "44130", "M_20s", priors["44130"]).lq
+    after = region.region_lq(counts, shares, "44130", "M_20s", priors["44130"])
+    assert after.lq > before and after.reliability == pytest.approx(400 / 450)
+    assert region.region_lq(counts, shares, "44130", "F_60plus", priors["44130"]).lq < 1.0  # 기본값이 밀던 집단이 줄어든다
+
+
+def test_region_without_prior_matches_the_existing_smoothed_lq_formula():
+    evs = [ev(anon_id=f"u{i}", gender="F", age_group="20s") for i in range(30)]
+    counts = aggregate.region_group_counts(evs)
+    shares = aggregate.national_shares(counts)
+    got = region.region_lq(counts, shares, "44130", "F_20s").lq
+    assert got == pytest.approx(location_quotient(30.0, 30.0, shares["F_20s"], k=region.DEFAULT_STRENGTH))

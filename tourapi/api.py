@@ -15,6 +15,7 @@ import webbrowser
 import xml.etree.ElementTree as ET
 import barrierfree
 import rediscache
+import usage_events
 import weather
 from weather import WEATHER_ROUTES
 from barrierfree import ACCESS_ROUTES
@@ -2422,6 +2423,18 @@ def _page_no(param):
     return page_no
 
 
+USAGE_SUMMARY_SECONDS = 10 * 60
+
+
+def fetch_usage_summary(param):
+    """GET /api/usage/summary — 사용자 기록 요약(10분 캐시). 저장소가 없으면 available:false."""
+    db = _mongo_db()
+    if db is None:
+        return usage_events.empty_summary()
+    return _cached("usage_summary", lambda: usage_events.load_summary(db), db_seconds=USAGE_SUMMARY_SECONDS,
+                   as_value=True)
+
+
 API_ROUTES = {
     "/api/medical": lambda param: fetch_medical_tourism(
         page_no=_page_no(param),
@@ -2465,6 +2478,7 @@ for _service in ("pet",):
             s, param("contentId"), param("contentTypeId")
         ),
     })
+API_ROUTES.update({"/api/usage/summary": fetch_usage_summary})
 API_ROUTES.update(WEATHER_ROUTES)
 API_ROUTES.update(ACCESS_ROUTES)
 
@@ -2573,6 +2587,35 @@ class TourRequestHandler(BaseHTTPRequestHandler):
             self._send_json(502, {"error": str(error)})
         else:
             self._send_json(200, result)
+
+    def do_POST(self):
+        started = time.time()
+        parsed_url = urlparse(self.path)
+        self._status = 500
+        try:
+            path = parsed_url.path.rstrip("/")
+            if path != "/api/usage":
+                self._send_json(404, {"error": "요청한 페이지를 찾을 수 없습니다."})
+                return
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                length = -1
+            if length < 0 or length > usage_events.MAX_BODY_BYTES:
+                self._send_json(413, {"error": "요청이 너무 큽니다."})
+                return
+            body = self.rfile.read(length)
+            forwarded = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+            status, payload = usage_events.handle_post(_mongo_db(), body, forwarded or self.client_address[0])
+            self._send_json(status, payload)
+        except Exception as error:
+            print(f"[웹 서버] 처리 중 오류: {error!r}")
+            try:
+                self._send_json(500, {"error": "서버에서 오류가 났습니다. 잠시 후 다시 시도해 주세요."})
+            except OSError:
+                pass
+        finally:
+            _write_access_log(parsed_url.path.rstrip("/") or "/", parsed_url.query, self._status, started)
 
     def log_message(self, format_string, *args):
         print(f"[웹 서버] {args[0]}")
