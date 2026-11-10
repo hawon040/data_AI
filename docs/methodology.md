@@ -117,4 +117,17 @@ A'_ag = clip(w_ag·O_ag + (1 − w_ag)·P_ag, 0.6, 1.4)     평가가 0건이면
 - 범위 제한 이유: 소수 평가가 순위를 뒤집지 못하게 한다.
 - m = 10, 180일, 0.6~1.4, 길찾기 가중 0.5는 모두 잠정값이다. 기록이 쌓인 뒤 오프라인 검증(평가 20%를 떼어 두고 비교)으로 조정한다.
 
+**기본값과 섞는 방식 (웹에 적용)** — 지역 특화지수는 기본값(지금은 샘플 방문자 비중)에서 시작해 사용자 기록이 쌓일수록 실제 기록을 따른다.
+```
+LQ_ig = ((U_ig + K_i·p_ig) / (U_i + K_i)) / s_g     p_ig, K_i: 기본값 비중과 강도(큰 지역일수록 세게)
+```
+- 기록이 0건이면 기본값만으로 계산한 값과 같고, 사용자 기록이 없거나 서버가 꺼져 있으면 지금 추천과 같은 지역이 나온다.
+- s_g는 기본값과 사용자 기록을 합친 건수로 구한다. 그래서 기록이 한 지역에만 몰리면 그 지역의 특화지수가 오히려 1에 가까워진다(전국 비중도 같이 쏠리므로). 특정 지역에 기록이 몰리는 초기에는 이 점에 유의한다.
+- 구현: 파이썬 `usage/region.py`, 웹 `web/src/lib/usageAdjust.ts` (두 구현의 결과가 같은지 `tests/test_usage_ts_parity.py`가 확인).
+- 관광지 추천(`attractionAffinity.ts`)은 평가로 보정한 선호 가중치를 쓰고, 평가가 없으면 기본 가중치 그대로다. 탐색 추천(`getExploreRecommendations`)은 아직 사용자 기록을 쓰지 않는다.
+
+**기록 경로** — 웹(동의한 경우만) → `POST /tourapi/api/usage` → MongoDB `usage_events` → `GET /tourapi/api/usage/summary`(10분 캐시) → 웹이 계산.
+- 요청 제한(잠정): 같은 anon_id 시간당 30건, 같은 IP 시간당 200건. IP는 제한에만 쓰고 저장하지 않는다.
+- 저장소(MongoDB)가 없으면 저장은 503, 요약은 `available: false`이고 웹은 기본값으로 동작한다.
+
 **개인정보** — `parse_event`는 허용한 필드(anon_id, kind, region_code, attraction, gender, age_group, occurred_at, score)만 받고 그 밖의 필드가 있으면 기록 전체를 거절한다. `anon_id`는 브라우저가 만든 임의 값이며 같은 사람의 반복 기록을 한 번만 세는 데만 쓴다.
