@@ -36,6 +36,10 @@ npm test                      # 날씨 규칙·근거 문구 테스트
 # 공공데이터 조회 웹 (web의 지도 레이어가 이 서버를 부른다)
 cd tourapi && py api.py local
 
+# 같은 서버를 Redis 공유 캐시와 함께 (redis-server를 먼저 켠다. Windows는 WSL·Docker·Memurai)
+REDIS_URL=redis://127.0.0.1:6379/0 py api.py local
+#   http://127.0.0.1:8000/api/cache/status 에서 Redis 연결 여부와 단계별 캐시 적중 수를 본다
+
 # 파이썬
 cd tourism_platform
 python -m venv .venv && .venv/Scripts/python -m pip install -e ".[dev,lake]"
