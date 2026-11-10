@@ -146,6 +146,32 @@ def _db_save(db, name, value, as_value=False, keep_seconds=None):
     db["_meta"].replace_one({"_id": name}, {**meta, "savedAt": time.time()}, upsert=True)
 
 
+# 캐시가 어느 단계에서 응답했는지 세어 /api/cache/status로 보여 줍니다(이 서버 프로세스 기준).
+_cache_stats = {"memory": 0, "redis": 0, "mongo": 0, "api": 0}
+_cache_stats_lock = threading.Lock()
+
+
+def _count(stage):
+    with _cache_stats_lock:
+        _cache_stats[stage] += 1
+
+
+def fetch_cache_status(param):
+    """GET /api/cache/status — Redis 연결 여부와 단계별 캐시 적중 수."""
+    conn = rediscache.client()
+    with _cache_stats_lock:
+        stats = dict(_cache_stats)
+    total = sum(stats.values())
+    return {
+        "redis": {"configured": bool(os.environ.get("REDIS_URL")), "connected": conn is not None},
+        "mongo": {"connected": _mongo["db"] is not None},
+        "served": stats,
+        "total": total,
+        # 외부 API를 부르지 않고 응답한 비율(메모리·Redis·MongoDB에서 응답한 요청)
+        "cacheHitPct": round(100 * (total - stats["api"]) / total, 1) if total else None,
+    }
+
+
 def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_seconds=None):
     """Return loader() through a memory cache and MongoDB (db_seconds).
 
@@ -159,11 +185,13 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_se
     with lock:
         entry = _caches.get(name)
         if entry is not None and time.time() - entry[1] < min(CACHE_SECONDS, db_seconds):
+            _count("memory")
             return entry[0]
 
         shared = rediscache.get(name)  # 인스턴스끼리 나눠 쓰는 Redis 캐시 (REDIS_URL이 있을 때만)
         if shared is not None:
             _caches[name] = (shared[0], shared[1])  # 저장 시각을 그대로 써서 메모리에서 TTL이 두 번 더해지지 않게 한다
+            _count("redis")
             return shared[0]
 
         db = _mongo_db()
@@ -176,6 +204,7 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_se
         if stored is not None and time.time() - stored[1] < db_seconds:
             _caches[name] = (stored[0], time.time())
             rediscache.set(name, stored[0], db_seconds - (time.time() - stored[1]))
+            _count("mongo")
             return stored[0]
 
         # 캐시가 빈 순간 여러 인스턴스가 한꺼번에 API를 부르지 않게, 먼저 온 한 곳만 부르고 나머지는 결과를 기다린다.
@@ -185,6 +214,7 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_se
                 waited = rediscache.wait_for(name)
                 if waited is not None:
                     _caches[name] = (waited[0], waited[1])
+                    _count("redis")
                     return waited[0]
             try:
                 value = loader()
@@ -193,6 +223,7 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_se
                     raise
                 print(f"[MongoDB] {name} API 호출에 실패해 저장된 데이터를 씁니다.")
                 _caches[name] = (stored[0], time.time())
+                _count("mongo")
                 return stored[0]
 
             if db is not None:
@@ -202,6 +233,7 @@ def _cached(name, loader, db_seconds=DB_REFRESH_SECONDS, as_value=False, keep_se
                     print(f"[MongoDB] {name} 저장 실패: {error}")
             rediscache.set(name, value, db_seconds)
             _caches[name] = (value, time.time())
+            _count("api")
             return value
         finally:
             refresh.release()
@@ -2478,7 +2510,7 @@ for _service in ("pet",):
             s, param("contentId"), param("contentTypeId")
         ),
     })
-API_ROUTES.update({"/api/usage/summary": fetch_usage_summary})
+API_ROUTES.update({"/api/usage/summary": fetch_usage_summary, "/api/cache/status": fetch_cache_status})
 API_ROUTES.update(WEATHER_ROUTES)
 API_ROUTES.update(ACCESS_ROUTES)
 
