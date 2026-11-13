@@ -130,3 +130,18 @@ export function terrainTips(
     return [{ label: `${TERRAIN_LABELS[terrain]}(${who})`, items }];
   });
 }
+
+/**
+ * 체크리스트 자리에 무엇을 보일지.
+ *  - hidden: 아직 추천받기 전이거나 추천 결과가 없을 때
+ *  - hint: 추천을 받았지만 관광지를 아직 고르지 않았을 때 — "관광지를 누르면…" 안내
+ *  - checklist: 관광지를 골랐을 때(교통편과 관계없이 항상 보인다)
+ */
+export type ChecklistView = "hidden" | "hint" | "checklist";
+
+export function checklistView(state: { submitted: boolean; recommendationCount: number; hasSelectedAttraction: boolean }): ChecklistView {
+  if (state.hasSelectedAttraction) return "checklist";
+  return state.submitted && state.recommendationCount > 0 ? "hint" : "hidden";
+}
+
+export const CHECKLIST_HINT = "관광지를 누르면 그곳에 맞춘 준비물이 나와요";

@@ -111,6 +111,15 @@
   font-size: 13px;
   line-height: 1.6;
 }
+.trip-preparation.is-hint {
+  border-style: dashed;
+}
+.trip-preparation-hint {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
 .trip-preparation-note {
   margin: 12px 0 0;
   color: var(--text-muted);

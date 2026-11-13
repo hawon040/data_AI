@@ -1,5 +1,5 @@
-import { getPreparationTips, type TripPreferences } from "../lib/tripPreferences";
-import { mergeTips, type TipGroup } from "../lib/preparationTips";
+import { getPreparationTips, TRANSPORT_OPTIONS, type TripPreferences } from "../lib/tripPreferences";
+import { CHECKLIST_HINT, mergeTips, type TipGroup } from "../lib/preparationTips";
 import type { Attraction } from "../lib/types";
 
 export function TripPreparation({
@@ -13,12 +13,7 @@ export function TripPreparation({
   extraTips?: (string | TipGroup)[];
 }) {
   const tips = mergeTips(getPreparationTips(attraction, preferences), extraTips);
-  const transport = {
-    "public-transit": "대중교통",
-    "tour-bus": "관광버스",
-    car: "자가용",
-    walking: "도보·자전거",
-  }[preferences.transport];
+  const transport = TRANSPORT_OPTIONS.find((option) => option.value === preferences.transport)?.label ?? "";
 
   return (
     <section className="trip-preparation" aria-labelledby="trip-preparation-heading">
@@ -35,6 +30,16 @@ export function TripPreparation({
       <p className="trip-preparation-note">
         준비물과 이동 정보는 일반 안내예요. 운영 시간·교통편·날씨를 출발 전에 다시 확인해 주세요.
       </p>
+    </section>
+  );
+}
+
+/** 추천을 받았지만 관광지를 아직 고르지 않았을 때 체크리스트 자리에 보이는 안내 */
+export function TripPreparationHint() {
+  return (
+    <section className="trip-preparation is-hint" aria-label="여행 체크리스트 안내">
+      <p className="field-label">여행 체크리스트 · 참고용</p>
+      <p className="trip-preparation-hint">{CHECKLIST_HINT}</p>
     </section>
   );
 }

@@ -11,12 +11,12 @@ import { RecommendationList } from "../components/RecommendationList";
 import { SeasonalDiscovery } from "../components/SeasonalDiscovery";
 import { SafetyPanel } from "../components/SafetyPanel";
 import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
-import { TripPreparation } from "../components/TripPreparation";
+import { TripPreparation, TripPreparationHint } from "../components/TripPreparation";
 import { WeatherNotice } from "../components/WeatherNotice";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { WarningBanner } from "../components/WarningBanner";
 import { listWeatherExclusions } from "../lib/weatherExclusions";
-import { airTips, terrainTips, weatherTipSentences } from "../lib/preparationTips";
+import { airTips, checklistView, terrainTips, weatherTipSentences } from "../lib/preparationTips";
 import { toAccessSummary, useAttractionAccessMap } from "../lib/liveAccess";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
@@ -436,8 +436,14 @@ export function AppPage() {
                 }
               />
               {people != null && <WeatherExcludedList items={weatherExclusions} />}
-              {selectedAttraction && (
+              {selectedAttraction ? (
                 <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} extraTips={extraPrepTips} />
+              ) : (
+                checklistView({
+                  submitted: people != null,
+                  recommendationCount: recommendations.length,
+                  hasSelectedAttraction: false,
+                }) === "hint" && <TripPreparationHint />
               )}
               {selectedAttraction && (
                 <AttractionDetail
