@@ -140,3 +140,23 @@ def test_without_redis_cached_still_calls_loader(monkeypatch, api_module):
     rediscache.reset()
     api_module._caches.clear()
     assert api_module._cached("no_redis", lambda: {"ok": True}, db_seconds=60, as_value=True) == {"ok": True}
+
+
+def test_cache_status_counts_which_stage_answered(use_redis, api_module):
+    load = lambda: {"pop": 30}  # noqa: E731
+    api_module._cached("weather_stat", load, db_seconds=60, as_value=True)   # 외부 API(loader)
+    api_module._cached("weather_stat", load, db_seconds=60, as_value=True)   # 메모리
+    api_module._caches.clear()                                              # 다른 인스턴스
+    api_module._cached("weather_stat", load, db_seconds=60, as_value=True)   # Redis
+    status = api_module.fetch_cache_status(lambda name: "")
+    assert status["redis"] == {"configured": True, "connected": True}
+    assert status["served"] == {"memory": 1, "redis": 1, "mongo": 0, "api": 1}
+    assert status["total"] == 3 and status["cacheHitPct"] == pytest.approx(66.7, abs=0.1)
+
+
+def test_cache_status_without_redis_url(monkeypatch, api_module):
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    rediscache.reset()
+    status = api_module.fetch_cache_status(lambda name: "")
+    assert status["redis"] == {"configured": False, "connected": False}
+    assert status["cacheHitPct"] is None  # 아직 요청이 없다
