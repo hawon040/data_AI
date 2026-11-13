@@ -95,6 +95,8 @@
   font-size: 16px;
 }
 .transport-chip {
+  flex: none;
+  white-space: nowrap;
   padding: 6px 10px;
   border-radius: 999px;
   background: var(--surface-raised);
@@ -111,8 +113,29 @@
   font-size: 13px;
   line-height: 1.6;
 }
-.trip-preparation.is-hint {
-  border-style: dashed;
+.scope-chip {
+  display: inline-block;
+  white-space: nowrap;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(8, 127, 117, 0.1);
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.trip-preparation-section-title {
+  margin: 14px 0 0;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.trip-preparation-section + .trip-preparation-section ul {
+  margin-top: 6px;
+}
+.trip-preparation-section-title + ul {
+  margin-top: 6px;
 }
 .trip-preparation-hint {
   margin: 4px 0 0;

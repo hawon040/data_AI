@@ -197,40 +197,47 @@ export function getSeasonalDiscoveries(
   return discoveries.slice(0, limit);
 }
 
-export function getPreparationTips(
-  attraction: Attraction,
-  preferences: TripPreferences,
-): string[] {
-  const tips = new Set<string>();
-  const month = tripMonth(preferences);
-
+/** 관광지 성격(태그)에 따른 준비물 — 체크리스트의 관광지 단계에 쓴다. */
+export function attractionTagTips(attraction: Pick<Attraction, "tags">): string[] {
+  const tips: string[] = [];
   if (attraction.tags.includes("nature")) {
-    tips.add("걷기 편한 신발과 물을 챙기세요.");
+    tips.push("걷기 편한 신발과 물을 챙기세요.");
   }
   if (["activity", "theme_park"].some((tag) => attraction.tags.includes(tag as AttractionTag))) {
-    tips.add("운영 시간과 사전 예약·이용 요금을 방문 전에 확인하세요.");
+    tips.push("운영 시간과 사전 예약·이용 요금을 방문 전에 확인하세요.");
   }
+  return tips;
+}
+
+/** 일정·교통편·계절(방문일)에 따른 공통 준비물 — 체크리스트의 공통 단계에 쓴다. */
+export function commonPreparationTips(preferences: TripPreferences): string[] {
+  const tips: string[] = [];
+  const month = tripMonth(preferences);
   if (month >= 6 && month <= 9) {
-    tips.add("자외선 차단제와 휴대용 물을 준비하세요.");
+    tips.push("자외선 차단제와 휴대용 물을 준비하세요.");
   } else if (month === 12 || month <= 2) {
-    tips.add("따뜻한 겉옷과 미끄럼 방지 신발을 준비하세요.");
+    tips.push("따뜻한 겉옷과 미끄럼 방지 신발을 준비하세요.");
   } else if (month === 3 || month >= 10) {
-    tips.add("일교차에 대비해 가벼운 겉옷을 챙기세요.");
+    tips.push("일교차에 대비해 가벼운 겉옷을 챙기세요.");
   }
   if (preferences.transport === "public-transit" || preferences.transport === "tour-bus") {
-    tips.add("출발 전 대중교통·관광버스 시간표와 막차 시간을 확인하세요.");
+    tips.push("출발 전 대중교통·관광버스 시간표와 막차 시간을 확인하세요.");
   } else if (preferences.transport === "car") {
-    tips.add("주차 가능 여부와 현장 주차 요금을 확인하세요.");
+    tips.push("주차 가능 여부와 현장 주차 요금을 확인하세요.");
   } else if (preferences.transport === "walking") {
-    tips.add("도보 이동 구간과 쉴 곳을 미리 확인하세요.");
+    tips.push("도보 이동 구간과 쉴 곳을 미리 확인하세요.");
   } else {
-    tips.add("자전거 이동 구간과 대여 운영 여부를 미리 확인하세요.");
+    tips.push("자전거 이동 구간과 대여 운영 여부를 미리 확인하세요.");
   }
   if (preferences.duration === "day") {
-    tips.add("당일 일정에 맞춰 왕복 이동 시간과 마지막 입장 시간을 확인하세요.");
+    tips.push("당일 일정에 맞춰 왕복 이동 시간과 마지막 입장 시간을 확인하세요.");
   } else {
-    tips.add("숙소 위치와 체크인·체크아웃 시간을 함께 확인하세요.");
+    tips.push("숙소 위치와 체크인·체크아웃 시간을 함께 확인하세요.");
   }
-  if (tips.size === 0) tips.add("방문 당일 운영 시간, 날씨, 입장 정보를 확인하세요.");
-  return [...tips];
+  return tips;
+}
+
+/** 관광지 태그 + 공통 준비물 (예전 체크리스트와 같은 결과) */
+export function getPreparationTips(attraction: Attraction, preferences: TripPreferences): string[] {
+  return [...new Set([...attractionTagTips(attraction), ...commonPreparationTips(preferences)])];
 }

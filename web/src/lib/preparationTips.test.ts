@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_WEATHER } from "./liveWeather";
-import { SAMPLE_REGIONS } from "../data/sampleRegions";
-import { airTips, CHECKLIST_HINT, checklistView, MASK_TIP, mergeTips, terrainTips, weatherTipSentences } from "./preparationTips";
-import { DEFAULT_TRIP_PREFERENCES, getPreparationTips, TRANSPORT_OPTIONS } from "./tripPreferences";
+import { airTips, MASK_TIP, mergeTips, terrainTips, weatherTipSentences } from "./preparationTips";
 
 const sea = { name: "정동진", category: "자연" };
 const mountain = { name: "설악산 국립공원", category: "자연" };
@@ -93,25 +91,4 @@ describe("mergeTips", () => {
       "한낮에는 야외 활동을 피하세요.",
     ]);
   });
-});
-
-describe("checklistView (체크리스트 자리)", () => {
-  it("추천받기 전에는 아무것도 보이지 않는다", () => {
-    expect(checklistView({ submitted: false, recommendationCount: 0, hasSelectedAttraction: false })).toBe("hidden");
-  });
-  it("추천받기 직후 관광지를 아직 안 골랐으면 안내를 보인다", () => {
-    expect(checklistView({ submitted: true, recommendationCount: 3, hasSelectedAttraction: false })).toBe("hint");
-    expect(CHECKLIST_HINT).toBe("관광지를 누르면 그곳에 맞춘 준비물이 나와요");
-  });
-  it("추천 결과가 비어 있으면 안내도 보이지 않는다", () => {
-    expect(checklistView({ submitted: true, recommendationCount: 0, hasSelectedAttraction: false })).toBe("hidden");
-  });
-  it.each(TRANSPORT_OPTIONS.map((option) => [option.label, option.value] as const))(
-    "교통편이 %s여도 관광지를 고르면 체크리스트가 나오고 교통편 안내가 들어간다",
-    (_label, transport) => {
-      expect(checklistView({ submitted: true, recommendationCount: 3, hasSelectedAttraction: true })).toBe("checklist");
-      const tips = getPreparationTips(SAMPLE_REGIONS[0].attractions[0], { ...DEFAULT_TRIP_PREFERENCES, transport });
-      expect(tips.some((tip) => /대중교통|관광버스|주차|도보|자전거/.test(tip))).toBe(true);
-    },
-  );
 });

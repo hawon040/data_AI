@@ -13,14 +13,14 @@ import { RecommendationList } from "../components/RecommendationList";
 import { SeasonalDiscovery } from "../components/SeasonalDiscovery";
 import { SafetyPanel } from "../components/SafetyPanel";
 import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
-import { TripPreparation, TripPreparationHint } from "../components/TripPreparation";
+import { TripPreparation } from "../components/TripPreparation";
 import { WeatherNotice } from "../components/WeatherNotice";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { DistanceExcludedList } from "../components/DistanceExcludedList";
 import { applyDistanceLimit, formatDistance, haversineKm, NEEDS_ORIGIN_MESSAGE, NO_NEARBY_MESSAGE, type Origin } from "../lib/origin";
 import { WarningBanner } from "../components/WarningBanner";
 import { listWeatherExclusions } from "../lib/weatherExclusions";
-import { airTips, checklistView, terrainTips, weatherTipSentences } from "../lib/preparationTips";
+import { buildChecklist, type ChecklistFocus } from "../lib/checklist";
 import { toAccessSummary, useAttractionAccessMap } from "../lib/liveAccess";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { findNearbyAttractions, hasKakaoRestKey } from "../lib/kakaoLocal";
@@ -38,7 +38,7 @@ import {
   type TripPreferences,
 } from "../lib/tripPreferences";
 import { findWeatherPreset } from "../lib/weatherPresets";
-import { EMPTY_WEATHER, loadRegionWeather, tripDates, type RegionWeather } from "../lib/liveWeather";
+import { EMPTY_WEATHER, loadRegionWeather, tripDates, worstOf, type RegionWeather } from "../lib/liveWeather";
 import { applyWeatherRules, decideWeather, type WeatherDecision } from "../lib/weatherRules";
 import "./AppPage.css";
 
@@ -229,12 +229,8 @@ export function AppPage() {
     recommendations[0]?.region ||
     destinationRegions[0] ||
     null;
-  // 여행 체크리스트에 더할 실시간 안내: 고른 관광지 지역의 날씨(일정 중 가장 나쁜 값)
-  const prepWeather = displayedRegion
-    ? weatherDemo
-      ? weatherPreset.weather
-      : regionWeather[displayedRegion.code]?.worst ?? null
-    : null;
+  // 지역의 날씨(일정 중 가장 나쁜 값). 시연 모드면 예시 날씨.
+  const weatherOf = (code: string) => (weatherDemo ? weatherPreset.weather : regionWeather[code]?.worst ?? null);
   // 무장애(한국관광공사): 추천 카드 배지와 체크리스트 한 줄에 쓴다. 추천 순서는 바꾸지 않는다.
   const { withElderly, withChildren } = safetyFilters;
   const accessParty = useMemo(() => ({ withElderly, withChildren }), [withElderly, withChildren]);
@@ -251,15 +247,34 @@ export function AppPage() {
     selectedAttraction && (withElderly || withChildren)
       ? toAccessSummary(selectedAttraction.name, accessMap[selectedAttraction.name]).prepTip
       : null;
-  const prepWeatherTips = displayedRegion && !weatherDemo ? regionWeather[displayedRegion.code]?.tips ?? [] : [];
-  // 관광지 종류별 준비물: 날씨 규칙을 적용한 뒤 추천 결과에 남은 바다·산·계곡 관광지만 본다.
-  const recommendedAttractions = recommendations.flatMap((item) => item.topAttractions.map(({ attraction }) => attraction));
-  const extraPrepTips = [
-    ...weatherTipSentences(prepWeatherTips),
-    ...airTips(prepWeather),
-    ...terrainTips(recommendedAttractions, accessParty),
-    ...(accessPrepTip ? [accessPrepTip] : []),
-  ];
+  // 여행 체크리스트 3단계: 아무것도 안 눌렀으면 공통, 지역 카드를 누르면 지역, 관광지를 누르면 관광지까지.
+  const cardAttractions = (region: Region) =>
+    [...recommendations, ...exploreRecommendations]
+      .find((item) => item.region.code === region.code)
+      ?.topAttractions.map(({ attraction }) => attraction) ?? [];
+  const checklistFocus: ChecklistFocus = selectedAttraction
+    ? {
+        kind: "attraction",
+        region: selectedSeasonalPlace ? null : selectedRegion,
+        attractions: selectedRegion && !selectedSeasonalPlace ? cardAttractions(selectedRegion) : [],
+        attraction: selectedAttraction,
+      }
+    : selectedRegion
+      ? { kind: "region", region: selectedRegion, attractions: cardAttractions(selectedRegion) }
+      : { kind: "common" };
+  const focusRegion = checklistFocus.kind === "common" ? null : checklistFocus.region;
+  const checklist = buildChecklist({
+    preferences: tripPreferences,
+    party: accessParty,
+    commonWeather: worstOf(
+      recommendations.map(({ region }) => weatherOf(region.code)).filter((w): w is NonNullable<typeof w> => w != null),
+    ),
+    regionWeather: focusRegion ? weatherOf(focusRegion.code) : null,
+    regionWeatherTips: focusRegion && !weatherDemo ? regionWeather[focusRegion.code]?.tips ?? [] : [],
+    accessTip: accessPrepTip,
+    focus: checklistFocus,
+  });
+  const showChecklist = (people != null && recommendations.length > 0) || selectedAttraction != null;
   const liveRequestKey =
     displayedRegion && hasKakaoRestKey()
       ? `${displayedRegion.code}:${(people ?? []).map((person) => person.ageGroup).join(",")}`
@@ -455,15 +470,7 @@ export function AppPage() {
               />
               {people != null && <WeatherExcludedList items={weatherExclusions} />}
               {people != null && <DistanceExcludedList items={distanceExclusions} limitKm={distance.limitKm} />}
-              {selectedAttraction ? (
-                <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} extraTips={extraPrepTips} />
-              ) : (
-                checklistView({
-                  submitted: people != null,
-                  recommendationCount: recommendations.length,
-                  hasSelectedAttraction: false,
-                }) === "hint" && <TripPreparationHint />
-              )}
+              {showChecklist && <TripPreparation preferences={tripPreferences} checklist={checklist} />}
               {selectedAttraction && (
                 <AttractionDetail
                   attraction={selectedAttraction}

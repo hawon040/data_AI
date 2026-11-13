@@ -103,6 +103,8 @@ const TERRAIN_TIP_ITEMS: Record<Terrain, string[]> = {
 const ELDERLY_MOUNTAIN_ITEM = "등산 스틱·쉬운 코스(어르신)";
 const CHILD_WATER_ITEM = "아이 구명조끼";
 const TERRAIN_ORDER: Terrain[] = ["mountain", "sea", "valley"];
+/** 물가에 직접 나가는 곳에서만 필요한 바다 준비물. "안목해변 카페거리"처럼 이름에 해변만 들어간 실내 관광지에는 넣지 않는다. */
+const SHORE_ONLY_ITEMS = ["물때 확인", "갯바위 미끄럼 주의"];
 
 /**
  * 추천된 관광지 가운데 바다·산·계곡이 있을 때만, 종류별로 한 줄에 묶을 준비물을 만든다.
@@ -113,35 +115,24 @@ export function terrainTips(
   party: { withElderly: boolean; withChildren: boolean },
 ): TipGroup[] {
   const names = new Map<Terrain, string[]>();
+  let outdoorSea = false;
   for (const attraction of attractions) {
-    for (const terrain of classifyAttraction(attraction).terrains) {
+    const { setting, terrains } = classifyAttraction(attraction);
+    for (const terrain of terrains) {
       const list = names.get(terrain) ?? [];
       if (!list.includes(attraction.name)) list.push(attraction.name);
       names.set(terrain, list);
+      if (terrain === "sea" && setting === "outdoor") outdoorSea = true;
     }
   }
   return TERRAIN_ORDER.flatMap((terrain) => {
     const list = names.get(terrain);
     if (!list?.length) return [];
     const who = list.length === 1 ? list[0] : `${list[0]} 외 ${list.length - 1}곳`;
-    const items = [...TERRAIN_TIP_ITEMS[terrain]];
+    const items = TERRAIN_TIP_ITEMS[terrain].filter((item) => terrain !== "sea" || outdoorSea || !SHORE_ONLY_ITEMS.includes(item));
     if (terrain === "mountain" && party.withElderly) items.push(ELDERLY_MOUNTAIN_ITEM);
     if (terrain !== "mountain" && party.withChildren) items.push(CHILD_WATER_ITEM);
     return [{ label: `${TERRAIN_LABELS[terrain]}(${who})`, items }];
   });
 }
 
-/**
- * 체크리스트 자리에 무엇을 보일지.
- *  - hidden: 아직 추천받기 전이거나 추천 결과가 없을 때
- *  - hint: 추천을 받았지만 관광지를 아직 고르지 않았을 때 — "관광지를 누르면…" 안내
- *  - checklist: 관광지를 골랐을 때(교통편과 관계없이 항상 보인다)
- */
-export type ChecklistView = "hidden" | "hint" | "checklist";
-
-export function checklistView(state: { submitted: boolean; recommendationCount: number; hasSelectedAttraction: boolean }): ChecklistView {
-  if (state.hasSelectedAttraction) return "checklist";
-  return state.submitted && state.recommendationCount > 0 ? "hint" : "hidden";
-}
-
-export const CHECKLIST_HINT = "관광지를 누르면 그곳에 맞춘 준비물이 나와요";

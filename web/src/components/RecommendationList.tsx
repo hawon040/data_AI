@@ -36,6 +36,8 @@ function RecommendationCard({
       className={`recommendation-card${selected ? " selected" : ""}`}
       onClick={() => onSelect(item.region)}
       onKeyDown={(e) => {
+        // 안의 관광지 버튼에서 누른 Enter·Space는 카드 선택으로 올라오지 않게 한다.
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") onSelect(item.region);
       }}
     >
@@ -63,8 +65,8 @@ function RecommendationCard({
               type="button"
               className="attraction-chip"
               onClick={(e) => {
+                // 관광지 버튼은 관광지만 고른다 — 지역 카드 클릭(지도 지역·지역 체크리스트)으로 같이 처리하지 않는다.
                 e.stopPropagation();
-                onSelect(item.region);
                 onSelectAttraction(attraction);
               }}
             >
@@ -83,8 +85,8 @@ function RecommendationCard({
               type="button"
               className="attraction-chip is-indoor"
               onClick={(e) => {
+                // 관광지 버튼은 관광지만 고른다 — 지역 카드 클릭(지도 지역·지역 체크리스트)으로 같이 처리하지 않는다.
                 e.stopPropagation();
-                onSelect(item.region);
                 onSelectAttraction(attraction);
               }}
             >
