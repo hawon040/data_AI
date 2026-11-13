@@ -16,7 +16,6 @@ export const NIGHTS_OPTIONS: { value: TripNights; label: string }[] = [
 export type Season = "spring" | "summer" | "autumn" | "winter";
 
 export interface TripPreferences {
-  month: number;
   purpose: TravelPurpose;
   style: TravelStyle;
   province: string;
@@ -24,7 +23,7 @@ export interface TripPreferences {
   transport: TransportMode;
   ranking: RankingMode;
   duration: TripDuration;
-  /** 방문일 (YYYY-MM-DD, 로컬 날짜). 바꾸면 month도 함께 바뀐다. */
+  /** 방문일 (YYYY-MM-DD, 로컬 날짜). 여행 월과 계절은 따로 받지 않고 이 날짜에서 계산한다(tripMonth). */
   visitDate: string;
   /** 1박 이상일 때 박 수. 종료일 = 방문일 + nights. 당일치기면 쓰지 않는다. */
   nights: TripNights;
@@ -45,7 +44,6 @@ export function todayIso(now = new Date()): string {
 }
 
 export const DEFAULT_TRIP_PREFERENCES: TripPreferences = {
-  month: new Date().getMonth() + 1,
   purpose: "all",
   style: "all",
   province: "all",
@@ -106,6 +104,16 @@ const SEASON_TAGS: Record<Season, AttractionTag[]> = {
   winter: ["culture", "history", "cafe", "resort"],
 };
 
+/** 여행 월(1~12). 방문일(YYYY-MM-DD)에서 계산한다 — 월만 따로 바꾸는 입력은 없다. */
+export function tripMonth(preferences: Pick<TripPreferences, "visitDate">): number {
+  return Number(preferences.visitDate.slice(5, 7));
+}
+
+/** 방문일의 계절 (계절 추천·계절 사진·계절 테마에 쓴다) */
+export function tripSeason(preferences: Pick<TripPreferences, "visitDate">): Season {
+  return getSeason(tripMonth(preferences));
+}
+
 export function getSeason(month: number): Season {
   if (month >= 3 && month <= 5) return "spring";
   if (month >= 6 && month <= 8) return "summer";
@@ -135,7 +143,7 @@ export function filterRecommendations(
   people: Person[],
   preferences: TripPreferences,
 ): RecommendationItem[] {
-  const seasonTags = SEASON_TAGS[getSeason(preferences.month)];
+  const seasonTags = SEASON_TAGS[tripSeason(preferences)];
 
   const filtered = items.flatMap((item) => {
     const attractions = item.region.attractions.filter((attraction) => {
@@ -197,7 +205,7 @@ export function getPreparationTips(
   preferences: TripPreferences,
 ): string[] {
   const tips = new Set<string>();
-  const month = preferences.month;
+  const month = tripMonth(preferences);
 
   if (attraction.tags.includes("nature")) {
     tips.add("걷기 편한 신발과 물을 챙기세요.");

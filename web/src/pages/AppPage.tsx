@@ -28,7 +28,8 @@ import type { Attraction, Person, RecommendationItem, Region } from "../lib/type
 import {
   DEFAULT_TRIP_PREFERENCES,
   filterRecommendations,
-  getSeason,
+  tripMonth,
+  tripSeason,
   todayIso,
   type TripPreferences,
 } from "../lib/tripPreferences";
@@ -285,7 +286,7 @@ export function AppPage() {
   }, [displayedRegion, liveRequestKey, people]);
 
   return (
-    <div className="app-shell" data-season={getSeason(tripPreferences.month)}>
+    <div className="app-shell" data-season={tripSeason(tripPreferences)}>
       <header className="app-header">
         <Link to="/" className="back-link">
           ← TourLink
@@ -316,7 +317,7 @@ export function AppPage() {
       <main className="app-main">
         <aside className="sidebar">
           <SeasonalDiscovery
-            month={tripPreferences.month}
+            month={tripMonth(tripPreferences)}
             paused={carouselPaused}
             onTogglePaused={() => setCarouselPaused((value) => !value)}
             onSelect={(destination) => {

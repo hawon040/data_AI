@@ -4,7 +4,7 @@ import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import { WEATHER_PRESETS } from "../lib/weatherPresets";
 import {
   addDaysIso,
-  getSeason,
+  tripSeason,
   NIGHTS_OPTIONS,
   PURPOSE_OPTIONS,
   SEASON_LABELS,
@@ -72,7 +72,7 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
   const availableRegions = regions.filter(
     (region) => preferences.province === "all" || region.province === preferences.province,
   );
-  const season = getSeason(preferences.month);
+  const season = tripSeason(preferences);
 
   function updatePreference<K extends keyof TripPreferences>(key: K, value: TripPreferences[K]) {
     onPreferencesChange({
@@ -97,18 +97,17 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
           <h3 className="form-section-title" id="trip-conditions-heading">여행 조건</h3>
           <div className="travel-filter-grid">
             <label>
-              <span className="field-title">방문일</span>
+              <span className="field-title">
+                방문일
+                <span className="season-indicator" data-season={season}>{SEASON_LABELS[season]} 테마</span>
+              </span>
               <input
                 type="date"
                 value={preferences.visitDate}
                 min={todayIso()}
                 onChange={(e) => {
                   if (!e.target.value) return;
-                  onPreferencesChange({
-                    ...preferences,
-                    visitDate: e.target.value,
-                    month: Number(e.target.value.slice(5, 7)),
-                  });
+                  updatePreference("visitDate", e.target.value);
                 }}
               />
             </label>
@@ -120,21 +119,6 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
                 </select>
               </label>
             )}
-            <label>
-              <span className="field-title">
-                여행 월
-                <span className="season-indicator" data-season={season}>{SEASON_LABELS[season]} 테마</span>
-              </span>
-              <select
-                id="travel-month"
-                value={preferences.month}
-                onChange={(e) => updatePreference("month", Number(e.target.value))}
-              >
-                {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                  <option key={month} value={month}>{month}월</option>
-                ))}
-              </select>
-            </label>
             <label>
               <span className="field-title">여행 목적</span>
               <select value={preferences.purpose} onChange={(e) => updatePreference("purpose", e.target.value as TripPreferences["purpose"])}>
