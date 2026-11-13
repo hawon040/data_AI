@@ -18,8 +18,6 @@ export type Season = "spring" | "summer" | "autumn" | "winter";
 export interface TripPreferences {
   purpose: TravelPurpose;
   style: TravelStyle;
-  province: string;
-  regionCode: string;
   transport: TransportMode;
   ranking: RankingMode;
   duration: TripDuration;
@@ -46,8 +44,6 @@ export function todayIso(now = new Date()): string {
 export const DEFAULT_TRIP_PREFERENCES: TripPreferences = {
   purpose: "all",
   style: "all",
-  province: "all",
-  regionCode: "all",
   transport: "public-transit",
   ranking: "companion",
   duration: "day",

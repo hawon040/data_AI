@@ -414,7 +414,8 @@
   --control-height: 40px;
 }
 .companion-form select,
-.companion-form input[type="date"] {
+.companion-form input[type="date"],
+.map-area-picker select {
   height: var(--control-height);
   padding: 0 10px;
   border: 1px solid var(--border);
@@ -426,6 +427,7 @@
   font-weight: 500;
 }
 .companion-form select:focus-visible,
+.map-area-picker select:focus-visible,
 .companion-form input[type="date"]:focus-visible,
 .segmented label:has(input:focus-visible) {
   outline: 2px solid var(--blue);
@@ -951,6 +953,27 @@
   color: var(--text-secondary);
 }
 
+/* 지도 바로 위 "지도에서 볼 지역" — 지도만 바뀌고 추천은 그대로 */
+.map-area-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.map-area-picker .field-title {
+  margin: 0;
+}
+.map-area-picker select {
+  min-width: 140px;
+}
+.map-area-note {
+  color: var(--text-muted);
+  font-size: 11px;
+}
 .map-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(260px, 32%, 340px);

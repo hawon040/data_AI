@@ -4,6 +4,8 @@ import { AttractionDetail } from "../components/AttractionDetail";
 import { CompanionForm } from "../components/CompanionForm";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
 import { MapView } from "../components/MapView";
+import { MapAreaPicker } from "../components/MapAreaPicker";
+import { mapAreaForRegion, mapLayers, NATIONWIDE, type MapArea } from "../lib/mapArea";
 import { DemandCard } from "../components/DemandCard";
 import { NationalSpotPanel } from "../components/NationalSpotPanel";
 import { RandomTripPicker } from "../components/RandomTripPicker";
@@ -62,13 +64,15 @@ export function AppPage() {
     error: null,
   });
   const [mapSelection, setMapSelection] = useState<MapSelection | null>(null);
+  // "지도에서 볼 지역": 지도 관광지·대피소·관광 수요·지도 범위에만 쓰고 추천 결과는 바꾸지 않는다.
+  const [mapArea, setMapArea] = useState<MapArea>(NATIONWIDE);
   // 출발지(선택). 거리 표시와 도보·자전거 거르기에만 쓰고 서버로 보내거나 저장하지 않는다.
   const [origin, setOrigin] = useState<Origin | null>(null);
 
-  // 고른 시도(또는 전국)의 공공데이터를 tourapi/api.py 서버에서 실시간으로 불러온다.
+  // 지도에서 고른 시도(또는 전국)의 공공데이터를 tourapi/api.py 서버에서 실시간으로 불러온다.
   useEffect(() => {
     let cancelled = false;
-    const province = tripPreferences.province;
+    const province = mapArea.province;
     loadMapPlaces(province)
       .then((data) => {
         if (!cancelled) setMapPlaces({ province, data, error: null });
@@ -79,37 +83,21 @@ export function AppPage() {
     return () => {
       cancelled = true;
     };
-  }, [tripPreferences.province]);
-  const mapData = mapPlaces.province === tripPreferences.province ? mapPlaces.data : null;
-  const mapLoading = mapPlaces.province !== tripPreferences.province;
+  }, [mapArea.province]);
+  const mapData = mapPlaces.province === mapArea.province ? mapPlaces.data : null;
+  const mapLoading = mapPlaces.province !== mapArea.province;
 
-  // 맞춤 추천 시범 지역의 시·군·구를 고르면 지도 관광지도 그 시군구로 좁힌다.
-  const pilotDistrict =
-    tripPreferences.regionCode === "all"
-      ? null
-      : SAMPLE_REGIONS.find((region) => region.code === tripPreferences.regionCode)?.name ?? null;
-  const nationalSpots = useMemo(
-    () =>
-      (mapData?.spots ?? []).filter(
-        (spot) => !pilotDistrict || (spot.district !== "" && pilotDistrict.startsWith(spot.district)),
-      ),
-    [mapData, pilotDistrict],
-  );
+  // 지도에서 시·군·구를 고르면 지도 관광지·대피소도 그 시군구로 좁힌다.
+  const layers = useMemo(() => mapLayers(mapData, mapArea), [mapData, mapArea]);
+  const nationalSpots = layers.spots;
   const handleMapSelect = useCallback((selection: MapSelection) => {
     setMapSelection(selection);
     setSelectedAttraction(null);
     setSelectedSeasonalPlace(null);
   }, []);
 
-  const destinationRegions = useMemo(
-    () =>
-      SAMPLE_REGIONS.filter(
-        (region) =>
-          (tripPreferences.province === "all" || region.province === tripPreferences.province) &&
-          (tripPreferences.regionCode === "all" || region.code === tripPreferences.regionCode),
-      ),
-    [tripPreferences.province, tripPreferences.regionCode],
-  );
+  // 추천은 항상 시범 지역 전체에서 고른다(지도에서 볼 지역과 관계없다).
+  const destinationRegions = SAMPLE_REGIONS;
   // 방문일 날씨: 기본은 지역마다 실제 예보(tourapi /api/weather), 주소에 ?demo=weather가 있으면 예시 날씨 하나를 모든 지역에 쓴다.
   const [searchParams] = useSearchParams();
   const weatherDemo = searchParams.get("demo") === "weather";
@@ -311,7 +299,6 @@ export function AppPage() {
 
       <CompanionForm
         regions={SAMPLE_REGIONS}
-        provinces={mapData?.provinces}
         preferences={tripPreferences}
         weatherDemo={weatherDemo}
         origin={origin}
@@ -356,6 +343,14 @@ export function AppPage() {
         </aside>
 
         <section className="content">
+          <MapAreaPicker
+            area={mapArea}
+            provinces={mapData?.provinces}
+            onChange={(area) => {
+              setMapArea(area);
+              setMapSelection(null);
+            }}
+          />
           <div className="map-workspace">
             <MapView
               regions={SAMPLE_REGIONS}
@@ -370,10 +365,10 @@ export function AppPage() {
               people={people ?? []}
               liveAttractions={liveAttractions.map((x) => x.attraction)}
               nationalSpots={nationalSpots}
-              shelters={tripPreferences.province === "all" ? [] : mapData?.shelters ?? []}
+              shelters={layers.shelters}
               pets={mapData?.pets ?? []}
               medical={mapData?.medical ?? []}
-              province={tripPreferences.province}
+              province={mapArea.province}
               selectedPlace={mapSelection?.place ?? null}
               onSelectPlace={handleMapSelect}
             />
@@ -390,9 +385,7 @@ export function AppPage() {
                   onClose={() => setMapSelection(null)}
                 />
               )}
-              {mapData?.demand && tripPreferences.province !== "all" && (
-                <DemandCard demand={mapData.demand} />
-              )}
+              {layers.showDemand && mapData?.demand && <DemandCard demand={mapData.demand} />}
               {people != null && destinationRegions.length > 0 && (
                 weatherDemo ? (
                   <WeatherNotice
@@ -436,20 +429,21 @@ export function AppPage() {
                 items={recommendations}
                 exploreItems={exploreRecommendations}
                 emptyMessage={
-                  destinationRegions.length === 0
-                    ? "이 지역은 맞춤 추천 시범 데이터가 없어요. 지도에서 전국 관광지를 눌러 안전 정보를 확인하세요."
-                    : people == null
+                  people == null
                       ? "여행 조건을 정하고 동행자를 입력한 뒤 추천받아 보세요."
                       : distance.limitKm != null && origin && weatherApplied.length > 0
                         ? NO_NEARBY_MESSAGE
                       : weatherRestricted
-                        ? "방문일 날씨 기준에 맞는 관광지가 이 조건에는 없어요. 지역 범위나 목적을 넓히거나 다른 날짜를 골라 보세요."
-                        : "현재 조건에 맞는 여행지가 없어요. 목적이나 지역 범위를 넓혀 보세요."
+                        ? "방문일 날씨 기준에 맞는 관광지가 이 조건에는 없어요. 목적을 넓히거나 다른 날짜를 골라 보세요."
+                        : "현재 조건에 맞는 여행지가 없어요. 목적이나 스타일을 넓혀 보세요."
                 }
                 onSelect={(region) => {
                   setSelectedRegion(region);
                   setSelectedAttraction(null);
                   setSelectedSeasonalPlace(null);
+                  // 추천 카드를 누르면 지도도 그 도·시군구를 보여 준다.
+                  setMapArea(mapAreaForRegion(region));
+                  setMapSelection(null);
                 }}
                 onSelectAttraction={handleSelectAttraction}
                 selectedCode={displayedRegion?.code}

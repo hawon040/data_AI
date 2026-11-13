@@ -19,9 +19,8 @@ import {
 
 interface Props {
   onSubmit: (people: Person[], safetyFilters: SafetyDisplayFilters) => void;
+  /** 맞춤 추천 시범 지역 (추천은 항상 이 지역 전체에서 고른다) */
   regions: Region[];
-  /** 전국 데이터에 있는 시도 목록 — 맞춤 추천 시범 지역이 없는 시도도 지도에서 볼 수 있게 한다. */
-  provinces?: string[];
   preferences: TripPreferences;
   onPreferencesChange: (preferences: TripPreferences) => void;
   /** 주소에 ?demo=weather가 있을 때만 켜지고, 그때만 예시 날씨 선택이 보인다. */
@@ -64,7 +63,7 @@ function PersonPicker({
   );
 }
 
-export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [], preferences, onPreferencesChange, weatherDemo, origin, onOriginChange }: Props) {
+export function CompanionForm({ onSubmit, regions, preferences, onPreferencesChange, weatherDemo, origin, onOriginChange }: Props) {
   const [skipSelf, setSkipSelf] = useState(false);
   const [self, setSelf] = useState<Person>({ ageGroup: "20s" });
   const [companions, setCompanions] = useState<Person[]>([]);
@@ -73,19 +72,10 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
 
   const people = skipSelf ? companions : [self, ...companions];
   const withElderly = people.some((p) => p.ageGroup === "60plus");
-  const provinces = [...new Set([...allProvinces, ...regions.map((region) => region.province)])];
-  const pilotProvinces = new Set(regions.map((region) => region.province));
-  const availableRegions = regions.filter(
-    (region) => preferences.province === "all" || region.province === preferences.province,
-  );
   const season = tripSeason(preferences);
 
   function updatePreference<K extends keyof TripPreferences>(key: K, value: TripPreferences[K]) {
-    onPreferencesChange({
-      ...preferences,
-      [key]: value,
-      ...(key === "province" ? { regionCode: "all" } : {}),
-    });
+    onPreferencesChange({ ...preferences, [key]: value });
   }
 
   return (
@@ -135,24 +125,6 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
               <span className="field-title">여행 스타일</span>
               <select value={preferences.style} onChange={(e) => updatePreference("style", e.target.value as TripPreferences["style"])}>
                 {STYLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
-            </label>
-            <label>
-              <span className="field-title">도</span>
-              <select value={preferences.province} onChange={(e) => updatePreference("province", e.target.value)}>
-                <option value="all">전국</option>
-                {provinces.map((province) => (
-                  <option key={province} value={province}>
-                    {province}{pilotProvinces.has(province) ? " · 맞춤 추천" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="field-title">시·군·구</span>
-              <select value={preferences.regionCode} onChange={(e) => updatePreference("regionCode", e.target.value)}>
-                <option value="all">전체</option>
-                {availableRegions.map((region) => <option key={region.code} value={region.code}>{region.name}</option>)}
               </select>
             </label>
             <label>
@@ -210,9 +182,9 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
           {MAX_DISTANCE_KM[preferences.transport] != null && !origin && (
             <p className="origin-needed">{NEEDS_ORIGIN_MESSAGE}</p>
           )}
-          <p className="form-hint" title="맞춤 추천은 시범 지역(충남·충북·강원)만 제공하고, 지도에는 전국 관광지·대피소를 보여줘요.">
+          <p className="form-hint" title={`시범 지역: ${regions.map((region) => region.name).join(", ")}. 지도에서 볼 지역은 지도 위에서 따로 고를 수 있어요.`}>
             <span aria-hidden="true">i</span>
-            맞춤 추천 <strong>충남·충북·강원</strong> · 지도는 <strong>전국</strong>
+            맞춤 추천은 시범 {regions.length}개 지역에서 골라요
           </p>
         </section>
 
