@@ -166,8 +166,8 @@ Score  = LQ × log(V_i)
 - 날씨 기준값은 잠정값이다.
 - 에어코리아 측정소 좌표 축(dmX=위도 여부)과 단기예보 코드값 일부는 코드에 TODO로 남아 있어 실제 응답과 대조가 필요하다.
 - 관광안내소 Open API는 활용신청 전이라 CSV로 대체한다.
-- 배포 환경에는 MongoDB가 없다.
-- 웹(web-tawny-nine-15.vercel.app)과 `tourapi-demo`는 배포가 끝났지만 **GitHub 푸시로 자동 배포되지 않는다.** `main`을 바꾸면 웹과 `tourapi`를 각각 직접 다시 배포해야 반영된다.
+- 배포 환경의 MongoDB Atlas 연결을 11/13에 확인했다(`/api/db/status`: `connected: true`, DB `tourlink`). 저장되는 것은 공공데이터 응답 캐시이고 사용자 기록은 없다.
+- 웹(web-tawny-nine-15.vercel.app)은 Vercel에 Git이 연결돼 `main` 푸시로 배포된다(11/13 확인). `tourapi-demo`는 #13 이전 코드로 돌고 있어(`/api/cache/status` 404) 새 코드를 쓰려면 다시 배포해야 한다. `tourapi`의 Git 연결 여부는 확인하지 못했다.
 - 레이크의 날씨 데이터는 첫 실행(11/5)에서 기상청 API 403으로 0건이었다. 이후 날씨 연동은 동작하나 레이크 재실행 결과는 기록에 없다.
 
 ---
