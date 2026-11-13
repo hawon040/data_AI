@@ -2,6 +2,9 @@ import { useState } from "react";
 import { AGE_GROUPS, AGE_GROUP_LABELS, type AgeGroup, type Person, type Region } from "../lib/types";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import { WEATHER_PRESETS } from "../lib/weatherPresets";
+import { NEEDS_ORIGIN_MESSAGE, type Origin } from "../lib/origin";
+import { MAX_DISTANCE_KM } from "../config/travelDistance";
+import { OriginPicker } from "./OriginPicker";
 import {
   addDaysIso,
   tripSeason,
@@ -23,6 +26,9 @@ interface Props {
   onPreferencesChange: (preferences: TripPreferences) => void;
   /** 주소에 ?demo=weather가 있을 때만 켜지고, 그때만 예시 날씨 선택이 보인다. */
   weatherDemo: boolean;
+  /** 출발지(선택). 거리 표시와 도보·자전거 거르기에만 쓴다. */
+  origin: Origin | null;
+  onOriginChange: (origin: Origin | null) => void;
 }
 
 function PersonPicker({
@@ -58,7 +64,7 @@ function PersonPicker({
   );
 }
 
-export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [], preferences, onPreferencesChange, weatherDemo }: Props) {
+export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [], preferences, onPreferencesChange, weatherDemo, origin, onOriginChange }: Props) {
   const [skipSelf, setSkipSelf] = useState(false);
   const [self, setSelf] = useState<Person>({ ageGroup: "20s" });
   const [companions, setCompanions] = useState<Person[]>([]);
@@ -199,7 +205,11 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
                 </div>
               </fieldset>
             )}
+            <OriginPicker origin={origin} onChange={onOriginChange} />
           </div>
+          {MAX_DISTANCE_KM[preferences.transport] != null && !origin && (
+            <p className="origin-needed">{NEEDS_ORIGIN_MESSAGE}</p>
+          )}
           <p className="form-hint" title="맞춤 추천은 시범 지역(충남·충북·강원)만 제공하고, 지도에는 전국 관광지·대피소를 보여줘요.">
             <span aria-hidden="true">i</span>
             맞춤 추천 <strong>충남·충북·강원</strong> · 지도는 <strong>전국</strong>

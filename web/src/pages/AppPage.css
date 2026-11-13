@@ -476,6 +476,64 @@
   padding: 0;
   border: 0;
 }
+/* 출발지(선택): 시·도 → 시·군·구, 현재 위치 */
+.origin-field {
+  grid-column: span 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.origin-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.origin-controls select {
+  flex: 1;
+}
+.origin-controls .pill-mini {
+  flex: none;
+  white-space: nowrap;
+}
+.field-optional {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+.origin-state,
+.origin-error,
+.origin-needed {
+  margin: 6px 0 0;
+  font-size: 11px;
+}
+.origin-state {
+  color: var(--text-secondary);
+}
+.origin-error {
+  color: #b42318;
+  font-weight: 600;
+}
+.origin-needed {
+  color: var(--teal);
+  font-weight: 600;
+}
+.distance-line {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.distance-notice {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;

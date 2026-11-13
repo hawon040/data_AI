@@ -3,7 +3,7 @@ import type { Attraction, AttractionTag, Person, RecommendationItem, Region } fr
 
 export type TravelPurpose = "all" | "hiking" | "experience" | "festival" | "sea" | "stroll";
 export type TravelStyle = "all" | "active" | "relaxed" | "family" | "culture" | "food";
-export type TransportMode = "tour-bus" | "car" | "public-transit" | "walking";
+export type TransportMode = "tour-bus" | "car" | "public-transit" | "walking" | "bicycle";
 export type RankingMode = "companion" | "popular";
 export type TripDuration = "day" | "overnight";
 export type TripNights = 1 | 2 | 3;
@@ -78,7 +78,8 @@ export const TRANSPORT_OPTIONS: { value: TransportMode; label: string }[] = [
   { value: "public-transit", label: "대중교통" },
   { value: "tour-bus", label: "관광버스" },
   { value: "car", label: "자가용" },
-  { value: "walking", label: "도보·자전거" },
+  { value: "walking", label: "도보" },
+  { value: "bicycle", label: "자전거" },
 ];
 
 const PURPOSE_TAGS: Record<Exclude<TravelPurpose, "all">, AttractionTag[]> = {
@@ -224,8 +225,10 @@ export function getPreparationTips(
     tips.add("출발 전 대중교통·관광버스 시간표와 막차 시간을 확인하세요.");
   } else if (preferences.transport === "car") {
     tips.add("주차 가능 여부와 현장 주차 요금을 확인하세요.");
+  } else if (preferences.transport === "walking") {
+    tips.add("도보 이동 구간과 쉴 곳을 미리 확인하세요.");
   } else {
-    tips.add("도보·자전거 이동 구간과 대여 운영 여부를 미리 확인하세요.");
+    tips.add("자전거 이동 구간과 대여 운영 여부를 미리 확인하세요.");
   }
   if (preferences.duration === "day") {
     tips.add("당일 일정에 맞춰 왕복 이동 시간과 마지막 입장 시간을 확인하세요.");

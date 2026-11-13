@@ -18,9 +18,11 @@ function RecommendationCard({
   selected,
   weatherSummary,
   attractionBadge,
+  distanceLabel,
 }: {
   item: RecommendationItem;
   weatherSummary: string | null;
+  distanceLabel: string | null;
   attractionBadge: (attraction: Attraction) => string | null;
   rank?: number;
   onSelect: (r: Region) => void;
@@ -52,6 +54,7 @@ function RecommendationCard({
       </div>
       <p className="highlight">{item.region.highlight}</p>
       <p className="evidence-line">{shortEvidence(item, weatherSummary)}</p>
+      {distanceLabel && <p className="distance-line">{distanceLabel}</p>}
       {item.topAttractions.length > 0 && (
         <div className="attraction-chips">
           {item.topAttractions.map(({ attraction }) => (
@@ -103,6 +106,7 @@ export function RecommendationList({
   emptyMessage,
   weatherSummaryFor = () => null,
   attractionBadge = () => null,
+  distanceLabelFor = () => null,
 }: {
   items: RecommendationItem[];
   exploreItems: RecommendationItem[];
@@ -114,6 +118,8 @@ export function RecommendationList({
   weatherSummaryFor?: (regionCode: string) => string | null;
   /** 관광지 칩 옆 배지(예: 무장애 "편의 정보"). 정보가 있을 때만 문구를 돌려준다. 순서는 바꾸지 않는다. */
   attractionBadge?: (attraction: Attraction) => string | null;
+  /** 출발지가 있으면 "출발지에서 약 12km" (지역 중심까지 직선거리) */
+  distanceLabelFor?: (region: Region) => string | null;
 }) {
   if (items.length === 0) {
     return <p className="empty-state">{emptyMessage}</p>;
@@ -131,6 +137,7 @@ export function RecommendationList({
           selected={selectedCode === item.region.code}
           weatherSummary={weatherSummaryFor(item.region.code)}
           attractionBadge={attractionBadge}
+          distanceLabel={distanceLabelFor(item.region)}
         />
       ))}
 
@@ -146,6 +153,7 @@ export function RecommendationList({
               selected={selectedCode === item.region.code}
               weatherSummary={weatherSummaryFor(item.region.code)}
               attractionBadge={attractionBadge}
+              distanceLabel={distanceLabelFor(item.region)}
             />
           ))}
         </>

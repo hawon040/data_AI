@@ -14,6 +14,8 @@ import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
 import { TripPreparation, TripPreparationHint } from "../components/TripPreparation";
 import { WeatherNotice } from "../components/WeatherNotice";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
+import { DistanceExcludedList } from "../components/DistanceExcludedList";
+import { applyDistanceLimit, formatDistance, haversineKm, NEEDS_ORIGIN_MESSAGE, NO_NEARBY_MESSAGE, type Origin } from "../lib/origin";
 import { WarningBanner } from "../components/WarningBanner";
 import { listWeatherExclusions } from "../lib/weatherExclusions";
 import { airTips, checklistView, terrainTips, weatherTipSentences } from "../lib/preparationTips";
@@ -60,6 +62,8 @@ export function AppPage() {
     error: null,
   });
   const [mapSelection, setMapSelection] = useState<MapSelection | null>(null);
+  // 출발지(선택). 거리 표시와 도보·자전거 거르기에만 쓰고 서버로 보내거나 저장하지 않는다.
+  const [origin, setOrigin] = useState<Origin | null>(null);
 
   // 고른 시도(또는 전국)의 공공데이터를 tourapi/api.py 서버에서 실시간으로 불러온다.
   useEffect(() => {
@@ -187,9 +191,20 @@ export function AppPage() {
       locationCodes.has(item.region.code),
     );
   }, [destinationRegions, people, tripPreferences]);
-  const recommendations: RecommendationItem[] = useMemo(
-    () => applyRegionWeather(preWeatherRecommendations).slice(0, 5),
+  // 날씨 규칙 → (도보·자전거면) 출발지 거리 기준 순서로 거른다. 추천 순위 계산은 바꾸지 않는다.
+  const weatherApplied = useMemo(
+    () => applyRegionWeather(preWeatherRecommendations),
     [preWeatherRecommendations, applyRegionWeather],
+  );
+  const distance = useMemo(
+    () => applyDistanceLimit(weatherApplied, origin, tripPreferences.transport),
+    [weatherApplied, origin, tripPreferences.transport],
+  );
+  const recommendations: RecommendationItem[] = useMemo(() => distance.items.slice(0, 5), [distance]);
+  // 거리 때문에 빠진 곳은 원래 상위 5개 지역에서만 모은다(날씨 제외 목록과 같은 범위).
+  const distanceExclusions = useMemo(
+    () => applyDistanceLimit(weatherApplied.slice(0, 5), origin, tripPreferences.transport).excluded,
+    [weatherApplied, origin, tripPreferences.transport],
   );
   const weatherExclusions = useMemo(
     () => listWeatherExclusions(preWeatherRecommendations.slice(0, 5), (code) => weatherDecisions[code]),
@@ -200,10 +215,11 @@ export function AppPage() {
     if (people == null || people.length === 0 || destinationRegions.length === 0) return [];
     const excludeCodes = new Set(recommendations.map((r) => r.region.code));
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
-    return applyRegionWeather(
+    const explore = applyRegionWeather(
       filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes), people, tripPreferences),
     ).filter((item) => locationCodes.has(item.region.code));
-  }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather]);
+    return applyDistanceLimit(explore, origin, tripPreferences.transport).items;
+  }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather, origin]);
 
   const highlightedCodes = useMemo(
     () => new Set([...recommendations, ...exploreRecommendations].map((r) => r.region.code)),
@@ -298,6 +314,8 @@ export function AppPage() {
         provinces={mapData?.provinces}
         preferences={tripPreferences}
         weatherDemo={weatherDemo}
+        origin={origin}
+        onOriginChange={setOrigin}
         onPreferencesChange={(preferences) => {
           setTripPreferences(preferences);
           setMapSelection(null);
@@ -411,6 +429,9 @@ export function AppPage() {
                   terrainExcluded={weatherDecisions[weatherRegion.code].excludedTerrains.length > 0}
                 />
               )}
+              {people != null && distance.needsOrigin && (
+                <p className="distance-notice" role="status">{NEEDS_ORIGIN_MESSAGE}</p>
+              )}
               <RecommendationList
                 items={recommendations}
                 exploreItems={exploreRecommendations}
@@ -419,6 +440,8 @@ export function AppPage() {
                     ? "이 지역은 맞춤 추천 시범 데이터가 없어요. 지도에서 전국 관광지를 눌러 안전 정보를 확인하세요."
                     : people == null
                       ? "여행 조건을 정하고 동행자를 입력한 뒤 추천받아 보세요."
+                      : distance.limitKm != null && origin && weatherApplied.length > 0
+                        ? NO_NEARBY_MESSAGE
                       : weatherRestricted
                         ? "방문일 날씨 기준에 맞는 관광지가 이 조건에는 없어요. 지역 범위나 목적을 넓히거나 다른 날짜를 골라 보세요."
                         : "현재 조건에 맞는 여행지가 없어요. 목적이나 지역 범위를 넓혀 보세요."
@@ -434,8 +457,10 @@ export function AppPage() {
                 attractionBadge={(attraction) =>
                   toAccessSummary(attraction.name, accessMap[attraction.name]).hasInfo ? "편의 정보" : null
                 }
+                distanceLabelFor={(region) => (origin ? formatDistance(haversineKm(origin, region)) : null)}
               />
               {people != null && <WeatherExcludedList items={weatherExclusions} />}
+              {people != null && <DistanceExcludedList items={distanceExclusions} limitKm={distance.limitKm} />}
               {selectedAttraction ? (
                 <TripPreparation attraction={selectedAttraction} preferences={tripPreferences} extraTips={extraPrepTips} />
               ) : (
@@ -453,6 +478,7 @@ export function AppPage() {
                   seasonalTiming={selectedSeasonalPlace?.timing}
                   seasonalDescription={selectedSeasonalPlace?.summary}
                   party={accessParty}
+                  distanceLabel={origin ? formatDistance(haversineKm(origin, selectedAttraction)) : null}
                 />
               )}
               {displayedRegion && (
