@@ -3,7 +3,8 @@
  * 추천 결과는 바꾸지 않는다(추천은 항상 시범 지역 전체에서 고른다).
  */
 import { SIGUNGU } from "../data/sigungu";
-import type { MapPlaces, NationalShelter, NationalSpot } from "./nationalData";
+import { haversineKm } from "./origin";
+import type { MapPlaces, MedicalPlace, NationalShelter, NationalSpot, PetPlace } from "./nationalData";
 import type { Region } from "./types";
 
 export interface MapArea {
@@ -36,15 +37,50 @@ export function mapAreaForRegion(region: Pick<Region, "province" | "name">): Map
   return { province: region.province, district: match ?? "all" };
 }
 
-/** 지도에 그릴 레이어. 대피소와 관광 수요 순위는 시·도를 골랐을 때만 보인다. */
+/** 주소("충청북도 청주시 상당구 …")의 앞쪽 낱말에 고른 시·군·구 이름이 있는지. "청주시"를 고르면 "청주시 상당구·서원구…"도 들어간다. */
+export function addressInDistrict(address: string, district: string): boolean {
+  if (district === "all") return true;
+  return address.split(/\s+/).slice(0, 3).some((word) => word === district || word.startsWith(district));
+}
+
+/**
+ * 좌표에서 가장 가까운 시군구 대표점(data/sigungu.ts)의 이름. 의료관광 정보는 주소가 영어라 이름으로 시군구를 가를 수 없어
+ * 이 방법으로 나눈다(대표점 기준이라 경계 근처는 옆 시군구로 갈 수 있는 근사치다).
+ */
+export function nearestDistrict(province: string, point: { lat: number; lng: number }): string | null {
+  let best: { name: string; km: number } | null = null;
+  for (const [name, lat, lng] of SIGUNGU[province] ?? []) {
+    const km = haversineKm(point, { lat, lng });
+    if (!best || km < best.km) best = { name, km };
+  }
+  return best?.name ?? null;
+}
+
+/** 목록 제목에 쓸 범위 이름: 시군구를 골랐으면 시군구, 도만 골랐으면 도, 아니면 "전국" */
+export function areaLabel(area: MapArea): string {
+  if (area.province === "all") return "전국";
+  return area.district === "all" ? area.province : area.district;
+}
+
+/** 추천 지역이 지도에서 고른 지역 안에 있는지 (지도 목록 맨 위 추천 줄에 쓴다) */
+export function regionInArea(region: Pick<Region, "province" | "name">, area: MapArea): boolean {
+  if (area.province === "all") return true;
+  if (region.province !== area.province) return false;
+  return area.district === "all" || mapAreaForRegion(region).district === area.district;
+}
+
+/** 지도에 그릴 레이어. 대피소와 관광 수요 순위는 시·도를 골랐을 때만 보인다. 시·군·구를 고르면 모두 그 시군구로 좁힌다. */
 export function mapLayers(
-  data: Pick<MapPlaces, "spots" | "shelters" | "demand"> | null,
+  data: Pick<MapPlaces, "spots" | "shelters" | "demand"> & Partial<Pick<MapPlaces, "pets" | "medical">> | null,
   area: MapArea,
-): { spots: NationalSpot[]; shelters: NationalShelter[]; showDemand: boolean } {
+): { spots: NationalSpot[]; shelters: NationalShelter[]; pets: PetPlace[]; medical: MedicalPlace[]; showDemand: boolean } {
   const nationwide = area.province === "all";
+  const byDistrict = area.district !== "all" && !nationwide;
   return {
     spots: (data?.spots ?? []).filter((spot) => inDistrict(spot.district, area.district)),
     shelters: nationwide ? [] : (data?.shelters ?? []).filter((shelter) => inDistrict(shelter.district, area.district)),
+    pets: (data?.pets ?? []).filter((place) => !byDistrict || addressInDistrict(place.address, area.district)),
+    medical: (data?.medical ?? []).filter((place) => !byDistrict || nearestDistrict(area.province, place) === area.district),
     showDemand: !nationwide && data?.demand != null,
   };
 }

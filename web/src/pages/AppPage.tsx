@@ -403,9 +403,9 @@ export function AppPage() {
               liveAttractions={liveAttractions.map((x) => x.attraction)}
               nationalSpots={nationalSpots}
               shelters={layers.shelters}
-              pets={mapData?.pets ?? []}
-              medical={mapData?.medical ?? []}
-              province={mapArea.province}
+              pets={layers.pets}
+              medical={layers.medical}
+              area={mapArea}
               selectedPlace={mapSelection?.place ?? null}
               onSelectPlace={handleMapSelect}
             />

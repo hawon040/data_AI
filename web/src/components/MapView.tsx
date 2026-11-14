@@ -9,6 +9,7 @@ import {
   type PetPlace,
 } from "../lib/nationalData";
 import type { Attraction, Person, Region } from "../lib/types";
+import { areaLabel, NATIONWIDE, regionInArea, type MapArea } from "../lib/mapArea";
 import { KAKAO_MAP_KEY as KAKAO_KEY, loadKakaoSdk } from "../lib/kakaoMapSdk";
 
 function dotImage(svg: string, size: number) {
@@ -29,14 +30,15 @@ function FallbackPlaceTabs({
   spots,
   pets,
   medical,
-  province,
+  area,
   recommendedRegions,
   onSelectPlace,
 }: {
   spots: NationalSpot[];
   pets: PetPlace[];
   medical: MedicalPlace[];
-  province: string;
+  /** 지도에서 볼 지역 — 목록 제목의 범위("청주시 반려동물 동반 ○곳")에 쓴다 */
+  area: MapArea;
   /** 추천된 지역 — 전국을 볼 때 이 지역의 관광지를 먼저 보여 준다. */
   recommendedRegions: Region[];
   onSelectPlace?: (selection: MapSelection) => void;
@@ -47,9 +49,12 @@ function FallbackPlaceTabs({
     { id: "pet", label: "반려동물 동반", count: pets.length },
     { id: "medical", label: "의료관광", count: medical.length },
   ];
-  if (tabs.every((t) => t.count === 0)) return null;
+  const scope = areaLabel(area);
+  if (tabs.every((t) => t.count === 0)) {
+    return area.district !== "all" ? <p className="fallback-tab-hint">{scope}에는 등록된 관광지·반려동물 동반·의료관광 장소가 없어요</p> : null;
+  }
   const active = tabs.find((t) => t.id === tab && t.count > 0) ?? tabs.find((t) => t.count > 0)!;
-  const isNationwide = province === "all";
+  const isNationwide = area.province === "all";
   const ordered = splitRecommendedSpots(spots, isNationwide ? recommendedRegions : []);
 
   return (
@@ -72,13 +77,16 @@ function FallbackPlaceTabs({
           </label>
         ))}
       </div>
-      {province === "all" && pets.length === 0 && (
+      {area.district !== "all" && spots.length === 0 && (
+        <p className="fallback-tab-hint">{scope}는 전국관광지정보표준데이터에 등록된 관광지가 없어요</p>
+      )}
+      {isNationwide && pets.length === 0 && (
         <p className="fallback-tab-hint">도를 고르면 반려동물 동반 장소가 보여요</p>
       )}
       {active.id === "spot" && (
         <>
           <p className="fallback-national-heading">
-            {isNationwide ? "전국" : province} 관광지 {spots.length.toLocaleString("ko-KR")}곳
+            {area.district !== "all" ? `${area.province} ${area.district}` : scope} 관광지 {spots.length.toLocaleString("ko-KR")}곳
             {ordered.recommended.length > 0 && ` · 추천 지역 ${ordered.recommended.length}곳 먼저`} (수용인원 많은 순)
           </p>
           <ul className="fallback-region-list">
@@ -102,7 +110,7 @@ function FallbackPlaceTabs({
       {active.id === "pet" && (
         <>
           <p className="fallback-national-heading">
-            반려동물 동반 장소 {pets.length.toLocaleString("ko-KR")}곳
+            {scope} 반려동물 동반 {pets.length.toLocaleString("ko-KR")}곳
             {pets.length > FALLBACK_LIMIT && ` 중 ${FALLBACK_LIMIT}곳`} (한국관광공사 반려동물 동반여행)
           </p>
           <ul className="fallback-region-list">
@@ -124,7 +132,7 @@ function FallbackPlaceTabs({
       {active.id === "medical" && (
         <>
           <p className="fallback-national-heading">
-            의료관광 기관 {medical.length.toLocaleString("ko-KR")}곳 (한국관광공사 의료관광정보)
+            {scope} 의료관광 기관 {medical.length.toLocaleString("ko-KR")}곳 (한국관광공사 의료관광정보{area.district !== "all" && ", 좌표로 시군구 구분"})
           </p>
           <ul className="fallback-region-list">
             {medical.slice(0, FALLBACK_LIMIT).map((place) => (
@@ -158,7 +166,7 @@ export function MapView({
   shelters = [],
   pets = [],
   medical = [],
-  province = "all",
+  area = NATIONWIDE,
   selectedPlace = null,
   onSelectPlace,
 }: {
@@ -180,8 +188,8 @@ export function MapView({
   pets?: PetPlace[];
   /** 의료 관광기관 */
   medical?: MedicalPlace[];
-  /** 입력 폼에서 고른 도("all"이면 전국) */
-  province?: string;
+  /** 지도에서 볼 지역(도 → 시·군·구). 목록 범위와 맨 위 추천 줄에 쓴다 */
+  area?: MapArea;
   selectedPlace?: { name: string; lat: number; lng: number } | null;
   onSelectPlace?: (selection: MapSelection) => void;
 }) {
@@ -450,11 +458,14 @@ export function MapView({
   }, [status, selectedPlace]);
 
   if (status === "no-key" || status === "error") {
-    const shown = highlightedCodes.size > 0 ? regions.filter((r) => highlightedCodes.has(r.code)) : regions;
+    const recommended = highlightedCodes.size > 0 ? regions.filter((r) => highlightedCodes.has(r.code)) : regions;
+    // 맨 위 추천 줄은 지도에서 고른 지역 안에 있는 추천 지역만 보여 주고, 없으면 숨긴다.
+    const shown = recommended.filter((r) => regionInArea(r, area));
     return (
       <div className="map-fallback">
         {/* 지도 키 설정 방법은 web/README.md에 있다. 사용자에게는 개발자용 안내를 보여 주지 않는다. */}
         <p className="map-fallback-message">지도를 불러오지 못했어요. 아래 목록에서 장소를 확인하세요.</p>
+        {shown.length > 0 && (
         <ul className="fallback-region-list">
           {shown.map((r) => {
             const top = topAttractionsOf(r, people, 4);
@@ -482,12 +493,13 @@ export function MapView({
             );
           })}
         </ul>
+        )}
         <FallbackPlaceTabs
           spots={nationalSpots}
           pets={pets}
           medical={medical}
-          province={province}
-          recommendedRegions={highlightedCodes.size > 0 ? shown : []}
+          area={area}
+          recommendedRegions={highlightedCodes.size > 0 ? recommended : []}
           onSelectPlace={onSelectPlace}
         />
       </div>
