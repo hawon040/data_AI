@@ -5,7 +5,8 @@ import type { Attraction, AttractionTag, Person, RecommendationItem, Region } fr
 export type TravelPurpose = "all" | "hiking" | "experience" | "festival" | "sea" | "stroll";
 export type TravelStyle = "all" | "active" | "relaxed" | "family" | "culture" | "food";
 export type TransportMode = "tour-bus" | "car" | "public-transit" | "walking" | "bicycle";
-export type RankingMode = "companion" | "popular";
+/** 추천 순서. nearest(가까운 순)는 출발지가 있을 때만 쓴다(점수 계산은 그대로, 정렬만 거리로). */
+export type RankingMode = "companion" | "popular" | "nearest";
 export type TripDuration = "day" | "overnight";
 export type TripNights = 1 | 2 | 3;
 

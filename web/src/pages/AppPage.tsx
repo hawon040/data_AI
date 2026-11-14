@@ -18,7 +18,18 @@ import { TripPreparation } from "../components/TripPreparation";
 import { WeatherNotice } from "../components/WeatherNotice";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { DistanceExcludedList } from "../components/DistanceExcludedList";
-import { applyDistanceLimit, formatDistance, haversineKm, NEEDS_ORIGIN_MESSAGE, NO_NEARBY_MESSAGE, type Origin } from "../lib/origin";
+import {
+  applyDistanceLimit,
+  effectiveRanking,
+  formatDistance,
+  formatKm,
+  haversineKm,
+  nearestAttractionKm,
+  NEEDS_ORIGIN_MESSAGE,
+  NO_NEARBY_MESSAGE,
+  sortByNearest,
+  type Origin,
+} from "../lib/origin";
 import { WarningBanner } from "../components/WarningBanner";
 import { INDOOR_RETRY_LABEL, keepIndoorOnly, listWeatherExclusions, regionsWithoutPurposeMatches } from "../lib/weatherExclusions";
 import { buildChecklist, type ChecklistFocus } from "../lib/checklist";
@@ -71,6 +82,14 @@ export function AppPage() {
   const [indoorRetry, setIndoorRetry] = useState(false);
   // 출발지(선택). 거리 표시와 도보·자전거 거르기에만 쓰고 서버로 보내거나 저장하지 않는다.
   const [origin, setOrigin] = useState<Origin | null>(null);
+  // 사용자가 '추천 순서'를 직접 바꿨는지. 바꾸지 않았으면 출발지·당일치기일 때 기본값이 "가까운 순"이다.
+  const [rankingTouched, setRankingTouched] = useState(false);
+  const ranking = effectiveRanking({
+    stored: tripPreferences.ranking,
+    touched: rankingTouched,
+    hasOrigin: origin != null,
+    duration: tripPreferences.duration,
+  });
 
   // 지도에서 고른 시도(또는 전국)의 공공데이터를 tourapi/api.py 서버에서 실시간으로 불러온다.
   useEffect(() => {
@@ -192,7 +211,11 @@ export function AppPage() {
     () => applyDistanceLimit(weatherApplied, origin, tripPreferences.transport),
     [weatherApplied, origin, tripPreferences.transport],
   );
-  const recommendations: RecommendationItem[] = useMemo(() => distance.items.slice(0, 5), [distance]);
+  // 가까운 순이면 지역 안 추천 관광지 중 가장 가까운 곳의 거리로 정렬한다(점수 계산은 그대로).
+  const recommendations: RecommendationItem[] = useMemo(
+    () => (ranking === "nearest" && origin ? sortByNearest(distance.items, origin) : distance.items).slice(0, 5),
+    [distance, ranking, origin],
+  );
   // 거리 때문에 빠진 곳은 원래 상위 5개 지역에서만 모은다(날씨 제외 목록과 같은 범위).
   const distanceExclusions = useMemo(
     () => applyDistanceLimit(weatherApplied.slice(0, 5), origin, tripPreferences.transport).excluded,
@@ -339,11 +362,12 @@ export function AppPage() {
 
       <CompanionForm
         regions={SAMPLE_REGIONS}
-        preferences={tripPreferences}
+        preferences={{ ...tripPreferences, ranking }}
         weatherDemo={weatherDemo}
         origin={origin}
         onOriginChange={setOrigin}
         onPreferencesChange={(preferences) => {
+          if (preferences.ranking !== ranking) setRankingTouched(true);
           setTripPreferences(preferences);
           setIndoorRetry(false);
           setMapSelection(null);
@@ -509,7 +533,11 @@ export function AppPage() {
                 attractionBadge={(attraction) =>
                   toAccessSummary(attraction.name, accessMap[attraction.name]).hasInfo ? "편의 정보" : null
                 }
-                distanceLabelFor={(region) => (origin ? formatDistance(haversineKm(origin, region)) : null)}
+                distanceLabelFor={(item) => {
+                  const km = origin ? nearestAttractionKm(item, origin) : null;
+                  return km != null ? `가장 가까운 관광지까지 ${formatKm(km)}` : null;
+                }}
+                attractionDistanceFor={(attraction) => (origin ? formatKm(haversineKm(origin, attraction)) : null)}
                 excludedFor={(region) => excludedByRegion.get(region.code) ?? []}
               />
               {people != null && <WeatherExcludedList items={weatherExclusions} />}

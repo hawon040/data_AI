@@ -5,7 +5,7 @@
  */
 import { MAX_DISTANCE_KM } from "../config/travelDistance";
 import { SIGUNGU } from "../data/sigungu";
-import type { TransportMode } from "./tripPreferences";
+import type { RankingMode, TransportMode, TripDuration } from "./tripPreferences";
 import type { Attraction, RecommendationItem } from "./types";
 
 export interface Origin {
@@ -29,11 +29,47 @@ export function haversineKm(a: { lat: number; lng: number }, b: { lat: number; l
   return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/** "출발지에서 약 12km" (10km 미만은 소수 한 자리) */
-export function formatDistance(km: number): string {
+/** "약 12km" (10km 미만은 소수 한 자리) */
+export function formatKm(km: number): string {
   const value = km < 10 ? Math.max(0.1, Math.round(km * 10) / 10).toFixed(1) : Math.round(km).toLocaleString("ko-KR");
-  return `출발지에서 약 ${value}km`;
+  return `약 ${value}km`;
 }
+
+/** "출발지에서 약 12km" */
+export function formatDistance(km: number): string {
+  return `출발지에서 ${formatKm(km)}`;
+}
+
+/** 지역 카드의 추천 관광지 중 출발지에서 가장 가까운 곳까지 거리(km). 관광지가 없으면 null */
+export function nearestAttractionKm(item: Pick<RecommendationItem, "topAttractions">, origin: Origin): number | null {
+  if (item.topAttractions.length === 0) return null;
+  return Math.min(...item.topAttractions.map(({ attraction }) => haversineKm(origin, attraction)));
+}
+
+/** 가까운 순: 지역 안 추천 관광지 중 가장 가까운 곳의 거리로 정렬한다(같으면 원래 순서). 점수는 바꾸지 않는다. */
+export function sortByNearest(items: RecommendationItem[], origin: Origin): RecommendationItem[] {
+  return items
+    .map((item, index) => ({ item, index, km: nearestAttractionKm(item, origin) ?? haversineKm(origin, item.region) }))
+    .sort((a, b) => a.km - b.km || a.index - b.index)
+    .map(({ item }) => item);
+}
+
+/**
+ * 실제로 쓸 추천 순서. 출발지가 있고 당일치기면 기본값을 "가까운 순"으로 하고, 사용자가 직접 바꿨으면 그대로 둔다.
+ * 출발지가 없으면 "가까운 순"은 쓸 수 없어 연령대·동행 선호로 돌아간다.
+ */
+export function effectiveRanking(state: {
+  stored: RankingMode;
+  touched: boolean;
+  hasOrigin: boolean;
+  duration: TripDuration;
+}): RankingMode {
+  const { stored, touched, hasOrigin, duration } = state;
+  if (!touched) return hasOrigin && duration === "day" ? "nearest" : stored === "nearest" ? "companion" : stored;
+  return stored === "nearest" && !hasOrigin ? "companion" : stored;
+}
+
+export const NEAREST_NEEDS_ORIGIN = "출발지를 정하면 쓸 수 있어요";
 
 /** 저장소의 시군구 좌표(data/sigungu.ts)에서 찾는다. 없으면 null. */
 export function districtCoords(province: string, district: string): { lat: number; lng: number } | null {

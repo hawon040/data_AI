@@ -3,6 +3,11 @@ import { MAX_DISTANCE_KM } from "../config/travelDistance";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import {
   applyDistanceLimit,
+  effectiveRanking,
+  formatKm,
+  NEAREST_NEEDS_ORIGIN,
+  nearestAttractionKm,
+  sortByNearest,
   districtCoords,
   districtOrigin,
   formatDistance,
@@ -12,6 +17,8 @@ import {
   type Origin,
 } from "./origin";
 import type { RecommendationItem } from "./types";
+import { getRecommendations } from "./recommend";
+import { DEFAULT_TRIP_PREFERENCES, filterRecommendations } from "./tripPreferences";
 
 const cheonan = SAMPLE_REGIONS.find((r) => r.name === "천안시")!;
 const items: RecommendationItem[] = SAMPLE_REGIONS.map((region) => ({
@@ -119,5 +126,51 @@ describe("출발지 좌표", () => {
     };
     expect(await locateCurrentPosition(denied)).toEqual({ ok: false, message: ORIGIN_FALLBACK_MESSAGE });
     expect(await locateCurrentPosition(undefined)).toEqual({ ok: false, message: "출발지를 직접 골라 주세요" });
+  });
+});
+
+describe("[H] 가까운 순과 관광지별 거리", () => {
+  const cheonanOrigin: Origin = { label: "충청남도 천안시", lat: 36.8151, lng: 127.1139, source: "district" };
+  const ranked = () => {
+    const people = [{ ageGroup: "20s" as const }];
+    const prefs = { ...DEFAULT_TRIP_PREFERENCES, visitDate: "2026-11-14", duration: "day" as const };
+    return filterRecommendations(getRecommendations(people, SAMPLE_REGIONS, SAMPLE_REGIONS.length), people, prefs);
+  };
+
+  it("천안 출발·당일치기: 가까운 순이면 천안·청주가 강릉보다 먼저다", () => {
+    const names = sortByNearest(ranked(), cheonanOrigin).map((item) => item.region.name);
+    expect(names.indexOf("천안시")).toBeLessThan(names.indexOf("강릉시"));
+    expect(names.indexOf("청주시 상당구")).toBeLessThan(names.indexOf("강릉시"));
+    expect(names.slice(0, 2)).toEqual(["천안시", "청주시 상당구"]);
+  });
+
+  it("정렬 기준은 지역 안 추천 관광지 중 가장 가까운 곳(지역 중심이 아님), 점수는 그대로", () => {
+    const items = ranked();
+    const sorted = sortByNearest(items, cheonanOrigin);
+    const kms = sorted.map((item) => nearestAttractionKm(item, cheonanOrigin)!);
+    expect(kms).toEqual([...kms].sort((a, b) => a - b));
+    const scoreOf = new Map(items.map((item) => [item.region.code, item.score]));
+    expect(sorted.every((item) => item.score === scoreOf.get(item.region.code))).toBe(true);
+  });
+
+  it("관광지별 거리: 관광지 좌표로 계산해 '약 ○km'", () => {
+    const cheonan = SAMPLE_REGIONS.find((r) => r.name === "천안시")!;
+    const independence = cheonan.attractions.find((a) => a.name === "독립기념관")!;
+    const km = haversineKm(cheonanOrigin, independence);
+    expect(km).toBeGreaterThan(9);
+    expect(km).toBeLessThan(12);
+    expect(formatKm(km)).toMatch(/^약 1[01]km$/);
+    expect(formatKm(3.14)).toBe("약 3.1km");
+    expect(nearestAttractionKm({ topAttractions: [] }, cheonanOrigin)).toBeNull();
+  });
+
+  it("기본 추천 순서: 출발지 + 당일치기면 가까운 순, 사용자가 바꾸면 그대로, 출발지가 없으면 쓸 수 없다", () => {
+    expect(effectiveRanking({ stored: "companion", touched: false, hasOrigin: true, duration: "day" })).toBe("nearest");
+    expect(effectiveRanking({ stored: "companion", touched: false, hasOrigin: true, duration: "overnight" })).toBe("companion");
+    expect(effectiveRanking({ stored: "popular", touched: true, hasOrigin: true, duration: "day" })).toBe("popular");
+    expect(effectiveRanking({ stored: "companion", touched: true, hasOrigin: true, duration: "day" })).toBe("companion");
+    expect(effectiveRanking({ stored: "nearest", touched: true, hasOrigin: false, duration: "day" })).toBe("companion");
+    expect(effectiveRanking({ stored: "nearest", touched: false, hasOrigin: false, duration: "day" })).toBe("companion");
+    expect(NEAREST_NEEDS_ORIGIN).toBe("출발지를 정하면 쓸 수 있어요");
   });
 });

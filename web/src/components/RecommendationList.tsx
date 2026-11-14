@@ -27,7 +27,9 @@ function RecommendationCard({
   attractionBadge,
   distanceLabel,
   excluded,
+  attractionDistance,
 }: {
+  attractionDistance: (attraction: Attraction) => string | null;
   item: RecommendationItem;
   excluded: ExcludedAttraction[];
   weatherSummary: string | null;
@@ -91,6 +93,7 @@ function RecommendationCard({
             >
               {attraction.name}
               <span className="attraction-meta">{attractionMeta(attraction)}</span>
+              {attractionDistance(attraction) && <span className="attraction-distance">{attractionDistance(attraction)}</span>}
               {attractionBadge(attraction) && <span className="attraction-badge">{attractionBadge(attraction)}</span>}
             </button>
           ))}
@@ -149,6 +152,7 @@ export function RecommendationList({
   weatherSummaryFor = () => null,
   attractionBadge = () => null,
   distanceLabelFor = () => null,
+  attractionDistanceFor = () => null,
   excludedFor = () => [],
   bottomItems = [],
   emptyAction = null,
@@ -171,7 +175,10 @@ export function RecommendationList({
   /** 관광지 칩 옆 배지(예: 무장애 "편의 정보"). 정보가 있을 때만 문구를 돌려준다. 순서는 바꾸지 않는다. */
   attractionBadge?: (attraction: Attraction) => string | null;
   /** 출발지가 있으면 "출발지에서 약 12km" (지역 중심까지 직선거리) */
-  distanceLabelFor?: (region: Region) => string | null;
+  /** 출발지가 있으면 "가장 가까운 관광지까지 약 12km" */
+  distanceLabelFor?: (item: RecommendationItem) => string | null;
+  /** 출발지가 있으면 관광지 버튼마다 "약 3.1km" */
+  attractionDistanceFor?: (attraction: Attraction) => string | null;
   /** 날씨 때문에 그 지역 카드에서 빠진 관광지 (흐리게 "비 예보로 제외"로 함께 보여 준다) */
   excludedFor?: (region: Region) => ExcludedAttraction[];
 }) {
@@ -191,7 +198,8 @@ export function RecommendationList({
           selected={selectedCode === item.region.code}
           weatherSummary={weatherSummaryFor(item.region.code)}
           attractionBadge={attractionBadge}
-          distanceLabel={distanceLabelFor(item.region)}
+          distanceLabel={distanceLabelFor(item)}
+          attractionDistance={attractionDistanceFor}
           excluded={excludedFor(item.region)}
         />
       ))}
@@ -216,7 +224,8 @@ export function RecommendationList({
           selected={selectedCode === item.region.code}
           weatherSummary={null}
           attractionBadge={attractionBadge}
-          distanceLabel={distanceLabelFor(item.region)}
+          distanceLabel={distanceLabelFor(item)}
+          attractionDistance={attractionDistanceFor}
           excluded={excludedFor(item.region)}
         />
       ))}
@@ -233,7 +242,8 @@ export function RecommendationList({
               selected={selectedCode === item.region.code}
               weatherSummary={weatherSummaryFor(item.region.code)}
               attractionBadge={attractionBadge}
-              distanceLabel={distanceLabelFor(item.region)}
+              distanceLabel={distanceLabelFor(item)}
+          attractionDistance={attractionDistanceFor}
               excluded={excludedFor(item.region)}
             />
           ))}

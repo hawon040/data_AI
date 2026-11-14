@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AGE_GROUPS, AGE_GROUP_LABELS, type AgeGroup, type Person, type Region } from "../lib/types";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import { WEATHER_PRESETS } from "../lib/weatherPresets";
-import { NEEDS_ORIGIN_MESSAGE, type Origin } from "../lib/origin";
+import { NEAREST_NEEDS_ORIGIN, NEEDS_ORIGIN_MESSAGE, type Origin } from "../lib/origin";
 import { MAX_DISTANCE_KM } from "../config/travelDistance";
 import { OriginPicker } from "./OriginPicker";
 import {
@@ -138,7 +138,9 @@ export function CompanionForm({ onSubmit, regions, preferences, onPreferencesCha
               <select value={preferences.ranking} onChange={(e) => updatePreference("ranking", e.target.value as TripPreferences["ranking"])}>
                 <option value="companion">연령대·동행 선호</option>
                 <option value="popular">전체 인기 순</option>
+                <option value="nearest" disabled={!origin}>가까운 순{origin ? "" : " (출발지 필요)"}</option>
               </select>
+              {!origin && <span className="field-note">가까운 순은 {NEAREST_NEEDS_ORIGIN}</span>}
             </label>
             <fieldset className="duration-field">
               <legend className="field-title">여행 일정</legend>
