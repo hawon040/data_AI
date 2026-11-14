@@ -138,8 +138,26 @@ function matchesTags(tags: AttractionTag[], selected: AttractionTag[]): boolean 
   return selected.some((tag) => tags.includes(tag));
 }
 
+/**
+ * 팀 결정(11/14)으로 목적 판정을 따로 정한 관광지. 지형·태그 판정보다 먼저 본다.
+ *  - 단양 패러글라이딩 활공장: 산 위지만 산행이 아니라 체험(체험 목적은 activity 태그로 그대로)
+ *  - 궁남지: 연못이라 바다·호수가 아니고 산책·휴식
+ *  - 국립공원·민둥산: 산행만(산책·휴식 제외)
+ * 안목해변 카페거리(바다 지형)와 남이섬(호수 지형)은 지형 판정으로 바다·호수에 들어간다.
+ */
+export const PURPOSE_OVERRIDES: Record<string, Partial<Record<Exclude<TravelPurpose, "all">, boolean>>> = {
+  "단양 패러글라이딩 활공장": { hiking: false },
+  궁남지: { sea: false, stroll: true },
+  "설악산 국립공원": { stroll: false },
+  "계룡산 국립공원": { stroll: false },
+  "오대산 국립공원(월정사)": { stroll: false },
+  민둥산: { stroll: false },
+};
+
 export function matchesPurpose(attraction: Attraction, purpose: TravelPurpose): boolean {
   if (purpose === "all") return true;
+  const decided = PURPOSE_OVERRIDES[attraction.name]?.[purpose];
+  if (decided !== undefined) return decided;
   const { terrains } = classifyAttraction(attraction);
   // 예전에는 '산행'을 nature 태그로, '바다·호수'를 이름 정규식으로 판정해 해변·항구·동굴이 산행에, 정동진·영랑호가 바다·호수에서 빠졌다.
   if (purpose === "hiking") return terrains.includes("mountain");

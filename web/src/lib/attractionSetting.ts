@@ -34,6 +34,11 @@ const OVERRIDES: Record<string, Partial<AttractionSetting>> = {
   강원랜드: { setting: "indoor" }, // 카지노·실내 시설 중심
   // 분류가 "문화·맛집"이라 키워드로는 실내가 되지만, 실제로는 바닷가 마을을 걷고 갯배를 타는 야외 관광지다.
   아바이마을: { setting: "outdoor" },
+  // 팀 결정(11/14): 걷는 상점가·전통시장 거리라 야외로 본다.
+  성안길: { setting: "outdoor" },
+  정선아리랑시장: { setting: "outdoor" },
+  // 팀 결정(11/14): 북한강(청평호) 위 섬이라 호수로 본다(바다·호수 목적에 포함).
+  남이섬: { terrains: ["lake"] },
   "춘천 애니메이션박물관": { setting: "indoor" },
 };
 

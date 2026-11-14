@@ -107,3 +107,32 @@ describe("[F] 실내 관광지로 다시 추천받기", () => {
     expect(keepIndoorOnly(pre)).toEqual([]);
   });
 });
+
+describe("[G] 팀 결정(11/14) 반영", () => {
+  const purposeNames = (purpose: TravelPurpose) => all.filter((a) => matchesPurpose(a, purpose)).map((a) => a.name);
+  it("안목해변 카페거리·남이섬은 바다·호수에 포함, 궁남지는 제외", () => {
+    expect(purposeNames("sea")).toEqual(expect.arrayContaining(["안목해변 카페거리", "남이섬"]));
+    expect(purposeNames("sea")).not.toContain("궁남지");
+    expect(classifyAttraction(find("남이섬")).terrains).toEqual(["lake"]);
+  });
+  it("궁남지는 산책·휴식 포함", () => {
+    expect(purposeNames("stroll")).toContain("궁남지");
+  });
+  it("단양 패러글라이딩 활공장은 산행 제외, 체험은 그대로", () => {
+    expect(purposeNames("hiking")).not.toContain("단양 패러글라이딩 활공장");
+    expect(purposeNames("experience")).toContain("단양 패러글라이딩 활공장");
+  });
+  it("성안길·정선아리랑시장은 야외, 강릉중앙시장·속초 중앙시장은 실내, 리조트 3곳은 야외 그대로", () => {
+    expect(classifyAttraction(find("성안길")).setting).toBe("outdoor");
+    expect(classifyAttraction(find("정선아리랑시장")).setting).toBe("outdoor");
+    expect(classifyAttraction(find("강릉중앙시장")).setting).toBe("indoor");
+    expect(classifyAttraction(find("속초 중앙시장")).setting).toBe("indoor");
+    for (const name of ["알펜시아리조트", "휘닉스파크", "하이원리조트"]) expect(classifyAttraction(find(name)).setting).toBe("outdoor");
+  });
+  it("설악산·계룡산·오대산 국립공원, 민둥산은 산책·휴식 제외(산행만)", () => {
+    for (const name of ["설악산 국립공원", "계룡산 국립공원", "오대산 국립공원(월정사)", "민둥산"]) {
+      expect(purposeNames("stroll")).not.toContain(name);
+      expect(purposeNames("hiking")).toContain(name);
+    }
+  });
+});
