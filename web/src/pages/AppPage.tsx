@@ -5,7 +5,7 @@ import { CompanionForm } from "../components/CompanionForm";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
 import { MapView } from "../components/MapView";
 import { MapAreaPicker } from "../components/MapAreaPicker";
-import { mapAreaForRegion, mapLayers, NATIONWIDE, type MapArea } from "../lib/mapArea";
+import { mapAreaForRegion, mapLayers, NATIONWIDE, selectionForAttraction, type MapArea } from "../lib/mapArea";
 import { DemandCard } from "../components/DemandCard";
 import { NationalSpotPanel } from "../components/NationalSpotPanel";
 import { RandomTripPicker } from "../components/RandomTripPicker";
@@ -213,11 +213,12 @@ export function AppPage() {
     () => new Set([...recommendations, ...exploreRecommendations].map((r) => r.region.code)),
     [recommendations, exploreRecommendations],
   );
+  // 관광지를 고르면(카드 안 관광지 버튼, 지도 목록 등) 상세를 열고, 지도도 그 관광지의 도·시군구로 옮긴다.
+  // 지역 카드의 onSelect와는 따로 처리한다(관광지 버튼은 stopPropagation으로 카드 클릭이 되지 않는다).
   const handleSelectAttraction = useCallback((attraction: Attraction) => {
-    const region = SAMPLE_REGIONS.find((candidate) =>
-      candidate.attractions.some((item) => item.name === attraction.name),
-    );
-    setSelectedRegion(region ?? null);
+    const selection = selectionForAttraction(attraction, SAMPLE_REGIONS);
+    setSelectedRegion(selection?.region ?? null);
+    if (selection) setMapArea(selection.area);
     setSelectedAttraction(attraction);
     setSelectedSeasonalPlace(null);
     setMapSelection(null);

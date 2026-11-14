@@ -144,3 +144,14 @@ describe("비 오는 날·지형 분류", () => {
     expect(only([cafeStreet, gyeongpo]).some((line) => line.includes("물때 확인"))).toBe(true);
   });
 });
+
+describe("관광지 버튼을 바로 누른 경우(지역 카드를 먼저 누르지 않음)", () => {
+  it("체크리스트에 그 관광지의 지역 줄과 관광지 줄이 함께 나온다", () => {
+    const c = buildChecklist(input({
+      focus: { kind: "attraction", region: gangneung, attractions: gangneung.attractions.slice(0, 4), attraction: gyeongpo },
+      regionWeather: clear,
+    }));
+    expect(c.sections.map((s) => s.title)).toEqual(["공통", "강릉시", "경포해변"]);
+    expect(c.scopeLabel).toBe("경포해변 기준");
+  });
+});

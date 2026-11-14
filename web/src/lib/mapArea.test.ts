@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { SIGUNGU } from "../data/sigungu";
-import { inDistrict, mapAreaForRegion, mapLayers, mapProvinces, NATIONWIDE } from "./mapArea";
+import { inDistrict, mapAreaForRegion, mapLayers, mapProvinces, NATIONWIDE, selectionForAttraction } from "./mapArea";
 import type { NationalShelter, NationalSpot } from "./nationalData";
 import { DEFAULT_TRIP_PREFERENCES } from "./tripPreferences";
 
@@ -68,5 +68,21 @@ describe("mapLayers (지도에 그릴 것)", () => {
   });
   it("시·도 목록: 지도 데이터의 시·도와 시군구 좌표표의 시·도를 합친다(17개)", () => {
     expect(mapProvinces(["충청북도"])).toHaveLength(17);
+  });
+});
+
+describe("selectionForAttraction (관광지 버튼 → 지도 이동)", () => {
+  it("관광지 버튼을 누르면 그 관광지가 속한 지역과 도·시군구로 지도 지역이 바뀐다", () => {
+    const cafe = SAMPLE_REGIONS.flatMap((r) => r.attractions).find((a) => a.name === "안목해변 카페거리")!;
+    const selection = selectionForAttraction(cafe, SAMPLE_REGIONS);
+    expect(selection?.region.name).toBe("강릉시");
+    expect(selection?.area).toEqual({ province: "강원특별자치도", district: "강릉시" });
+  });
+  it("청주시 상당구 관광지는 충청북도·청주시로", () => {
+    const fortress = SAMPLE_REGIONS.flatMap((r) => r.attractions).find((a) => a.name === "상당산성")!;
+    expect(selectionForAttraction(fortress, SAMPLE_REGIONS)?.area).toEqual({ province: "충청북도", district: "청주시" });
+  });
+  it("시범 지역에 없는 관광지(카카오 주변 장소 등)는 지도 지역을 바꾸지 않는다", () => {
+    expect(selectionForAttraction({ name: "어딘가 카페" }, SAMPLE_REGIONS)).toBeNull();
   });
 });

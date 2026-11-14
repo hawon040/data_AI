@@ -48,3 +48,15 @@ export function mapLayers(
     showDemand: !nationwide && data?.demand != null,
   };
 }
+
+/**
+ * 관광지 버튼을 눌렀을 때: 그 관광지가 속한 시범 지역과, 지도에서 볼 지역(그 지역의 도·시군구).
+ * 시범 지역에 없는 관광지(카카오 주변 장소 등)는 지역·지도 지역을 바꾸지 않는다(null).
+ */
+export function selectionForAttraction(
+  attraction: { name: string },
+  regions: Region[],
+): { region: Region; area: MapArea } | null {
+  const region = regions.find((candidate) => candidate.attractions.some((item) => item.name === attraction.name));
+  return region ? { region, area: mapAreaForRegion(region) } : null;
+}
