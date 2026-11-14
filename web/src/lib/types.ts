@@ -97,8 +97,6 @@ export interface Region {
   /** 4.8 탐색 추천 대상 여부 판단에 쓰는 체험 콘텐츠 다양성 점수 (0~100) */
   experienceScore: number;
   safety: SafetyIndex;
-  /** 시연/데모용 한 줄 소개 */
-  highlight: string;
   /** 지역 안의 관광지 목록 (문서 4.3 2단계 추천) */
   attractions: Attraction[];
 }

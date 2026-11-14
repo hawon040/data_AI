@@ -855,11 +855,39 @@
 .card-head > div:nth-child(2) {
   flex: 1;
 }
-.highlight {
-  font-size: 12px;
-  color: var(--text-secondary);
+/* 추천 카드: 그 지역 관광지 카테고리 칩(많은 순 최대 3개) */
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
   margin: 8px 0;
-  font-weight: 300;
+}
+.category-chip {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(53, 99, 217, 0.08);
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+}
+/* 관광지 버튼 옆 "카테고리 · 실내/야외" */
+.attraction-meta {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+/* 날씨 때문에 빠진 관광지: 흐리게, 누르면 상세는 열린다 */
+.is-excluded-list {
+  margin-top: 6px;
+}
+.attraction-chip.is-excluded {
+  opacity: 0.55;
+  border-style: dashed;
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+}
+.attraction-chip.is-excluded .attraction-meta {
+  text-decoration: none;
 }
 .evidence-list {
   margin: 0;

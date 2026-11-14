@@ -35,7 +35,6 @@ const raw: RawRegion[] = [
     type: "urban",
     groupVisitors: groups([160, 310, 335, 310, 275, 230]),
     experienceScore: 62,
-    highlight: "수도권과 가까운 교통 요지 — 모든 연령대가 고르게 찾는다",
     attractions: [
       { name: "독립기념관", category: "역사", tags: ["history"], lat: 36.7965, lng: 127.2258, popularityScore: 90 },
       { name: "병천순대거리", category: "맛집", tags: ["food"], lat: 36.7583, lng: 127.2399, popularityScore: 72 },
@@ -67,7 +66,6 @@ const raw: RawRegion[] = [
     type: "urban",
     groupVisitors: groups([145, 385, 290, 235, 195, 165]),
     experienceScore: 58,
-    highlight: "대학가 상권과 맛집이 많아 20대 방문 비중이 높다",
     attractions: [
       { name: "성안길", category: "쇼핑·맛집", tags: ["shopping", "food"], lat: 36.6350, lng: 127.4880, popularityScore: 82 },
       { name: "청남대", category: "역사", tags: ["history"], lat: 36.5386, lng: 127.4650, popularityScore: 80 },
@@ -99,7 +97,6 @@ const raw: RawRegion[] = [
     type: "nature",
     groupVisitors: groups([82, 113, 122, 193, 258, 305]),
     experienceScore: 71,
-    highlight: "백제 역사 유적 — 50대 이상 방문 비중이 특히 높다",
     attractions: [
       { name: "공산성", category: "역사", tags: ["history"], lat: 36.4600, lng: 127.1225, popularityScore: 92 },
       { name: "무령왕릉과 왕릉원", category: "역사", tags: ["history"], lat: 36.4580, lng: 127.1290, popularityScore: 85 },
@@ -130,7 +127,6 @@ const raw: RawRegion[] = [
     type: "nature",
     groupVisitors: groups([71, 81, 91, 158, 238, 282]),
     experienceScore: 68,
-    highlight: "고즈넉한 유적지 — 학생 단체·중장년층 방문이 많다",
     attractions: [
       { name: "부소산성", category: "역사", tags: ["history"], lat: 36.2820, lng: 126.9110, popularityScore: 90 },
       { name: "궁남지", category: "역사·자연", tags: ["history", "nature"], lat: 36.2718, lng: 126.9209, popularityScore: 84 },
@@ -161,7 +157,6 @@ const raw: RawRegion[] = [
     type: "nature",
     groupVisitors: groups([58, 118, 178, 195, 215, 193]),
     experienceScore: 74,
-    highlight: "패러글라이딩·짚와이어 등 액티비티로 30~40대가 즐겨 찾는다",
     attractions: [
       { name: "만천하스카이워크", category: "액티비티·전망", tags: ["activity", "view"], lat: 36.9808, lng: 128.3467, popularityScore: 90 },
       { name: "도담삼봉", category: "자연", tags: ["nature", "view"], lat: 36.9987, lng: 128.3654, popularityScore: 88 },
@@ -193,7 +188,6 @@ const raw: RawRegion[] = [
     type: "urban",
     groupVisitors: groups([113, 290, 238, 198, 178, 142]),
     experienceScore: 65,
-    highlight: "닭갈비 거리와 호숫가 산책로 — 20대 커플·친구 방문이 많다",
     attractions: [
       { name: "남이섬", category: "자연·테마", tags: ["nature", "theme_park"], lat: 37.7904, lng: 127.5253, popularityScore: 95 },
       { name: "명동 닭갈비골목", category: "맛집", tags: ["food"], lat: 37.8759, lng: 127.7327, popularityScore: 85 },
@@ -225,7 +219,6 @@ const raw: RawRegion[] = [
     type: "urban",
     groupVisitors: groups([135, 410, 318, 258, 218, 175]),
     experienceScore: 80,
-    highlight: "해변 카페거리 — 전 연령대가 찾지만 특히 20대 비중이 압도적",
     attractions: [
       { name: "경포해변", category: "자연·해변", tags: ["nature"], lat: 37.8055, lng: 128.9059, popularityScore: 93 },
       { name: "안목해변 카페거리", category: "카페·맛집", tags: ["cafe", "food"], lat: 37.7723, lng: 128.9464, popularityScore: 89 },
@@ -257,7 +250,6 @@ const raw: RawRegion[] = [
     type: "urban",
     groupVisitors: groups([102, 270, 298, 238, 187, 153]),
     experienceScore: 76,
-    highlight: "설악산과 항구 — 가족 단위 30~40대 방문이 두드러진다",
     attractions: [
       { name: "설악산 국립공원", category: "자연", tags: ["nature"], lat: 38.1670, lng: 128.4657, popularityScore: 94 },
       { name: "속초 중앙시장", category: "맛집·쇼핑", tags: ["food", "shopping"], lat: 38.2044, lng: 128.5919, popularityScore: 88 },
@@ -289,7 +281,6 @@ const raw: RawRegion[] = [
     type: "nature",
     groupVisitors: groups([85, 135, 258, 275, 175, 118]),
     experienceScore: 83,
-    highlight: "스키·캠핑 등 아웃도어 콘텐츠 — 자녀 동반 30~40대 가족이 많다",
     attractions: [
       { name: "대관령 양떼목장", category: "자연·체험", tags: ["nature", "activity"], lat: 37.6883, lng: 128.7325, popularityScore: 87 },
       { name: "오대산 국립공원(월정사)", category: "자연·역사", tags: ["nature", "history"], lat: 37.7867, lng: 128.5967, popularityScore: 78 },
@@ -321,7 +312,6 @@ const raw: RawRegion[] = [
     type: "nature",
     groupVisitors: groups([47, 85, 115, 138, 198, 238]),
     experienceScore: 66,
-    highlight: "레일바이크와 카지노 — 50대 이상 방문 비중이 특화되어 있다",
     attractions: [
       { name: "정선 레일바이크", category: "액티비티", tags: ["activity"], lat: 37.3765, lng: 128.8271, popularityScore: 90 },
       { name: "강원랜드", category: "리조트", tags: ["resort"], lat: 37.2036, lng: 128.8132, popularityScore: 85 },

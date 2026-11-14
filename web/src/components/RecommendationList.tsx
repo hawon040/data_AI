@@ -2,6 +2,13 @@ import type { Attraction, RecommendationItem, Region } from "../lib/types";
 import { isSafetyGrade, safetyGradeLabel } from "../lib/safetyGrades";
 import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
 import { shortEvidence } from "../lib/evidence";
+import { attractionMeta, categoryChips } from "../lib/cardInfo";
+
+/** 날씨 때문에 카드에서 빠진 관광지와 짧은 사유(예: "비 예보로 제외") */
+export interface ExcludedAttraction {
+  attraction: Attraction;
+  label: string;
+}
 
 function SafetyBadge({ grade }: { grade: number }) {
   if (!isSafetyGrade(grade)) {
@@ -19,8 +26,10 @@ function RecommendationCard({
   weatherSummary,
   attractionBadge,
   distanceLabel,
+  excluded,
 }: {
   item: RecommendationItem;
+  excluded: ExcludedAttraction[];
   weatherSummary: string | null;
   distanceLabel: string | null;
   attractionBadge: (attraction: Attraction) => string | null;
@@ -29,6 +38,7 @@ function RecommendationCard({
   onSelectAttraction: (a: Attraction) => void;
   selected: boolean;
 }) {
+  const chips = categoryChips([...item.topAttractions.map(({ attraction }) => attraction), ...excluded.map(({ attraction }) => attraction)]);
   return (
     <div
       role="button"
@@ -54,7 +64,12 @@ function RecommendationCard({
           </div>
         )}
       </div>
-      <p className="highlight">{item.region.highlight}</p>
+      {/* 그 지역 추천 후보 관광지(날씨로 빠진 곳 포함)의 카테고리 — 많은 순 최대 3개 */}
+      {chips.length > 0 && (
+        <div className="category-chips" aria-label="관광지 카테고리">
+          {chips.map((chip) => <span key={chip} className="category-chip">{chip}</span>)}
+        </div>
+      )}
       <p className="evidence-line">{shortEvidence(item, weatherSummary)}</p>
       {distanceLabel && <p className="distance-line">{distanceLabel}</p>}
       {item.topAttractions.length > 0 && (
@@ -71,7 +86,28 @@ function RecommendationCard({
               }}
             >
               {attraction.name}
+              <span className="attraction-meta">{attractionMeta(attraction)}</span>
               {attractionBadge(attraction) && <span className="attraction-badge">{attractionBadge(attraction)}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      {excluded.length > 0 && (
+        <div className="attraction-chips is-excluded-list">
+          {excluded.map(({ attraction, label }) => (
+            <button
+              key={attraction.name}
+              type="button"
+              className="attraction-chip is-excluded"
+              title={label}
+              onClick={(e) => {
+                // 날씨로 빠진 곳도 누르면 상세는 열린다(카드 클릭으로 같이 처리하지 않는다).
+                e.stopPropagation();
+                onSelectAttraction(attraction);
+              }}
+            >
+              {attraction.name}
+              <span className="attraction-meta">{label}</span>
             </button>
           ))}
         </div>
@@ -109,6 +145,7 @@ export function RecommendationList({
   weatherSummaryFor = () => null,
   attractionBadge = () => null,
   distanceLabelFor = () => null,
+  excludedFor = () => [],
 }: {
   items: RecommendationItem[];
   exploreItems: RecommendationItem[];
@@ -122,6 +159,8 @@ export function RecommendationList({
   attractionBadge?: (attraction: Attraction) => string | null;
   /** 출발지가 있으면 "출발지에서 약 12km" (지역 중심까지 직선거리) */
   distanceLabelFor?: (region: Region) => string | null;
+  /** 날씨 때문에 그 지역 카드에서 빠진 관광지 (흐리게 "비 예보로 제외"로 함께 보여 준다) */
+  excludedFor?: (region: Region) => ExcludedAttraction[];
 }) {
   if (items.length === 0) {
     return <p className="empty-state">{emptyMessage}</p>;
@@ -140,6 +179,7 @@ export function RecommendationList({
           weatherSummary={weatherSummaryFor(item.region.code)}
           attractionBadge={attractionBadge}
           distanceLabel={distanceLabelFor(item.region)}
+          excluded={excludedFor(item.region)}
         />
       ))}
 
@@ -156,6 +196,7 @@ export function RecommendationList({
               weatherSummary={weatherSummaryFor(item.region.code)}
               attractionBadge={attractionBadge}
               distanceLabel={distanceLabelFor(item.region)}
+              excluded={excludedFor(item.region)}
             />
           ))}
         </>

@@ -9,7 +9,8 @@ import { mapAreaForRegion, mapLayers, NATIONWIDE, selectionForAttraction, type M
 import { DemandCard } from "../components/DemandCard";
 import { NationalSpotPanel } from "../components/NationalSpotPanel";
 import { RandomTripPicker } from "../components/RandomTripPicker";
-import { RecommendationList } from "../components/RecommendationList";
+import { RecommendationList, type ExcludedAttraction } from "../components/RecommendationList";
+import { exclusionLabel } from "../lib/cardInfo";
 import { SeasonalDiscovery } from "../components/SeasonalDiscovery";
 import { SafetyPanel } from "../components/SafetyPanel";
 import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
@@ -39,7 +40,7 @@ import {
 } from "../lib/tripPreferences";
 import { findWeatherPreset } from "../lib/weatherPresets";
 import { EMPTY_WEATHER, loadRegionWeather, tripDates, worstOf, type RegionWeather } from "../lib/liveWeather";
-import { applyWeatherRules, decideWeather, type WeatherDecision } from "../lib/weatherRules";
+import { applyWeatherRules, decideWeather, isAllowed, type WeatherDecision } from "../lib/weatherRules";
 import "./AppPage.css";
 
 export function AppPage() {
@@ -194,6 +195,21 @@ export function AppPage() {
     () => applyDistanceLimit(weatherApplied.slice(0, 5), origin, tripPreferences.transport).excluded,
     [weatherApplied, origin, tripPreferences.transport],
   );
+  // 추천 카드 안에 흐리게 보여 줄, 날씨 때문에 그 지역에서 빠진 관광지(목적·스타일에 맞는 후보 중)
+  const excludedByRegion = useMemo(() => {
+    const map = new Map<string, ExcludedAttraction[]>();
+    for (const item of preWeatherRecommendations) {
+      const decision = weatherDecisions[item.region.code];
+      if (!decision) continue;
+      map.set(
+        item.region.code,
+        item.topAttractions
+          .filter(({ attraction }) => !isAllowed(attraction, decision))
+          .map(({ attraction }) => ({ attraction, label: exclusionLabel(attraction, decision) })),
+      );
+    }
+    return map;
+  }, [preWeatherRecommendations, weatherDecisions]);
   const weatherExclusions = useMemo(
     () => listWeatherExclusions(preWeatherRecommendations.slice(0, 5), (code) => weatherDecisions[code]),
     [preWeatherRecommendations, weatherDecisions],
@@ -468,6 +484,7 @@ export function AppPage() {
                   toAccessSummary(attraction.name, accessMap[attraction.name]).hasInfo ? "편의 정보" : null
                 }
                 distanceLabelFor={(region) => (origin ? formatDistance(haversineKm(origin, region)) : null)}
+                excludedFor={(region) => excludedByRegion.get(region.code) ?? []}
               />
               {people != null && <WeatherExcludedList items={weatherExclusions} />}
               {people != null && <DistanceExcludedList items={distanceExclusions} limitKm={distance.limitKm} />}
