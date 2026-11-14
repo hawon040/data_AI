@@ -133,15 +133,24 @@ describe("비 오는 날·지형 분류", () => {
     expect(allLines(c).some((line) => line.includes("자외선"))).toBe(false);
   });
 
-  it("'안목해변 카페거리'처럼 해변 이름만 들어간 실내 관광지에는 물때 확인을 넣지 않는다", () => {
-    const only = (attractions: typeof gangneung.attractions) =>
+  it("실내 관광지(안목해변 카페거리)에는 지형 줄을 붙이지 않는다 — 지역·관광지 단계 모두", () => {
+    const regionLines = (attractions: typeof gangneung.attractions) =>
       allLines(buildChecklist(input({ focus: { kind: "region", region: gangneung, attractions }, regionWeather: clear })));
-    const cafe = only([cafeStreet]);
-    expect(cafe.some((line) => line.startsWith("바다(안목해변 카페거리)"))).toBe(true);
-    expect(cafe.some((line) => line.includes("물때"))).toBe(false);
-    expect(cafe.some((line) => line.includes("갯바위"))).toBe(false);
-    expect(only([gyeongpo]).some((line) => line.includes("물때 확인"))).toBe(true);
-    expect(only([cafeStreet, gyeongpo]).some((line) => line.includes("물때 확인"))).toBe(true);
+    const cafe = regionLines([cafeStreet]);
+    expect(cafe.some((line) => line.startsWith("바다("))).toBe(false);
+    expect(cafe.some((line) => /물때|갯바위|여벌 옷/.test(line))).toBe(false);
+    expect(regionLines([gyeongpo]).some((line) => line.includes("물때 확인"))).toBe(true);
+    // 실내·야외가 섞이면 야외 관광지만 센다
+    expect(regionLines([cafeStreet, gyeongpo]).find((line) => line.startsWith("바다("))).toMatch(/^바다\(경포해변\)/);
+
+    const attractionStep = buildChecklist(input({
+      focus: { kind: "attraction", region: gangneung, attractions: [cafeStreet], attraction: cafeStreet },
+      regionWeather: clear,
+    }));
+    expect(attractionStep.sections.map((s) => s.title)).toEqual(["공통", "강릉시", "안목해변 카페거리"]);
+    expect(attractionStep.sections[2].lines).toEqual(["안목해변 카페거리: 실내 관광지예요."]);
+    const noRegion = buildChecklist(input({ focus: { kind: "attraction", region: null, attractions: [], attraction: cafeStreet } }));
+    expect(allLines(noRegion).some((line) => /바다\(|물때|여벌 옷/.test(line))).toBe(false);
   });
 });
 

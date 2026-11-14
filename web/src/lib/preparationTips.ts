@@ -103,11 +103,9 @@ const TERRAIN_TIP_ITEMS: Record<Terrain, string[]> = {
 const ELDERLY_MOUNTAIN_ITEM = "등산 스틱·쉬운 코스(어르신)";
 const CHILD_WATER_ITEM = "아이 구명조끼";
 const TERRAIN_ORDER: Terrain[] = ["mountain", "sea", "valley"];
-/** 물가에 직접 나가는 곳에서만 필요한 바다 준비물. "안목해변 카페거리"처럼 이름에 해변만 들어간 실내 관광지에는 넣지 않는다. */
-const SHORE_ONLY_ITEMS = ["물때 확인", "갯바위 미끄럼 주의"];
 
 /**
- * 추천된 관광지 가운데 바다·산·계곡이 있을 때만, 종류별로 한 줄에 묶을 준비물을 만든다.
+ * 추천된 야외 관광지 가운데 바다·산·계곡이 있을 때만, 종류별로 한 줄에 묶을 준비물을 만든다(실내 관광지는 세지 않는다).
  * 예: 한 곳이면 "바다(정동진): …", 여러 곳이면 "산(상당산성 외 2곳): …"로 보인다.
  */
 export function terrainTips(
@@ -115,21 +113,21 @@ export function terrainTips(
   party: { withElderly: boolean; withChildren: boolean },
 ): TipGroup[] {
   const names = new Map<Terrain, string[]>();
-  let outdoorSea = false;
   for (const attraction of attractions) {
     const { setting, terrains } = classifyAttraction(attraction);
+    // 지형 준비물(여벌 옷·물때·등산화 등)은 야외 관광지에만 붙인다. "안목해변 카페거리"처럼 이름에 해변이 들어간 실내 관광지는 세지 않는다.
+    if (setting !== "outdoor") continue;
     for (const terrain of terrains) {
       const list = names.get(terrain) ?? [];
       if (!list.includes(attraction.name)) list.push(attraction.name);
       names.set(terrain, list);
-      if (terrain === "sea" && setting === "outdoor") outdoorSea = true;
     }
   }
   return TERRAIN_ORDER.flatMap((terrain) => {
     const list = names.get(terrain);
     if (!list?.length) return [];
     const who = list.length === 1 ? list[0] : `${list[0]} 외 ${list.length - 1}곳`;
-    const items = TERRAIN_TIP_ITEMS[terrain].filter((item) => terrain !== "sea" || outdoorSea || !SHORE_ONLY_ITEMS.includes(item));
+    const items = [...TERRAIN_TIP_ITEMS[terrain]];
     if (terrain === "mountain" && party.withElderly) items.push(ELDERLY_MOUNTAIN_ITEM);
     if (terrain !== "mountain" && party.withChildren) items.push(CHILD_WATER_ITEM);
     return [{ label: `${TERRAIN_LABELS[terrain]}(${who})`, items }];

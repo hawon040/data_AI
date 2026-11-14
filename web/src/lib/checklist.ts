@@ -92,12 +92,13 @@ function withoutSunscreen(tips: (string | TipGroup)[]): (string | TipGroup)[] {
   });
 }
 
+/** 관광지 한 줄. 실내 관광지는 지형을 붙이지 않고 "실내 관광지"만 적는다. */
 function attractionLine(attraction: Attraction): string {
   const { setting, terrains } = classifyAttraction(attraction);
-  const where = setting === "indoor" ? "실내" : "야외";
+  if (setting === "indoor") return `${attraction.name}: 실내 관광지예요.`;
   return terrains.length > 0
-    ? `${attraction.name}: ${terrains.map((t) => TERRAIN_LABELS[t]).join("·")} · ${where} 관광지예요.`
-    : `${attraction.name}: ${where} 관광지예요.`;
+    ? `${attraction.name}: ${terrains.map((t) => TERRAIN_LABELS[t]).join("·")} · 야외 관광지예요.`
+    : `${attraction.name}: 야외 관광지예요.`;
 }
 
 export function buildChecklist(input: ChecklistInput): Checklist {
