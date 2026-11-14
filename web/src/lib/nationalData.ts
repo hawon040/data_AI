@@ -6,6 +6,8 @@
  * 인증키는 api.py 서버에만 있고 브라우저로 내려오지 않는다.
  */
 
+import { haversineKm } from "./origin";
+
 const TOURAPI_BASE = "/tourapi";
 
 export interface NationalSpot {
@@ -104,6 +106,14 @@ export function splitRecommendedSpots(
     recommended: byCapacity(spots.filter(inRecommended)),
     others: byCapacity(spots.filter((spot) => !inRecommended(spot))),
   };
+}
+
+/** 출발지에서 가까운 순(직선거리)으로 관광지를 정렬한다. 지도 지역이 '전국'이고 출발지가 있을 때 지도 목록에 쓴다. */
+export function sortSpotsByDistance(spots: NationalSpot[], origin: { lat: number; lng: number }): NationalSpot[] {
+  return spots
+    .map((spot) => ({ spot, km: haversineKm(origin, spot) }))
+    .sort((a, b) => a.km - b.km)
+    .map(({ spot }) => spot);
 }
 
 /** 지도에서 고른 장소 — 종류별로 오른쪽 패널 내용이 다르다. */

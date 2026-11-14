@@ -18,7 +18,7 @@ describe("categoryChips (카드 카테고리 칩)", () => {
       attraction("e", "역사·자연"),
       attraction("f", "맛집"),
     ]);
-    expect(chips).toEqual(["역사", "자연", "문화"]);
+    expect(chips).toEqual(["역사", "문화", "자연"]); // 문화예술은 문화로 묶여 문화 2
   });
   it("같은 수면 먼저 나온 순서, 3개보다 적으면 있는 만큼", () => {
     expect(categoryChips([attraction("a", "카페·맛집"), attraction("b", "맛집·쇼핑")])).toEqual(["맛집", "카페", "쇼핑"]);
@@ -59,5 +59,19 @@ describe("exclusionLabel (날씨로 빠진 관광지 사유)", () => {
 describe("샘플 소개 문구 삭제", () => {
   it("시범 지역 데이터에 지어낸 소개 문구(highlight)가 없다", () => {
     expect(SAMPLE_REGIONS.every((region) => !("highlight" in region))).toBe(true);
+  });
+});
+
+describe("[H5] 카테고리 칩 비슷한 값 묶기", () => {
+  it("문화예술은 문화로 묶여 같은 카드에 [문화]와 [문화예술]이 함께 나오지 않는다", () => {
+    const chips = categoryChips([attraction("갤러리", "문화예술"), attraction("공원", "문화"), attraction("카페거리", "맛집·카페")]);
+    expect(chips).toEqual(["문화", "맛집", "카페"]);
+    expect(chips).not.toContain("문화예술");
+  });
+  it("천안시 카드 칩에 문화예술이 따로 나오지 않는다", () => {
+    const cheonan = SAMPLE_REGIONS.find((r) => r.name === "천안시")!;
+    const chips = categoryChips(cheonan.attractions);
+    expect(chips).not.toContain("문화예술");
+    expect(new Set(chips).size).toBe(chips.length);
   });
 });

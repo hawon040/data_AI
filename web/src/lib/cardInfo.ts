@@ -8,11 +8,15 @@ import { classifyAttraction } from "./attractionSetting";
 import type { Attraction } from "./types";
 import type { WeatherDecision } from "./weatherRules";
 
+/** 비슷한 카테고리를 하나로 묶는다(같은 카드에 [문화]와 [문화예술]이 함께 나오지 않게). 맛집·카페의 카페는 그대로. */
+export const CATEGORY_ALIASES: Record<string, string> = { 문화예술: "문화" };
+
 /** 관광지 카테고리를 모아 많은 순 최대 limit개. "역사·문화"처럼 묶인 값은 나눠서 센다. 같은 수면 먼저 나온 순서. */
 export function categoryChips(attractions: Pick<Attraction, "category">[], limit = 3): string[] {
   const counts = new Map<string, number>();
   for (const { category } of attractions) {
-    for (const part of category.split(/[·,/]/).map((p) => p.trim()).filter(Boolean)) {
+    for (const raw of category.split(/[·,/]/).map((p) => p.trim()).filter(Boolean)) {
+      const part = CATEGORY_ALIASES[raw] ?? raw;
       counts.set(part, (counts.get(part) ?? 0) + 1);
     }
   }

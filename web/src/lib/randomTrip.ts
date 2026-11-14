@@ -8,6 +8,7 @@
 import { attractionMatchScore } from "./attractionAffinity";
 import { safetyGradeLabel } from "./safetyGrades";
 import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
+import { allowedForParty } from "./tripPreferences";
 import type { Attraction, Person, Region } from "./types";
 
 export interface TripCandidate {
@@ -16,11 +17,12 @@ export interface TripCandidate {
   matchScore: number;
 }
 
-/** 모든 지역의 관광지 후보를 펼친다. 안전 등급과 지역으로 후보를 제한하지 않는다. */
-export function buildCandidatePool(regions: Region[], people: Person[]): TripCandidate[] {
+/** 모든 지역의 관광지 후보를 펼친다. 안전 등급과 지역으로 후보를 제한하지 않는다. 아이·10대 동반이면 카지노는 뺀다. */
+export function buildCandidatePool(regions: Region[], people: Person[], party?: { withChildren: boolean }): TripCandidate[] {
   const pool: TripCandidate[] = [];
   for (const region of regions) {
     for (const attraction of region.attractions) {
+      if (!allowedForParty(attraction, people, party)) continue;
       pool.push({
         attraction,
         region,

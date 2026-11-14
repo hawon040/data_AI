@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { topAttractionsOf } from "../lib/recommend";
 import {
+  sortSpotsByDistance,
   splitRecommendedSpots,
   type MapSelection,
   type MedicalPlace,
@@ -32,6 +33,7 @@ function FallbackPlaceTabs({
   medical,
   area,
   recommendedRegions,
+  origin = null,
   onSelectPlace,
 }: {
   spots: NationalSpot[];
@@ -41,6 +43,8 @@ function FallbackPlaceTabs({
   area: MapArea;
   /** 추천된 지역 — 전국을 볼 때 이 지역의 관광지를 먼저 보여 준다. */
   recommendedRegions: Region[];
+  /** 출발지 — 지도 지역이 '전국'이면 관광지를 출발지에서 가까운 순으로 보여 준다 */
+  origin?: { lat: number; lng: number } | null;
   onSelectPlace?: (selection: MapSelection) => void;
 }) {
   const [tab, setTab] = useState<FallbackTab>("spot");
@@ -55,7 +59,10 @@ function FallbackPlaceTabs({
   }
   const active = tabs.find((t) => t.id === tab && t.count > 0) ?? tabs.find((t) => t.count > 0)!;
   const isNationwide = area.province === "all";
-  const ordered = splitRecommendedSpots(spots, isNationwide ? recommendedRegions : []);
+  const byDistance = isNationwide && origin != null;
+  const ordered = byDistance
+    ? { recommended: [] as NationalSpot[], others: sortSpotsByDistance(spots, origin!) }
+    : splitRecommendedSpots(spots, isNationwide ? recommendedRegions : []);
 
   return (
     <>
@@ -87,7 +94,7 @@ function FallbackPlaceTabs({
         <>
           <p className="fallback-national-heading">
             {area.district !== "all" ? `${area.province} ${area.district}` : scope} 관광지 {spots.length.toLocaleString("ko-KR")}곳
-            {ordered.recommended.length > 0 && ` · 추천 지역 ${ordered.recommended.length}곳 먼저`} (수용인원 많은 순)
+            {ordered.recommended.length > 0 && ` · 추천 지역 ${ordered.recommended.length}곳 먼저`} ({byDistance ? "출발지에서 가까운 순" : "수용인원 많은 순"})
           </p>
           <ul className="fallback-region-list">
             {[...ordered.recommended, ...ordered.others]
@@ -167,6 +174,9 @@ export function MapView({
   pets = [],
   medical = [],
   area = NATIONWIDE,
+  regionAttractions,
+  allowAttraction = () => true,
+  origin = null,
   selectedPlace = null,
   onSelectPlace,
 }: {
@@ -190,6 +200,12 @@ export function MapView({
   medical?: MedicalPlace[];
   /** 지도에서 볼 지역(도 → 시·군·구). 목록 범위와 맨 위 추천 줄에 쓴다 */
   area?: MapArea;
+  /** 지역별 추천 관광지(추천 카드와 같은 결과: 목적·날씨·거리·동행자로 걸러진 것). 있으면 요약 줄과 지역 마커에 쓴다 */
+  regionAttractions?: Map<string, Attraction[]>;
+  /** 관광지를 보여도 되는지(예: 아이·10대 동반이면 카지노 제외). 추천 결과가 없는 지역에 쓴다 */
+  allowAttraction?: (attraction: Attraction) => boolean;
+  /** 출발지(지도 목록 거리순 정렬용) */
+  origin?: { lat: number; lng: number } | null;
   selectedPlace?: { name: string; lat: number; lng: number } | null;
   onSelectPlace?: (selection: MapSelection) => void;
 }) {
@@ -265,7 +281,10 @@ export function MapView({
     const region = selectedCode ? regions.find((r) => r.code === selectedCode) : undefined;
     if (!region) return;
 
-    topAttractionsOf(region, people, 6).forEach(({ attraction }, i) => {
+    const markerAttractions =
+      regionAttractions?.get(region.code)?.map((attraction) => ({ attraction })) ??
+      topAttractionsOf(region, people, region.attractions.length).filter(({ attraction }) => allowAttraction(attraction)).slice(0, 6);
+    markerAttractions.forEach(({ attraction }, i) => {
       const position = new window.kakao.maps.LatLng(attraction.lat, attraction.lng);
       const marker = new window.kakao.maps.Marker({
         position,
@@ -291,7 +310,7 @@ export function MapView({
       window.kakao.maps.event.addListener(marker, "click", () => onSelectAttraction(attraction));
       attractionMarkersRef.current.push(marker);
     });
-  }, [status, selectedCode, regions, people, onSelectAttraction]);
+  }, [status, selectedCode, regions, people, onSelectAttraction, regionAttractions, allowAttraction]);
 
   // 카카오 카테고리 검색으로 실시간으로 찾은 주변 장소 — 큐레이션 마커(파랑/틸)와
   // 구분되는 주황 점으로 찍어 지도 위 관광지 데이터의 다양성을 넓힌다.
@@ -468,7 +487,10 @@ export function MapView({
         {shown.length > 0 && (
         <ul className="fallback-region-list">
           {shown.map((r) => {
-            const top = topAttractionsOf(r, people, 4);
+            // 요약 줄은 추천 카드와 같은 결과를 쓴다(없으면 동행자 기준 상위 관광지, 카지노 등 동행자에 맞지 않는 곳은 뺀다).
+            const top =
+              regionAttractions?.get(r.code)?.map((attraction) => ({ attraction })) ??
+              topAttractionsOf(r, people, r.attractions.length).filter(({ attraction }) => allowAttraction(attraction)).slice(0, 4);
             return (
               <li key={r.code}>
                 <strong>{r.name}</strong>
@@ -499,6 +521,7 @@ export function MapView({
           pets={pets}
           medical={medical}
           area={area}
+          origin={origin}
           recommendedRegions={highlightedCodes.size > 0 ? recommended : []}
           onSelectPlace={onSelectPlace}
         />

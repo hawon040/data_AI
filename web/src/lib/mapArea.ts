@@ -5,7 +5,7 @@
 import { SIGUNGU } from "../data/sigungu";
 import { haversineKm } from "./origin";
 import type { MapPlaces, MedicalPlace, NationalShelter, NationalSpot, PetPlace } from "./nationalData";
-import type { Region } from "./types";
+import type { Attraction, RecommendationItem, Region } from "./types";
 
 export interface MapArea {
   /** "all"(전국) 또는 시·도 전체 이름 (예: "충청북도") */
@@ -95,4 +95,13 @@ export function selectionForAttraction(
 ): { region: Region; area: MapArea } | null {
   const region = regions.find((candidate) => candidate.attractions.some((item) => item.name === attraction.name));
   return region ? { region, area: mapAreaForRegion(region) } : null;
+}
+
+/** 지도 목록 맨 위 추천 요약 줄에 쓸 관광지: 화면의 추천 카드와 같은 결과(목적·날씨·거리·동행자로 걸러진 것) */
+export function regionSummaryAttractions(items: RecommendationItem[], limit = 4): Map<string, Attraction[]> {
+  const map = new Map<string, Attraction[]>();
+  for (const item of items) {
+    if (!map.has(item.region.code)) map.set(item.region.code, item.topAttractions.slice(0, limit).map(({ attraction }) => attraction));
+  }
+  return map;
 }

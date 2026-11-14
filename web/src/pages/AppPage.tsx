@@ -5,7 +5,7 @@ import { CompanionForm } from "../components/CompanionForm";
 import { LiveAttractionsPanel } from "../components/LiveAttractionsPanel";
 import { MapView } from "../components/MapView";
 import { MapAreaPicker } from "../components/MapAreaPicker";
-import { mapAreaForRegion, mapLayers, NATIONWIDE, selectionForAttraction, type MapArea } from "../lib/mapArea";
+import { mapAreaForRegion, mapLayers, NATIONWIDE, regionSummaryAttractions, selectionForAttraction, type MapArea } from "../lib/mapArea";
 import { DemandCard } from "../components/DemandCard";
 import { NationalSpotPanel } from "../components/NationalSpotPanel";
 import { RandomTripPicker } from "../components/RandomTripPicker";
@@ -42,6 +42,7 @@ import type { SeasonalDestination } from "../lib/seasonalDestinations";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import type { Attraction, Person, RecommendationItem, Region } from "../lib/types";
 import {
+  allowedForParty,
   DEFAULT_TRIP_PREFERENCES,
   filterRecommendations,
   tripMonth,
@@ -222,14 +223,19 @@ export function AppPage() {
     [weatherApplied, origin, tripPreferences.transport],
   );
   // 날씨 때문에 목적에 맞는 관광지가 모두 빠진 지역(원래 상위 5개 중) — 순위 맨 아래에 안내 카드로 둔다.
+  // 도보·자전거면 거리 밖 관광지는 먼저 뺀다. 날씨 제외 개수·카드 안 제외 표시·목적 없음 카드는 거리 안 관광지만 센다.
+  const preWeatherNear = useMemo(
+    () => applyDistanceLimit(preWeatherRecommendations, origin, tripPreferences.transport).items,
+    [preWeatherRecommendations, origin, tripPreferences.transport],
+  );
   const purposeEmptyItems = useMemo(
-    () => regionsWithoutPurposeMatches(preWeatherRecommendations.slice(0, 5), (code) => weatherDecisions[code], tripPreferences.purpose),
-    [preWeatherRecommendations, weatherDecisions, tripPreferences.purpose],
+    () => regionsWithoutPurposeMatches(preWeatherNear.slice(0, 5), (code) => weatherDecisions[code], tripPreferences.purpose),
+    [preWeatherNear, weatherDecisions, tripPreferences.purpose],
   );
   // 추천 카드 안에 흐리게 보여 줄, 날씨 때문에 그 지역에서 빠진 관광지(목적·스타일에 맞는 후보 중)
   const excludedByRegion = useMemo(() => {
     const map = new Map<string, ExcludedAttraction[]>();
-    for (const item of preWeatherRecommendations) {
+    for (const item of preWeatherNear) {
       const decision = weatherDecisions[item.region.code];
       if (!decision) continue;
       map.set(
@@ -240,10 +246,10 @@ export function AppPage() {
       );
     }
     return map;
-  }, [preWeatherRecommendations, weatherDecisions]);
+  }, [preWeatherNear, weatherDecisions]);
   const weatherExclusions = useMemo(
-    () => listWeatherExclusions(preWeatherRecommendations.slice(0, 5), (code) => weatherDecisions[code]),
-    [preWeatherRecommendations, weatherDecisions],
+    () => listWeatherExclusions(preWeatherNear.slice(0, 5), (code) => weatherDecisions[code]),
+    [preWeatherNear, weatherDecisions],
   );
 
   const exploreRecommendations = useMemo(() => {
@@ -254,8 +260,17 @@ export function AppPage() {
       filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes), people, tripPreferences, safetyFilters),
     ).filter((item) => locationCodes.has(item.region.code));
     return applyDistanceLimit(explore, origin, tripPreferences.transport).items;
-  }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather, origin]);
+  }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather, origin, safetyFilters]);
 
+  // 지도 요약 줄·지역 마커는 추천 카드와 같은 결과를 쓴다(목적·날씨·거리·동행자로 걸러진 것).
+  const mapRegionAttractions = useMemo(
+    () => (people != null ? regionSummaryAttractions([...recommendations, ...exploreRecommendations]) : undefined),
+    [people, recommendations, exploreRecommendations],
+  );
+  const allowAttraction = useCallback(
+    (attraction: Attraction) => allowedForParty(attraction, people ?? [], safetyFilters),
+    [people, safetyFilters],
+  );
   const highlightedCodes = useMemo(
     () => new Set([...recommendations, ...exploreRecommendations].map((r) => r.region.code)),
     [recommendations, exploreRecommendations],
@@ -399,6 +414,7 @@ export function AppPage() {
           <RandomTripPicker
             regions={SAMPLE_REGIONS}
             people={people ?? []}
+            withChildren={safetyFilters.withChildren}
             onPick={(region, attraction) => {
               setSelectedRegion(region);
               setSelectedAttraction(attraction);
@@ -420,6 +436,9 @@ export function AppPage() {
             <MapView
               regions={SAMPLE_REGIONS}
               highlightedCodes={highlightedCodes}
+              regionAttractions={mapRegionAttractions}
+              allowAttraction={allowAttraction}
+              origin={origin}
               selectedCode={displayedRegion?.code}
               onSelectRegion={(region) => {
                 setSelectedRegion(region);

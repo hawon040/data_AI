@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { classifyAttraction } from "./attractionSetting";
 import { EMPTY_WEATHER } from "./liveWeather";
-import { getRecommendations } from "./recommend";
+import { getExploreRecommendations, getRecommendations } from "./recommend";
+import { buildCandidatePool } from "./randomTrip";
+import { regionSummaryAttractions } from "./mapArea";
+import { applyDistanceLimit, haversineKm } from "./origin";
 import { DEFAULT_TRIP_PREFERENCES, filterRecommendations, matchesPurpose, type TravelPurpose } from "./tripPreferences";
 import type { Person, RecommendationItem } from "./types";
-import { INDOOR_RETRY_LABEL, keepIndoorOnly, regionsWithoutPurposeMatches } from "./weatherExclusions";
+import { INDOOR_RETRY_LABEL, keepIndoorOnly, listWeatherExclusions, regionsWithoutPurposeMatches } from "./weatherExclusions";
 import { applyWeatherRules, decideWeather, type WeatherDecision } from "./weatherRules";
 
 const all = SAMPLE_REGIONS.flatMap((r) => r.attractions);
@@ -134,5 +137,35 @@ describe("[G] 팀 결정(11/14) 반영", () => {
       expect(purposeNames("stroll")).not.toContain(name);
       expect(purposeNames("hiking")).toContain(name);
     }
+  });
+});
+
+describe("[H3] 아이·10대 동반이면 카지노는 어디에도 없다", () => {
+  it("펜 던지기 후보에 강원랜드가 없다(아이 동반·10대)", () => {
+    const names = (pool: ReturnType<typeof buildCandidatePool>) => pool.map((c) => c.attraction.name);
+    expect(names(buildCandidatePool(SAMPLE_REGIONS, fifties))).toContain("강원랜드");
+    expect(names(buildCandidatePool(SAMPLE_REGIONS, fifties, { withChildren: true }))).not.toContain("강원랜드");
+    expect(names(buildCandidatePool(SAMPLE_REGIONS, [{ ageGroup: "10s" }]))).not.toContain("강원랜드");
+  });
+  it("지도 요약 줄(추천 결과로 만든 지역별 관광지)과 탐색 추천에 강원랜드가 없다", () => {
+    const kids = pipeline(fifties, "all", null, true);
+    const summary = regionSummaryAttractions(kids.pre);
+    expect([...summary.values()].flat().map((a) => a.name)).not.toContain("강원랜드");
+    const prefs = { ...DEFAULT_TRIP_PREFERENCES, visitDate: "2026-11-14" };
+    const explore = filterRecommendations(getExploreRecommendations(fifties, SAMPLE_REGIONS, new Set()), fifties, prefs, { withChildren: true });
+    expect(explore.flatMap((i) => i.topAttractions.map(({ attraction }) => attraction.name))).not.toContain("강원랜드");
+  });
+});
+
+describe("[H4] 도보: 날씨 제외 개수는 거리 안 관광지만 센다", () => {
+  it("천안 출발·도보·비 예보면 날씨로 빠진 곳은 모두 5km 안 관광지다", () => {
+    const origin = { label: "충청남도 천안시", lat: 36.8151, lng: 127.1139, source: "district" as const };
+    const { pre } = pipeline(fifties, "all", null);
+    const before = listWeatherExclusions(pre.slice(0, 5), () => rain);
+    const near = applyDistanceLimit(pre, origin, "walking").items;
+    const after = listWeatherExclusions(near.slice(0, 5), () => rain);
+    expect(after.length).toBeLessThan(before.length);
+    expect(after.length).toBeGreaterThan(0);
+    expect(after.every((x) => haversineKm(origin, x.attraction) <= 5)).toBe(true);
   });
 });
