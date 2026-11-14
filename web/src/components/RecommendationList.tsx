@@ -151,7 +151,13 @@ export function RecommendationList({
   distanceLabelFor = () => null,
   excludedFor = () => [],
   bottomItems = [],
+  emptyAction = null,
+  notice = null,
 }: {
+  /** 추천이 비었을 때 안내 아래에 둘 버튼(예: "실내 관광지로 다시 추천받기") */
+  emptyAction?: { label: string; onClick: () => void } | null;
+  /** 목록 위 안내(예: 실내 관광지만으로 다시 추천함) */
+  notice?: string | null;
   items: RecommendationItem[];
   /** 순위 맨 아래에 둘 안내 카드(날씨 때문에 목적에 맞는 관광지가 모두 빠진 지역) */
   bottomItems?: RecommendationItem[];
@@ -190,7 +196,17 @@ export function RecommendationList({
         />
       ))}
 
-      {items.length === 0 && <p className="empty-state">{emptyMessage}</p>}
+      {notice && <p className="list-notice" role="status">{notice}</p>}
+      {items.length === 0 && (
+        <div className="empty-state">
+          <p>{emptyMessage}</p>
+          {emptyAction && (
+            <button type="button" className="pill-mini" onClick={emptyAction.onClick}>
+              {emptyAction.label}
+            </button>
+          )}
+        </div>
+      )}
       {bottomItems.map((item) => (
         <RecommendationCard
           key={`empty-${item.region.code}`}

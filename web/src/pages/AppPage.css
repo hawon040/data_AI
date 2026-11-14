@@ -870,6 +870,15 @@
   font-size: 11px;
   font-weight: 700;
 }
+.empty-state .pill-mini {
+  margin-top: 8px;
+}
+.list-notice {
+  margin: 0 0 8px;
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
+}
 /* 날씨 때문에 목적에 맞는 관광지가 모두 빠진 지역 카드의 안내 */
 .empty-note {
   margin: 6px 0;

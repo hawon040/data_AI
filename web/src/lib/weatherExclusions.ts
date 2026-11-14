@@ -70,3 +70,13 @@ export function regionsWithoutPurposeMatches(
     return [{ ...item, topAttractions: [], indoorAlternatives: [], emptyNote: `${weatherCause(decision)}로 ${PURPOSE_PHRASES[purpose]} 곳이 없어요` }];
   });
 }
+
+/** "실내 관광지로 다시 추천받기": 지역마다 실내 관광지만 남기고, 실내가 하나도 없는 지역은 뺀다. */
+export function keepIndoorOnly(items: RecommendationItem[]): RecommendationItem[] {
+  return items.flatMap((item) => {
+    const topAttractions = item.topAttractions.filter(({ attraction }) => classifyAttraction(attraction).setting === "indoor");
+    return topAttractions.length > 0 ? [{ ...item, topAttractions }] : [];
+  });
+}
+
+export const INDOOR_RETRY_LABEL = "실내 관광지로 다시 추천받기";

@@ -5,7 +5,7 @@ import { EMPTY_WEATHER } from "./liveWeather";
 import { getRecommendations } from "./recommend";
 import { DEFAULT_TRIP_PREFERENCES, filterRecommendations, matchesPurpose, type TravelPurpose } from "./tripPreferences";
 import type { Person, RecommendationItem } from "./types";
-import { regionsWithoutPurposeMatches } from "./weatherExclusions";
+import { INDOOR_RETRY_LABEL, keepIndoorOnly, regionsWithoutPurposeMatches } from "./weatherExclusions";
 import { applyWeatherRules, decideWeather, type WeatherDecision } from "./weatherRules";
 
 const all = SAMPLE_REGIONS.flatMap((r) => r.attractions);
@@ -88,5 +88,22 @@ describe("목적 관광지가 날씨로 모두 빠진 지역", () => {
   });
   it("목적이 '전체'면 이 안내 카드를 만들지 않는다(그 지역 관광지가 곧 후보)", () => {
     expect(pipeline(fifties, "all", rain).bottom).toEqual([]);
+  });
+});
+
+describe("[F] 실내 관광지로 다시 추천받기", () => {
+  it("체험·비 예보로 모두 비면, 목적 '전체' + 실내만으로 다시 추천해 실내 관광지가 나온다", () => {
+    const empty = pipeline(fifties, "experience", rain);
+    expect(empty.after).toEqual([]);
+    expect(empty.bottom.length).toBeGreaterThan(0);
+    const retry = pipeline(fifties, "all", rain);
+    const indoor = keepIndoorOnly(retry.after);
+    expect(indoor.length).toBeGreaterThan(0);
+    expect(indoor.every((item) => item.topAttractions.every(({ attraction }) => classifyAttraction(attraction).setting === "indoor"))).toBe(true);
+    expect(INDOOR_RETRY_LABEL).toBe("실내 관광지로 다시 추천받기");
+  });
+  it("keepIndoorOnly는 실내 관광지가 없는 지역을 뺀다", () => {
+    const { pre } = pipeline(fifties, "hiking", null); // 산행 후보는 모두 야외
+    expect(keepIndoorOnly(pre)).toEqual([]);
   });
 });

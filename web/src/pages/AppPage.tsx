@@ -20,7 +20,7 @@ import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { DistanceExcludedList } from "../components/DistanceExcludedList";
 import { applyDistanceLimit, formatDistance, haversineKm, NEEDS_ORIGIN_MESSAGE, NO_NEARBY_MESSAGE, type Origin } from "../lib/origin";
 import { WarningBanner } from "../components/WarningBanner";
-import { listWeatherExclusions, regionsWithoutPurposeMatches } from "../lib/weatherExclusions";
+import { INDOOR_RETRY_LABEL, keepIndoorOnly, listWeatherExclusions, regionsWithoutPurposeMatches } from "../lib/weatherExclusions";
 import { buildChecklist, type ChecklistFocus } from "../lib/checklist";
 import { toAccessSummary, useAttractionAccessMap } from "../lib/liveAccess";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
@@ -67,6 +67,8 @@ export function AppPage() {
   const [mapSelection, setMapSelection] = useState<MapSelection | null>(null);
   // "지도에서 볼 지역": 지도 관광지·대피소·관광 수요·지도 범위에만 쓰고 추천 결과는 바꾸지 않는다.
   const [mapArea, setMapArea] = useState<MapArea>(NATIONWIDE);
+  // "실내 관광지로 다시 추천받기"를 눌렀을 때만 켠다. 여행 조건을 바꾸면 꺼진다.
+  const [indoorRetry, setIndoorRetry] = useState(false);
   // 출발지(선택). 거리 표시와 도보·자전거 거르기에만 쓰고 서버로 보내거나 저장하지 않는다.
   const [origin, setOrigin] = useState<Origin | null>(null);
 
@@ -176,10 +178,11 @@ export function AppPage() {
       candidates = getRecommendations(people, SAMPLE_REGIONS, SAMPLE_REGIONS.length);
     }
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
-    return filterRecommendations(candidates, people, tripPreferences, safetyFilters).filter((item) =>
+    const filtered = filterRecommendations(candidates, people, tripPreferences, safetyFilters).filter((item) =>
       locationCodes.has(item.region.code),
     );
-  }, [destinationRegions, people, tripPreferences]);
+    return indoorRetry ? keepIndoorOnly(filtered) : filtered;
+  }, [destinationRegions, people, tripPreferences, safetyFilters, indoorRetry]);
   // 날씨 규칙 → (도보·자전거면) 출발지 거리 기준 순서로 거른다. 추천 순위 계산은 바꾸지 않는다.
   const weatherApplied = useMemo(
     () => applyRegionWeather(preWeatherRecommendations),
@@ -342,6 +345,7 @@ export function AppPage() {
         onOriginChange={setOrigin}
         onPreferencesChange={(preferences) => {
           setTripPreferences(preferences);
+          setIndoorRetry(false);
           setMapSelection(null);
           setSelectedRegion(null);
           setSelectedAttraction(null);
@@ -465,6 +469,22 @@ export function AppPage() {
               <RecommendationList
                 items={recommendations}
                 bottomItems={purposeEmptyItems}
+                emptyAction={
+                  people != null && recommendations.length === 0 && purposeEmptyItems.length > 0
+                    ? {
+                        label: INDOOR_RETRY_LABEL,
+                        onClick: () => {
+                          // 목적을 '전체'로 바꾸고 실내 관광지만으로 다시 추천한다(입력 폼의 목적도 '전체'로 보인다).
+                          setTripPreferences((current) => ({ ...current, purpose: "all" }));
+                          setIndoorRetry(true);
+                          setSelectedRegion(null);
+                          setSelectedAttraction(null);
+                          setSelectedSeasonalPlace(null);
+                        },
+                      }
+                    : null
+                }
+                notice={indoorRetry && people != null ? "실내 관광지만으로 다시 추천했어요. 여행 조건을 바꾸면 원래대로 추천해요." : null}
                 exploreItems={exploreRecommendations}
                 emptyMessage={
                   people == null
