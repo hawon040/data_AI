@@ -892,6 +892,37 @@
   font-size: 12px;
   font-weight: 700;
 }
+.estimate-note {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+.far-badge {
+  display: inline-block;
+  margin: 4px 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(181, 71, 8, 0.1);
+  color: #b54708;
+  font-size: 11px;
+  font-weight: 700;
+}
+.travel-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--teal);
+  font-size: 10px;
+  font-weight: 700;
+}
+/* 관광지 버튼: 이름·분류·이동 시간은 각각 한 덩어리로, 넘치면 덩어리째 다음 줄로 */
+.attraction-chip {
+  flex-wrap: wrap;
+  white-space: nowrap;
+  row-gap: 1px;
+}
 .attraction-distance {
   color: var(--teal);
   font-size: 10px;

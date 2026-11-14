@@ -3,6 +3,7 @@ import { isSafetyGrade, safetyGradeLabel } from "../lib/safetyGrades";
 import { SHOW_REGION_SAFETY_SCORE } from "../config/features";
 import { shortEvidence } from "../lib/evidence";
 import { attractionMeta, categoryChips } from "../lib/cardInfo";
+import { ESTIMATE_NOTE } from "../lib/travelTime";
 
 /** 날씨 때문에 카드에서 빠진 관광지와 짧은 사유(예: "비 예보로 제외") */
 export interface ExcludedAttraction {
@@ -28,8 +29,10 @@ function RecommendationCard({
   distanceLabel,
   excluded,
   attractionDistance,
+  farBadge,
 }: {
   attractionDistance: (attraction: Attraction) => string | null;
+  farBadge: string | null;
   item: RecommendationItem;
   excluded: ExcludedAttraction[];
   weatherSummary: string | null;
@@ -77,7 +80,13 @@ function RecommendationCard({
       ) : (
         <p className="evidence-line">{shortEvidence(item, weatherSummary)}</p>
       )}
-      {distanceLabel && <p className="distance-line">{distanceLabel}</p>}
+      {distanceLabel && (
+        <p className="distance-line">
+          {distanceLabel}
+          <span className="estimate-note"> · {ESTIMATE_NOTE}</span>
+        </p>
+      )}
+      {farBadge && <span className="far-badge">{farBadge}</span>}
       {item.topAttractions.length > 0 && (
         <div className="attraction-chips">
           {item.topAttractions.map(({ attraction }) => (
@@ -153,6 +162,7 @@ export function RecommendationList({
   attractionBadge = () => null,
   distanceLabelFor = () => null,
   attractionDistanceFor = () => null,
+  farBadgeFor = () => null,
   excludedFor = () => [],
   bottomItems = [],
   emptyAction = null,
@@ -177,8 +187,10 @@ export function RecommendationList({
   /** 출발지가 있으면 "출발지에서 약 12km" (지역 중심까지 직선거리) */
   /** 출발지가 있으면 "가장 가까운 관광지까지 약 12km" */
   distanceLabelFor?: (item: RecommendationItem) => string | null;
-  /** 출발지가 있으면 관광지 버튼마다 "약 3.1km" */
+  /** 출발지가 있으면 관광지 버튼마다 "약 3.1km · 대중교통 약 10분" */
   attractionDistanceFor?: (attraction: Attraction) => string | null;
+  /** 당일치기인데 편도 2시간을 넘으면 "당일치기로는 먼 곳" */
+  farBadgeFor?: (item: RecommendationItem) => string | null;
   /** 날씨 때문에 그 지역 카드에서 빠진 관광지 (흐리게 "비 예보로 제외"로 함께 보여 준다) */
   excludedFor?: (region: Region) => ExcludedAttraction[];
 }) {
@@ -200,6 +212,7 @@ export function RecommendationList({
           attractionBadge={attractionBadge}
           distanceLabel={distanceLabelFor(item)}
           attractionDistance={attractionDistanceFor}
+          farBadge={farBadgeFor(item)}
           excluded={excludedFor(item.region)}
         />
       ))}
@@ -226,6 +239,7 @@ export function RecommendationList({
           attractionBadge={attractionBadge}
           distanceLabel={distanceLabelFor(item)}
           attractionDistance={attractionDistanceFor}
+          farBadge={farBadgeFor(item)}
           excluded={excludedFor(item.region)}
         />
       ))}
@@ -244,6 +258,7 @@ export function RecommendationList({
               attractionBadge={attractionBadge}
               distanceLabel={distanceLabelFor(item)}
           attractionDistance={attractionDistanceFor}
+          farBadge={farBadgeFor(item)}
               excluded={excludedFor(item.region)}
             />
           ))}

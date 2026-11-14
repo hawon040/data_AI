@@ -18,11 +18,12 @@ import { TripPreparation } from "../components/TripPreparation";
 import { WeatherNotice } from "../components/WeatherNotice";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { DistanceExcludedList } from "../components/DistanceExcludedList";
+import { TravelTimeExcludedList } from "../components/TravelTimeExcludedList";
+import { applyTravelTimeLimit, FAR_DAY_TRIP_BADGE, isFarForDayTrip, travelHours, travelLabel } from "../lib/travelTime";
 import {
   applyDistanceLimit,
   effectiveRanking,
   formatDistance,
-  formatKm,
   haversineKm,
   nearestAttractionKm,
   NEEDS_ORIGIN_MESSAGE,
@@ -213,9 +214,19 @@ export function AppPage() {
     [weatherApplied, origin, tripPreferences.transport],
   );
   // 가까운 순이면 지역 안 추천 관광지 중 가장 가까운 곳의 거리로 정렬한다(점수 계산은 그대로).
+  // 최대 이동 시간(기본 '상관없음')을 넘는 관광지를 뺀다. 도보·자전거 거리 제한 뒤에 적용한다.
+  const travelLimited = useMemo(
+    () => applyTravelTimeLimit(distance.items, origin, tripPreferences.transport, tripPreferences.maxTravelHours),
+    [distance, origin, tripPreferences.transport, tripPreferences.maxTravelHours],
+  );
   const recommendations: RecommendationItem[] = useMemo(
-    () => (ranking === "nearest" && origin ? sortByNearest(distance.items, origin) : distance.items).slice(0, 5),
-    [distance, ranking, origin],
+    () => (ranking === "nearest" && origin ? sortByNearest(travelLimited.items, origin) : travelLimited.items).slice(0, 5),
+    [travelLimited, ranking, origin],
+  );
+  // 이동 시간 때문에 빠진 곳도 원래 상위 5개 지역(거리 제한 뒤)에서 모은다.
+  const travelExclusions = useMemo(
+    () => applyTravelTimeLimit(distance.items.slice(0, 5), origin, tripPreferences.transport, tripPreferences.maxTravelHours).excluded,
+    [distance, origin, tripPreferences.transport, tripPreferences.maxTravelHours],
   );
   // 거리 때문에 빠진 곳은 원래 상위 5개 지역에서만 모은다(날씨 제외 목록과 같은 범위).
   const distanceExclusions = useMemo(
@@ -259,7 +270,9 @@ export function AppPage() {
     const explore = applyRegionWeather(
       filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes), people, tripPreferences, safetyFilters),
     ).filter((item) => locationCodes.has(item.region.code));
-    return applyDistanceLimit(explore, origin, tripPreferences.transport).items;
+    // 탐색 추천도 추천 카드와 같이 거리 제한 → 최대 이동 시간으로 거른다.
+    const near = applyDistanceLimit(explore, origin, tripPreferences.transport).items;
+    return applyTravelTimeLimit(near, origin, tripPreferences.transport, tripPreferences.maxTravelHours).items;
   }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather, origin, safetyFilters]);
 
   // 지도 요약 줄·지역 마커는 추천 카드와 같은 결과를 쓴다(목적·날씨·거리·동행자로 걸러진 것).
@@ -335,6 +348,17 @@ export function AppPage() {
     regionWeather: focusRegion ? weatherOf(focusRegion.code) : null,
     regionWeatherTips: focusRegion && !weatherDemo ? regionWeather[focusRegion.code]?.tips ?? [] : [],
     accessTip: accessPrepTip,
+    travelHours: !origin
+      ? null
+      : checklistFocus.kind === "attraction"
+        ? travelHours(haversineKm(origin, checklistFocus.attraction), tripPreferences.transport)
+        : checklistFocus.kind === "region"
+          ? (() => {
+              const item = [...recommendations, ...exploreRecommendations].find((i) => i.region.code === checklistFocus.region.code);
+              const km = item ? nearestAttractionKm(item, origin) : null;
+              return km != null ? travelHours(km, tripPreferences.transport) : null;
+            })()
+          : null,
     focus: checklistFocus,
   });
   const showChecklist = (people != null && recommendations.length > 0) || selectedAttraction != null;
@@ -554,13 +578,19 @@ export function AppPage() {
                 }
                 distanceLabelFor={(item) => {
                   const km = origin ? nearestAttractionKm(item, origin) : null;
-                  return km != null ? `가장 가까운 관광지까지 ${formatKm(km)}` : null;
+                  return km != null ? `가장 가까운 관광지까지 ${travelLabel(km, tripPreferences.transport)}` : null;
                 }}
-                attractionDistanceFor={(attraction) => (origin ? formatKm(haversineKm(origin, attraction)) : null)}
+                attractionDistanceFor={(attraction) => (origin ? travelLabel(haversineKm(origin, attraction), tripPreferences.transport) : null)}
+                farBadgeFor={(item) => {
+                  const km = origin ? nearestAttractionKm(item, origin) : null;
+                  const hours = km != null ? travelHours(km, tripPreferences.transport) : null;
+                  return isFarForDayTrip(hours, tripPreferences.duration) ? FAR_DAY_TRIP_BADGE : null;
+                }}
                 excludedFor={(region) => excludedByRegion.get(region.code) ?? []}
               />
               {people != null && <WeatherExcludedList items={weatherExclusions} />}
               {people != null && <DistanceExcludedList items={distanceExclusions} limitKm={distance.limitKm} />}
+              {people != null && <TravelTimeExcludedList items={travelExclusions} maxHours={tripPreferences.maxTravelHours} />}
               {showChecklist && <TripPreparation preferences={tripPreferences} checklist={checklist} />}
               {selectedAttraction && (
                 <AttractionDetail
@@ -570,7 +600,11 @@ export function AppPage() {
                   seasonalTiming={selectedSeasonalPlace?.timing}
                   seasonalDescription={selectedSeasonalPlace?.summary}
                   party={accessParty}
-                  distanceLabel={origin ? formatDistance(haversineKm(origin, selectedAttraction)) : null}
+                  distanceLabel={
+                    origin
+                      ? `${formatDistance(haversineKm(origin, selectedAttraction))} · ${travelLabel(haversineKm(origin, selectedAttraction), tripPreferences.transport).split(" · ")[1]}`
+                      : null
+                  }
                 />
               )}
               {displayedRegion && (

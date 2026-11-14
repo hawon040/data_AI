@@ -5,6 +5,8 @@ import { WEATHER_PRESETS } from "../lib/weatherPresets";
 import { NEAREST_NEEDS_ORIGIN, NEEDS_ORIGIN_MESSAGE, type Origin } from "../lib/origin";
 import { MAX_DISTANCE_KM } from "../config/travelDistance";
 import { OriginPicker } from "./OriginPicker";
+import { MAX_TRAVEL_HOURS_OPTIONS } from "../config/travelTime";
+import { MAX_TRAVEL_NEEDS_ORIGIN, TRAVEL_HINT, TRAVEL_HINT_BUTTON, travelHintState } from "../lib/travelTime";
 import {
   addDaysIso,
   tripSeason,
@@ -72,6 +74,8 @@ export function CompanionForm({ onSubmit, regions, preferences, onPreferencesCha
 
   const people = skipSelf ? companions : [self, ...companions];
   const withElderly = people.some((p) => p.ageGroup === "60plus");
+  // 60대 이상이나 아이 동반이면 '최대 이동 시간' 아래에 2시간 권장 안내(자동으로 바꾸지 않는다)
+  const travelHint = travelHintState({ withElderly, withChildren, maxTravelHours: preferences.maxTravelHours, hasOrigin: origin != null });
   const season = tripSeason(preferences);
 
   function updatePreference<K extends keyof TripPreferences>(key: K, value: TripPreferences[K]) {
@@ -132,6 +136,29 @@ export function CompanionForm({ onSubmit, regions, preferences, onPreferencesCha
               <select value={preferences.transport} onChange={(e) => updatePreference("transport", e.target.value as TripPreferences["transport"])}>
                 {TRANSPORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
+            </label>
+            <label>
+              <span className="field-title">최대 이동 시간</span>
+              <select
+                value={preferences.maxTravelHours ?? ""}
+                disabled={!origin}
+                onChange={(e) => updatePreference("maxTravelHours", e.target.value === "" ? null : Number(e.target.value))}
+              >
+                {MAX_TRAVEL_HOURS_OPTIONS.map((option) => (
+                  <option key={option.label} value={option.value ?? ""}>{option.label}</option>
+                ))}
+              </select>
+              {!origin && <span className="field-note">최대 이동 시간은 {MAX_TRAVEL_NEEDS_ORIGIN}</span>}
+              {travelHint.show && (
+                <span className="travel-hint">
+                  {TRAVEL_HINT}
+                  {travelHint.showButton && (
+                    <button type="button" className="pill-mini ghost" onClick={() => updatePreference("maxTravelHours", 2)}>
+                      {TRAVEL_HINT_BUTTON}
+                    </button>
+                  )}
+                </span>
+              )}
             </label>
             <label>
               <span className="field-title">추천 순서</span>

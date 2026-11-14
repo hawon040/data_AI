@@ -11,6 +11,7 @@ import { airTips, mergeTips, terrainTips, weatherTipSentences, type TipGroup } f
 import { attractionTagTips, commonPreparationTips, type TripPreferences } from "./tripPreferences";
 import type { Attraction, Region } from "./types";
 import type { WeatherSnapshot } from "./weatherRules";
+import { restTips } from "./travelTime";
 
 export const CHECKLIST_HINT = "지역이나 관광지를 누르면 그곳에 맞는 준비물이 더 나와요";
 
@@ -30,6 +31,8 @@ export interface ChecklistInput {
   regionWeatherTips?: string[];
   /** 고른 관광지의 무장애 편의 요약(lib/liveAccess.ts의 prepTip) */
   accessTip?: string | null;
+  /** 고른 지역(가장 가까운 추천 관광지)·관광지까지 예상 편도 시간. 2시간을 넘으면 휴식 안내를 더한다 */
+  travelHours?: number | null;
   focus: ChecklistFocus;
 }
 
@@ -140,6 +143,10 @@ export function buildChecklist(input: ChecklistInput): Checklist {
       ],
     });
   }
+
+  // 편도 2시간을 넘는 곳을 고르면 그 단계(지역·관광지) 줄 끝에 휴식 안내를 더한다.
+  const rest = focus.kind === "common" ? [] : restTips(input.travelHours ?? null, party);
+  if (rest.length > 0) raw[raw.length - 1].tips.push(...rest);
 
   let merged: string[] = [];
   const sections: ChecklistSection[] = [];

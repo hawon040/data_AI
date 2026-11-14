@@ -29,6 +29,8 @@ export interface TripPreferences {
   nights: TripNights;
   /** 시연 모드(주소에 ?demo=weather)에서 쓸 날씨 예시 id (lib/weatherPresets.ts) */
   weatherPreset: string;
+  /** 최대 편도 이동 시간(시간). null은 '상관없음'(기본값, 거르지 않음). 출발지가 있을 때만 쓴다 */
+  maxTravelHours: number | null;
 }
 
 /** YYYY-MM-DD 날짜에 days일을 더한다. */
@@ -52,6 +54,7 @@ export const DEFAULT_TRIP_PREFERENCES: TripPreferences = {
   visitDate: todayIso(),
   nights: 1,
   weatherPreset: "clear",
+  maxTravelHours: null,
 };
 
 export const PURPOSE_OPTIONS: { value: TravelPurpose; label: string }[] = [
