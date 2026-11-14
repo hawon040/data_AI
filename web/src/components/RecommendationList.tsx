@@ -70,7 +70,11 @@ function RecommendationCard({
           {chips.map((chip) => <span key={chip} className="category-chip">{chip}</span>)}
         </div>
       )}
-      <p className="evidence-line">{shortEvidence(item, weatherSummary)}</p>
+      {item.emptyNote ? (
+        <p className="empty-note">{item.emptyNote}</p>
+      ) : (
+        <p className="evidence-line">{shortEvidence(item, weatherSummary)}</p>
+      )}
       {distanceLabel && <p className="distance-line">{distanceLabel}</p>}
       {item.topAttractions.length > 0 && (
         <div className="attraction-chips">
@@ -146,8 +150,11 @@ export function RecommendationList({
   attractionBadge = () => null,
   distanceLabelFor = () => null,
   excludedFor = () => [],
+  bottomItems = [],
 }: {
   items: RecommendationItem[];
+  /** 순위 맨 아래에 둘 안내 카드(날씨 때문에 목적에 맞는 관광지가 모두 빠진 지역) */
+  bottomItems?: RecommendationItem[];
   exploreItems: RecommendationItem[];
   onSelect: (r: Region) => void;
   onSelectAttraction: (a: Attraction) => void;
@@ -162,7 +169,7 @@ export function RecommendationList({
   /** 날씨 때문에 그 지역 카드에서 빠진 관광지 (흐리게 "비 예보로 제외"로 함께 보여 준다) */
   excludedFor?: (region: Region) => ExcludedAttraction[];
 }) {
-  if (items.length === 0) {
+  if (items.length === 0 && bottomItems.length === 0) {
     return <p className="empty-state">{emptyMessage}</p>;
   }
   return (
@@ -177,6 +184,21 @@ export function RecommendationList({
           onSelectAttraction={onSelectAttraction}
           selected={selectedCode === item.region.code}
           weatherSummary={weatherSummaryFor(item.region.code)}
+          attractionBadge={attractionBadge}
+          distanceLabel={distanceLabelFor(item.region)}
+          excluded={excludedFor(item.region)}
+        />
+      ))}
+
+      {items.length === 0 && <p className="empty-state">{emptyMessage}</p>}
+      {bottomItems.map((item) => (
+        <RecommendationCard
+          key={`empty-${item.region.code}`}
+          item={item}
+          onSelect={onSelect}
+          onSelectAttraction={onSelectAttraction}
+          selected={selectedCode === item.region.code}
+          weatherSummary={null}
           attractionBadge={attractionBadge}
           distanceLabel={distanceLabelFor(item.region)}
           excluded={excludedFor(item.region)}

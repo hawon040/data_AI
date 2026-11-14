@@ -15,6 +15,7 @@ const TAG_LABELS: Record<string, string> = {
   theme_park: "테마파크",
   resort: "리조트",
   view: "전망",
+  casino: "카지노",
 };
 
 export function AttractionDetail({
@@ -66,6 +67,7 @@ export function AttractionDetail({
       {distanceLabel && <p className="distance-line">{distanceLabel}</p>}
       {seasonalTiming && <p className="ad-location">{seasonalTiming}</p>}
       {seasonalDescription && <p className="ad-hint">{seasonalDescription}</p>}
+      {attraction.tags.includes("casino") && <p className="ad-age-note">카지노는 만 19세 이상 입장</p>}
       <div className="ad-facts">
         {attraction.popularityScore > 0 && (
           <span>인기 지표 <strong>{Math.round(attraction.popularityScore)}/100</strong></span>

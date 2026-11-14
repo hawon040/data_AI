@@ -5,6 +5,8 @@
 import { classifyAttraction, TERRAIN_LABELS } from "./attractionSetting";
 import type { Attraction, RecommendationItem } from "./types";
 import { isAllowed, type WeatherDecision } from "./weatherRules";
+import { weatherCause } from "./cardInfo";
+import { PURPOSE_PHRASES, type TravelPurpose } from "./tripPreferences";
 
 export interface WeatherExclusion {
   regionCode: string;
@@ -49,5 +51,22 @@ export function listWeatherExclusions(
         attraction,
         reason: exclusionReason(attraction, decision),
       }));
+  });
+}
+
+/**
+ * 목적(전체 제외)에 맞는 관광지가 날씨 때문에 모두 빠진 지역. 목적과 상관없는 관광지로 채우지 않고,
+ * 순위 맨 아래에 "비 예보로 체험할 곳이 없어요"처럼 안내만 담은 카드로 보여 준다.
+ */
+export function regionsWithoutPurposeMatches(
+  items: RecommendationItem[],
+  decisionFor: (regionCode: string) => WeatherDecision | undefined,
+  purpose: TravelPurpose,
+): RecommendationItem[] {
+  if (purpose === "all") return [];
+  return items.flatMap((item) => {
+    const decision = decisionFor(item.region.code);
+    if (!decision || item.topAttractions.some(({ attraction }) => isAllowed(attraction, decision))) return [];
+    return [{ ...item, topAttractions: [], indoorAlternatives: [], emptyNote: `${weatherCause(decision)}로 ${PURPOSE_PHRASES[purpose]} 곳이 없어요` }];
   });
 }

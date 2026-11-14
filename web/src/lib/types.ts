@@ -64,6 +64,8 @@ export type AttractionTag =
   | "culture"
   | "theme_park"
   | "resort"
+  /** 카지노. 목적 '전체'일 때만 후보이고, 아이·10대 동반이면 뺀다(만 19세 이상 입장). */
+  | "casino"
   | "view";
 
 /** 관광지 단위 데이터 (문서 4.3: 지역 다음 2단계로 관광지를 정렬한다). */
@@ -111,6 +113,8 @@ export interface RecommendationItem {
    * (문서 4.3 2단계 추천). matchScore는 popularityScore x 연령대 선호 가중치.
    */
   topAttractions: { attraction: Attraction; matchScore: number }[];
+  /** 날씨 때문에 목적에 맞는 관광지가 모두 빠진 지역이면 카드에 보일 안내(예: "비 예보로 체험할 곳이 없어요"). 순위 맨 아래에 둔다 */
+  emptyNote?: string;
   /** 날씨는 좋지만 비 소식이 있을 때 함께 보여 줄 실내 관광지 (lib/weatherRules.ts) */
   indoorAlternatives?: Attraction[];
 }

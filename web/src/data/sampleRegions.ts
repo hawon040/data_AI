@@ -314,7 +314,7 @@ const raw: RawRegion[] = [
     experienceScore: 66,
     attractions: [
       { name: "정선 레일바이크", category: "액티비티", tags: ["activity"], lat: 37.3765, lng: 128.8271, popularityScore: 90 },
-      { name: "강원랜드", category: "리조트", tags: ["resort"], lat: 37.2036, lng: 128.8132, popularityScore: 85 },
+      { name: "강원랜드", category: "카지노·리조트", tags: ["casino"], lat: 37.2036, lng: 128.8132, popularityScore: 85 },
       { name: "정선아리랑시장", category: "맛집·쇼핑", tags: ["food", "shopping"], lat: 37.3803, lng: 128.6606, popularityScore: 72 },
       { name: "화암동굴", category: "자연", tags: ["nature"], lat: 37.3612, lng: 128.9391, popularityScore: 60 },
       { name: "하이원리조트", category: "액티비티·리조트", tags: ["activity", "resort"], lat: 37.2002, lng: 128.8145, popularityScore: 64 },

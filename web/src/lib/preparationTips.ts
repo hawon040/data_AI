@@ -99,10 +99,11 @@ const TERRAIN_TIP_ITEMS: Record<Terrain, string[]> = {
   mountain: ["등산화", "물·간식", "바람막이", "해 지기 전 하산", "보조배터리"],
   sea: ["자외선 차단제", "여벌 옷·수건", "물때 확인", "갯바위 미끄럼 주의"],
   valley: ["미끄럼 방지 신발", "여벌 옷", "불어나는 물 주의"],
+  lake: ["여벌 옷", "물가 미끄럼 주의"],
 };
 const ELDERLY_MOUNTAIN_ITEM = "등산 스틱·쉬운 코스(어르신)";
 const CHILD_WATER_ITEM = "아이 구명조끼";
-const TERRAIN_ORDER: Terrain[] = ["mountain", "sea", "valley"];
+const TERRAIN_ORDER: Terrain[] = ["mountain", "sea", "lake", "valley"];
 
 /**
  * 추천된 야외 관광지 가운데 바다·산·계곡이 있을 때만, 종류별로 한 줄에 묶을 준비물을 만든다(실내 관광지는 세지 않는다).

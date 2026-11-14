@@ -870,6 +870,19 @@
   font-size: 11px;
   font-weight: 700;
 }
+/* 날씨 때문에 목적에 맞는 관광지가 모두 빠진 지역 카드의 안내 */
+.empty-note {
+  margin: 6px 0;
+  color: #b54708;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ad-age-note {
+  margin: 6px 0 0;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 700;
+}
 /* 관광지 버튼 옆 "카테고리 · 실내/야외" */
 .attraction-meta {
   color: var(--text-muted);

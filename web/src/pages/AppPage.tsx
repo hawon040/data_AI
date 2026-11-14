@@ -20,7 +20,7 @@ import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { DistanceExcludedList } from "../components/DistanceExcludedList";
 import { applyDistanceLimit, formatDistance, haversineKm, NEEDS_ORIGIN_MESSAGE, NO_NEARBY_MESSAGE, type Origin } from "../lib/origin";
 import { WarningBanner } from "../components/WarningBanner";
-import { listWeatherExclusions } from "../lib/weatherExclusions";
+import { listWeatherExclusions, regionsWithoutPurposeMatches } from "../lib/weatherExclusions";
 import { buildChecklist, type ChecklistFocus } from "../lib/checklist";
 import { toAccessSummary, useAttractionAccessMap } from "../lib/liveAccess";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
@@ -176,7 +176,7 @@ export function AppPage() {
       candidates = getRecommendations(people, SAMPLE_REGIONS, SAMPLE_REGIONS.length);
     }
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
-    return filterRecommendations(candidates, people, tripPreferences).filter((item) =>
+    return filterRecommendations(candidates, people, tripPreferences, safetyFilters).filter((item) =>
       locationCodes.has(item.region.code),
     );
   }, [destinationRegions, people, tripPreferences]);
@@ -194,6 +194,11 @@ export function AppPage() {
   const distanceExclusions = useMemo(
     () => applyDistanceLimit(weatherApplied.slice(0, 5), origin, tripPreferences.transport).excluded,
     [weatherApplied, origin, tripPreferences.transport],
+  );
+  // 날씨 때문에 목적에 맞는 관광지가 모두 빠진 지역(원래 상위 5개 중) — 순위 맨 아래에 안내 카드로 둔다.
+  const purposeEmptyItems = useMemo(
+    () => regionsWithoutPurposeMatches(preWeatherRecommendations.slice(0, 5), (code) => weatherDecisions[code], tripPreferences.purpose),
+    [preWeatherRecommendations, weatherDecisions, tripPreferences.purpose],
   );
   // 추천 카드 안에 흐리게 보여 줄, 날씨 때문에 그 지역에서 빠진 관광지(목적·스타일에 맞는 후보 중)
   const excludedByRegion = useMemo(() => {
@@ -220,7 +225,7 @@ export function AppPage() {
     const excludeCodes = new Set(recommendations.map((r) => r.region.code));
     const locationCodes = new Set(destinationRegions.map((region) => region.code));
     const explore = applyRegionWeather(
-      filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes), people, tripPreferences),
+      filterRecommendations(getExploreRecommendations(people, SAMPLE_REGIONS, excludeCodes), people, tripPreferences, safetyFilters),
     ).filter((item) => locationCodes.has(item.region.code));
     return applyDistanceLimit(explore, origin, tripPreferences.transport).items;
   }, [destinationRegions, people, recommendations, tripPreferences, applyRegionWeather, origin]);
@@ -459,6 +464,7 @@ export function AppPage() {
               )}
               <RecommendationList
                 items={recommendations}
+                bottomItems={purposeEmptyItems}
                 exploreItems={exploreRecommendations}
                 emptyMessage={
                   people == null

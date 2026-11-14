@@ -1,4 +1,5 @@
 import { rankAttractions } from "./recommend";
+import { classifyAttraction } from "./attractionSetting";
 import type { Attraction, AttractionTag, Person, RecommendationItem, Region } from "./types";
 
 export type TravelPurpose = "all" | "hiking" | "experience" | "festival" | "sea" | "stroll";
@@ -78,12 +79,20 @@ export const TRANSPORT_OPTIONS: { value: TransportMode; label: string }[] = [
   { value: "bicycle", label: "자전거" },
 ];
 
-const PURPOSE_TAGS: Record<Exclude<TravelPurpose, "all">, AttractionTag[]> = {
-  hiking: ["nature"],
+/** 태그로 판정하는 목적. '산행'·'바다·호수'는 이름이 아니라 지형 분류(attractionSetting)로 판정한다. */
+const PURPOSE_TAGS: Record<Exclude<TravelPurpose, "all" | "hiking" | "sea">, AttractionTag[]> = {
   experience: ["activity", "theme_park", "resort"],
   festival: ["culture", "history"],
-  sea: [],
   stroll: ["nature", "view", "cafe", "culture"],
+};
+
+/** 목적 문구: "비 예보로 체험할 곳이 없어요" */
+export const PURPOSE_PHRASES: Record<Exclude<TravelPurpose, "all">, string> = {
+  hiking: "산행할",
+  experience: "체험할",
+  festival: "축제·문화를 즐길",
+  sea: "바다·호수를 즐길",
+  stroll: "산책할",
 };
 
 const STYLE_TAGS: Record<Exclude<TravelStyle, "all">, AttractionTag[]> = {
@@ -129,22 +138,33 @@ function matchesTags(tags: AttractionTag[], selected: AttractionTag[]): boolean 
   return selected.some((tag) => tags.includes(tag));
 }
 
-function matchesPurpose(attraction: Attraction, purpose: TravelPurpose): boolean {
+export function matchesPurpose(attraction: Attraction, purpose: TravelPurpose): boolean {
   if (purpose === "all") return true;
-  if (purpose === "sea") return /(해변|바다|항|섬|호수|해안|해수욕장)/.test(attraction.name);
+  const { terrains } = classifyAttraction(attraction);
+  // 예전에는 '산행'을 nature 태그로, '바다·호수'를 이름 정규식으로 판정해 해변·항구·동굴이 산행에, 정동진·영랑호가 바다·호수에서 빠졌다.
+  if (purpose === "hiking") return terrains.includes("mountain");
+  if (purpose === "sea") return terrains.includes("sea") || terrains.includes("lake");
   return matchesTags(attraction.tags, PURPOSE_TAGS[purpose]);
+}
+
+/** 카지노는 아이(10세 미만) 동반이거나 동행자에 10대가 있으면 후보에서 뺀다(만 19세 이상 입장). */
+export function allowedForParty(attraction: Attraction, people: Person[], party?: { withChildren: boolean }): boolean {
+  if (!attraction.tags.includes("casino")) return true;
+  return !(party?.withChildren || people.some((person) => person.ageGroup === "10s"));
 }
 
 export function filterRecommendations(
   items: RecommendationItem[],
   people: Person[],
   preferences: TripPreferences,
+  party?: { withChildren: boolean },
 ): RecommendationItem[] {
   const seasonTags = SEASON_TAGS[tripSeason(preferences)];
 
   const filtered = items.flatMap((item) => {
     const attractions = item.region.attractions.filter((attraction) => {
       if (!matchesPurpose(attraction, preferences.purpose)) return false;
+      if (!allowedForParty(attraction, people, party)) return false;
       return preferences.style === "all" || matchesTags(attraction.tags, STYLE_TAGS[preferences.style]);
     });
     if (attractions.length === 0) return [];
