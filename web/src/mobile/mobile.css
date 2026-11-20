@@ -1,0 +1,159 @@
+/* 모바일 화면(Figma 01~07). 폭 640px 이하에서만 쓰인다. 색은 theme.css 토큰을 따른다. */
+.m-shell {
+  min-height: 100vh;
+  background: #f1f3f8;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  padding-bottom: 8px;
+}
+.m-shell.m-has-tabs { padding-bottom: 64px; }
+.m-main { padding: 0 20px 24px; }
+.m-main-flush { padding: 0 0 24px; background: var(--surface); }
+.m-pad { padding: 0 20px; }
+.m-visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* 머리글 */
+.m-header { background: var(--surface); position: sticky; top: 0; z-index: 20; }
+.m-header-bar { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 10px 0 20px; }
+.m-logo { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; text-decoration: none; color: #121a2e; }
+.m-menu-button { width: 44px; height: 44px; border: 0; background: none; color: var(--blue); font-size: 22px; cursor: pointer; }
+.m-menu { display: grid; border-top: 1px solid var(--border); background: var(--surface); }
+.m-menu a { padding: 14px 20px; text-decoration: none; font-weight: 600; border-bottom: 1px solid var(--border); }
+.m-subnav { display: flex; justify-content: space-between; padding: 0 20px 12px; font-size: 14px; }
+.m-subnav a { text-decoration: none; color: var(--text-secondary); }
+
+/* 공통 글자·버튼 */
+.m-page-title { margin: 16px 0 6px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.m-place-title { margin: 14px 0 6px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.m-subtle { margin: 0 0 14px; font-size: 13px; color: var(--text-secondary); }
+.m-section-title { margin: 22px 0 8px; font-size: 20px; font-weight: 800; }
+.m-eyebrow { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+.m-eyebrow.m-blue { color: var(--blue); }
+.m-note { margin: 10px 0 0; font-size: 12px; color: var(--text-muted); }
+.m-center { text-align: center; }
+.m-status { margin: 12px 0; font-size: 13px; color: var(--text-secondary); }
+.m-hint { margin: 12px 0 0; font-size: 13px; color: var(--text-secondary); }
+.m-hint-small { font-size: 12px; color: var(--text-muted); }
+.m-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.m-tinted { background: #f0f5ff; border-color: #dbe6fb; }
+.m-primary-button, .m-gradient-button, .m-dark-button, .m-outline-button, .m-soft-button {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px;
+  border-radius: 12px; font-size: 15px; font-weight: 700; text-decoration: none; cursor: pointer; border: 1px solid transparent;
+}
+.m-primary-button { background: var(--blue); color: #fff; }
+.m-primary-button:disabled { opacity: 0.9; cursor: default; }
+.m-gradient-button { background: var(--gradient-accent); color: #fff; border-radius: 28px; margin-top: 12px; }
+.m-dark-button { background: #2b2d31; color: #fff; margin-top: 12px; justify-content: flex-start; padding: 0 16px; }
+.m-outline-button { background: var(--surface); color: var(--text-primary); border-color: var(--border-strong); border-radius: 28px; margin-top: 12px; }
+.m-soft-button { background: #eef3ff; color: var(--blue); }
+.m-back { margin: 12px 0 0; }
+
+/* 01 홈 */
+.m-hero {
+  position: relative; min-height: 380px; padding: 120px 20px 24px; color: #fff;
+  background: linear-gradient(180deg, rgba(10, 30, 70, 0.25), rgba(10, 30, 70, 0.55)), url("/seasonal/kogl-gosangol-autumn-landscape.jpg") center / cover;
+}
+.m-hero h1 { margin: 0 0 14px; font-size: 30px; line-height: 1.3; font-weight: 800; }
+.m-hero p { margin: 0 0 18px; font-size: 14px; line-height: 1.5; }
+.m-hero-button { display: flex; align-items: center; justify-content: center; min-height: 48px; background: #fff; color: var(--blue); border-radius: 28px; font-weight: 800; text-decoration: none; }
+.m-hero .m-hero-credit { position: absolute; right: 12px; bottom: 6px; margin: 0; font-size: 10px; opacity: 0.85; }
+.m-home .m-section { padding: 0 20px; }
+.m-section-head { display: flex; align-items: baseline; justify-content: space-between; }
+.m-more { font-size: 14px; color: var(--text-secondary); text-decoration: none; }
+.m-finder h3 { margin: 0 0 16px; font-size: 24px; line-height: 1.3; }
+.m-finder-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.m-finder-row select { width: 100%; min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: #fff; font-weight: 700; }
+.m-stories { display: grid; gap: 12px; }
+.m-story { background: #f4f4f5; }
+.m-story h3 { margin: 4px 0 14px; font-size: 20px; line-height: 1.35; }
+.m-story-body { margin: 0 0 12px; font-size: 13px; color: var(--text-secondary); }
+.m-story-link { font-size: 13px; font-weight: 700; text-decoration: none; }
+.m-footer { padding: 24px 20px 28px; font-size: 12px; color: var(--text-secondary); }
+.m-footer p { margin: 6px 0 0; line-height: 1.5; }
+
+/* 지도 */
+.m-map { position: relative; width: 100%; overflow: hidden; background: #dfe7f2; }
+.m-map-canvas { position: absolute; inset: 0; }
+.m-map-fallback { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 6px; padding: 16px; color: var(--text-secondary); font-size: 13px; text-align: center; background: linear-gradient(135deg, #e5ecf7, #d8e3f3); }
+.m-map-fallback ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.m-map-fallback li { background: #fff; padding: 4px 10px; border-radius: 12px; font-weight: 700; color: var(--blue); }
+.m-map-chip { position: absolute; z-index: 5; border: 0; background: #fff; color: var(--blue); font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 12px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); cursor: pointer; }
+.m-map-top-left { top: 16px; left: 16px; }
+.m-map-bottom-right { right: 16px; bottom: 16px; }
+.m-map-zoom { position: absolute; z-index: 5; right: 16px; bottom: 56px; display: grid; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
+.m-map-zoom button { width: 44px; height: 38px; border: 0; background: none; font-size: 20px; color: #3a4355; cursor: pointer; }
+.m-pin-me { width: 22px; height: 22px; border-radius: 50%; background: var(--blue); border: 4px solid #fff; box-shadow: 0 0 0 6px rgba(53, 99, 217, 0.25); }
+.m-pin-label { padding: 3px 12px; border-radius: 12px; background: #fff; color: var(--blue); font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); }
+.m-pin-selected { background: var(--blue); color: #fff; }
+
+/* 02·03 */
+.m-region-card { margin-top: 10px; }
+.m-ask { margin: 16px 0 10px; font-size: 15px; font-weight: 700; }
+.m-region-name { margin: 0 0 6px; font-size: 28px; font-weight: 800; }
+.m-region-line { margin: 0 0 10px; font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+.m-region-spot { margin: 14px 0 6px; font-size: 16px; font-weight: 800; }
+.m-region-weather { margin: 0 0 8px; font-size: 12px; color: var(--text-secondary); }
+.m-region-note { margin: 0 0 12px; font-size: 11px; color: var(--text-muted); }
+.m-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr); height: 52px; background: #fff; border-top: 1px solid var(--border); }
+.m-tabs button, .m-tabs a { display: flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--text-secondary); font-size: 14px; text-decoration: none; cursor: pointer; }
+.m-tabs .is-active { color: var(--blue); font-weight: 800; }
+
+/* 04 결과 */
+.m-summary strong { font-size: 15px; }
+.m-summary p { margin: 8px 0 14px; font-size: 13px; color: var(--text-secondary); }
+.m-main > .m-map { margin: 16px 0; border-radius: 14px; }
+.m-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.m-result-thumb { background: #e3e3e3; border-radius: 12px; padding: 16px; }
+.m-result-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); }
+.m-result-title { margin: 20px 0 16px; font-size: 26px; line-height: 1.3; font-weight: 800; }
+.m-result-link { width: 100%; padding: 14px 0 0; border: 0; border-top: 1px solid rgba(0, 0, 0, 0.15); background: none; text-align: left; font-size: 13px; font-weight: 700; cursor: pointer; }
+.m-result-sub { margin: 14px 0 6px; font-size: 17px; }
+.m-result-body { margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+
+/* 05 장소 */
+.m-breadcrumb { padding: 12px 0 0; font-size: 12px; color: var(--text-secondary); }
+.m-breadcrumb a { text-decoration: none; }
+.m-block { margin-top: 14px; }
+.m-block h2 { margin: 0 0 12px; font-size: 20px; }
+.m-block h3 { margin: 16px 0 6px; font-size: 17px; }
+.m-block p { margin: 0 0 10px; font-size: 14px; line-height: 1.6; }
+.m-block p.m-note { font-size: 12px; }
+.m-block hr { border: 0; border-top: 1px solid var(--border); margin: 18px 0 0; }
+.m-callout { margin-top: 14px; background: #eaf1ff; border-color: #dbe6fb; }
+.m-callout strong { font-size: 17px; color: var(--blue); }
+.m-callout p { margin: 8px 0 0; font-size: 12px; color: var(--text-secondary); }
+.m-checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
+.m-checklist span { margin-right: 10px; color: var(--text-secondary); }
+.m-warning { background: #f4efe4; color: #6a5530; padding: 8px 12px; border-radius: 8px; font-size: 12px; }
+
+/* 06 모달·07 완료 */
+.m-scrim { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(23, 32, 51, 0.5); }
+.m-modal { position: relative; width: 100%; max-width: 360px; background: #fff; border-radius: 20px; padding: 28px 20px 20px; }
+.m-modal h2 { margin: 6px 0 12px; font-size: 22px; text-align: center; }
+.m-modal-close { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border: 0; background: none; font-size: 18px; color: var(--text-secondary); cursor: pointer; }
+.m-modal-arrow { margin: 18px 0 0; text-align: center; font-size: 28px; color: var(--blue); }
+.m-modal-lead { margin: 0 0 16px; text-align: center; font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+.m-modal-dest { display: grid; gap: 4px; padding: 14px; background: #f1f4fa; border-radius: 12px; margin-bottom: 14px; }
+.m-modal-dest span, .m-modal-dest small { font-size: 12px; color: var(--text-secondary); }
+.m-modal-dest strong { font-size: 20px; }
+.m-done { margin-top: 14px; padding: 20px; }
+.m-done h1 { margin: 12px 0; font-size: 22px; text-align: center; }
+.m-done p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+.m-done-check { width: 60px; height: 60px; margin: 6px auto 0; border-radius: 50%; display: grid; place-items: center; background: #e2f4ef; color: var(--teal); font-size: 28px; }
+.m-recheck { margin: 14px 0 6px; padding: 14px; background: #e9f5f0; border-radius: 12px; }
+.m-recheck strong { color: #0a6a5c; }
+.m-recheck p { margin: 6px 0 0; }
+.m-reopen { display: block; margin-top: 16px; text-align: center; font-size: 13px; font-weight: 700; color: var(--blue); text-decoration: none; }
+
+/* 여행 조건 폼(CompanionForm)을 모바일 폭에 맞춘다. */
+.m-form .companion-form { padding: 0; background: none; border: 0; box-shadow: none; }
+.m-form .companion-form h2 { margin: 26px 0 8px; font-size: 22px; }
+.m-form .companion-form-body { display: grid; gap: 16px; }
+.m-form .travel-filter-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px; }
+.m-form .travel-filter-grid label { display: grid; gap: 4px; padding: 10px 12px; background: #f1f4fa; border-radius: 10px; }
+.m-form .travel-filter-grid select, .m-form .travel-filter-grid input { border: 0; background: transparent; font-weight: 700; min-height: 28px; }
+.m-form .people-row { display: grid; gap: 12px; }
+.m-form .submit-btn { width: 100%; min-height: 48px; border-radius: 12px; border: 0; background: var(--blue); color: #fff; font-weight: 700; }
+.m-form .add-companion { width: 100%; min-height: 48px; border-radius: 12px; background: #fff; border: 1px solid var(--border-strong); color: var(--blue); font-weight: 700; }

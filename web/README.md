@@ -171,3 +171,18 @@ src/
 2. `src/data/sampleRegions.ts`를 그 응답을 fetch하는 코드로 교체한다
    (`Region[]` 타입만 맞추면 나머지 컴포넌트는 그대로 동작한다).
 3. 시범 권역 10곳 외 지역까지 넓힌다.
+
+## 모바일 화면 (Figma 01~07)
+
+폭 640px 이하에서는 `src/mobile/`의 화면을 쓰고, 그보다 넓으면 기존 PC 화면을 쓴다(`App.tsx`의 `useIsMobile`).
+
+| 화면 | 주소 | 파일 |
+|---|---|---|
+| 01 홈 | `/` | `MobileHome.tsx` |
+| 02 현재 위치 지도 · 03 추천 지역 지도 | `/app` (`?v=map`, `?v=region`) | `MobileApp.tsx` |
+| 04 여행 추천 결과 | `/app?v=results` | `MobileApp.tsx` |
+| 05 장소와 안전 정보 · 06 카카오맵 이동 확인 · 07 길찾기 실행 완료 | `/app?v=place`, `?v=done` | `MobileApp.tsx` |
+
+- 추천·날씨 계산은 PC와 같은 `lib/useTripEngine.ts`를 쓴다.
+- 성별은 입력하지 않는다(연령대만). 위치는 "내 위치" 버튼을 눌렀을 때만 이 브라우저에서 쓰고 서버로 보내지 않는다.
+- 길찾기 클릭·평가 같은 이용 기록은 저장하지 않는다.
