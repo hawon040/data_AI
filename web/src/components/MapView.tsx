@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { loadKakaoSdk } from "../lib/kakaoSdk";
 import { topAttractionsOf } from "../lib/recommend";
 import {
   splitRecommendedSpots,
@@ -17,21 +18,6 @@ function dotImage(svg: string, size: number) {
     "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
     new window.kakao.maps.Size(size, size),
   );
-}
-
-function loadKakaoSdk(appKey: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.kakao?.maps) {
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&libraries=clusterer&autoload=false`;
-    script.async = true;
-    script.onload = () => window.kakao.maps.load(() => resolve());
-    script.onerror = () => reject(new Error("카카오맵 SDK 로드 실패"));
-    document.head.appendChild(script);
-  });
 }
 
 type FallbackTab = "spot" | "pet" | "medical";
