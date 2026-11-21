@@ -46,11 +46,14 @@ function throwDuration(): number {
 export function RandomTripPicker({
   regions,
   people,
+  withChildren = false,
   onPick,
 }: {
   regions: Region[];
   /** 동행자 정보 — 비어 있으면 인기 지표만으로 가중치를 준다. */
   people: Person[];
+  /** 아이(10세 미만) 동반이면 카지노를 후보에서 뺀다 */
+  withChildren?: boolean;
   /** 뽑힌 결과를 지도·상세 패널에 반영하기 위한 콜백. */
   onPick: (region: Region, attraction: Attraction) => void;
 }) {
@@ -61,7 +64,7 @@ export function RandomTripPicker({
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const pool = useMemo(() => buildCandidatePool(regions, people), [regions, people]);
+  const pool = useMemo(() => buildCandidatePool(regions, people, { withChildren }), [regions, people, withChildren]);
 
   const throwPen = () => {
     if (phase === "throwing") return;
