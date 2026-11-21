@@ -1,18 +1,41 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CompanionForm } from "../components/CompanionForm";
+import { DistanceExcludedList } from "../components/DistanceExcludedList";
+import { MapAreaPicker } from "../components/MapAreaPicker";
+import { TravelTimeExcludedList } from "../components/TravelTimeExcludedList";
+import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
+import { SIGUNGU } from "../data/sigungu";
+import { attractionMeta, categoryChips } from "../lib/cardInfo";
+import { buildChecklist, type Checklist, type ChecklistFocus } from "../lib/checklist";
 import { kakaoDirectionsUrl } from "../lib/kakaoLocal";
-import { airTips, mergeTips, terrainTips, weatherTipSentences } from "../lib/preparationTips";
-import type { SafetyDisplayFilters } from "../lib/safetyPriority";
+import { worstOf } from "../lib/liveWeather";
+import { NATIONWIDE, type MapArea } from "../lib/mapArea";
 import {
+  effectiveRanking,
+  formatKm,
+  haversineKm,
+  isLowAccuracy,
+  locateCurrentPosition,
+  LOW_ACCURACY_MESSAGE,
+  nearestAttractionKm,
+  NEEDS_ORIGIN_MESSAGE,
+  NO_NEARBY_MESSAGE,
+  type Origin,
+} from "../lib/origin";
+import type { SafetyDisplayFilters } from "../lib/safetyPriority";
+import { FAR_DAY_TRIP_BADGE, isFarForDayTrip, travelHours, travelLabel } from "../lib/travelTime";
+import {
+  allowedForParty,
   DEFAULT_TRIP_PREFERENCES,
-  getPreparationTips,
-  getSeason,
+  TRANSPORT_OPTIONS,
+  tripSeason,
   type TripPreferences,
 } from "../lib/tripPreferences";
 import { AGE_GROUP_LABELS, type Attraction, type Person, type Region } from "../lib/types";
 import { useTripEngine } from "../lib/useTripEngine";
+import { INDOOR_RETRY_LABEL } from "../lib/weatherExclusions";
 import { MobileFooter } from "./MobileHome";
 import { MobileHeader } from "./MobileHeader";
 import { MobileMap, type MobileMapMarker } from "./MobileMap";
@@ -21,16 +44,13 @@ import "./mobile.css";
 type View = "map" | "region" | "results" | "place" | "done";
 const VIEWS: View[] = ["map", "region", "results", "place", "done"];
 
-/** 위치 권한이 없거나 아직 허용 전일 때 쓰는 예시 위치(서울 중구). */
+/** 출발지(내 위치·직접 고른 곳)가 없을 때 지도 중심으로만 쓰는 예시 위치(서울 중구). 거리 계산에는 쓰지 않는다. */
 const SAMPLE_POSITION = { lat: 37.5641, lng: 126.9979 };
 const KOREA_CENTER = { lat: 36.3, lng: 127.8 };
 
-const TRANSPORT_LABELS: Record<TripPreferences["transport"], string> = {
-  "public-transit": "대중교통",
-  "tour-bus": "관광버스",
-  car: "자가용",
-  walking: "도보·자전거",
-};
+function transportLabel(transport: TripPreferences["transport"]): string {
+  return TRANSPORT_OPTIONS.find((option) => option.value === transport)?.label ?? "";
+}
 
 function formatDate(iso: string): string {
   const [year, month, day] = iso.split("-");
@@ -41,9 +61,21 @@ function durationLabel(preferences: TripPreferences): string {
   return preferences.duration === "day" ? "당일치기" : `${preferences.nights}박`;
 }
 
+/** "지도에서 볼 지역"의 지도 중심·확대 수준. 시·도는 시군구 대표점의 평균, 시·군·구는 그 대표점. */
+function areaView(area: MapArea): { center: { lat: number; lng: number }; level: number } {
+  const rows = SIGUNGU[area.province] ?? [];
+  const district = rows.find(([name]) => name === area.district);
+  if (district) return { center: { lat: district[1], lng: district[2] }, level: 8 };
+  if (rows.length === 0) return { center: KOREA_CENTER, level: 13 };
+  const lat = rows.reduce((sum, row) => sum + row[1], 0) / rows.length;
+  const lng = rows.reduce((sum, row) => sum + row[2], 0) / rows.length;
+  return { center: { lat, lng }, level: 10 };
+}
+
 /**
  * 모바일 02~07 (Figma): 지도 → 추천 지역 → 추천 결과 → 장소·안전 정보 → 카카오맵 이동 확인 → 완료.
  * 화면 단계는 주소의 ?v= 로 두어 브라우저 뒤로 가기가 한 단계씩 돌아간다.
+ * 출발지는 하나다: 지도의 "◎ 내 위치"(허용 시) 또는 여행 조건에서 직접 고른 시·군·구. 거리·도보·자전거 거르기에 같이 쓴다.
  * 위치는 이 브라우저 안에서만 쓰고, 길찾기 클릭·평가 같은 이용 기록은 어디에도 보내거나 저장하지 않는다.
  */
 export function MobileApp() {
@@ -57,31 +89,56 @@ export function MobileApp() {
     nightPlan: false,
   });
   const [tripPreferences, setTripPreferences] = useState<TripPreferences>(() => {
-    // 홈의 "여행 찾기"에서 고른 지역·일정을 이어받는다.
-    const province = searchParams.get("province");
+    // 홈의 "여행 찾기"에서 고른 일정을 이어받는다(지역은 아래 '지도에서 볼 지역'으로).
     const duration = searchParams.get("duration");
-    return {
-      ...DEFAULT_TRIP_PREFERENCES,
-      province: province && SAMPLE_REGIONS.some((region) => region.province === province) ? province : "all",
-      duration: duration === "overnight" ? "overnight" : "day",
-    };
+    return { ...DEFAULT_TRIP_PREFERENCES, duration: duration === "overnight" ? "overnight" : "day" };
+  });
+  // "지도에서 볼 지역": 추천 결과 지도만 옮기고 추천은 바꾸지 않는다(PC와 같다). 홈에서 고른 시·도로 시작한다.
+  const [mapArea, setMapArea] = useState<MapArea>(() => {
+    const province = searchParams.get("province");
+    return province && SIGUNGU[province] ? { province, district: "all" } : NATIONWIDE;
   });
   const [regionCode, setRegionCode] = useState<string | null>(null);
   const [attraction, setAttraction] = useState<Attraction | null>(null);
   const [directionsOpen, setDirectionsOpen] = useState(false);
+  const [indoorRetry, setIndoorRetry] = useState(false);
+  const [rankingTouched, setRankingTouched] = useState(false);
 
-  const [myPosition, setMyPosition] = useState<{ lat: number; lng: number } | null>(null);
+  // 출발지 하나: ◎ 내 위치(gps) 또는 직접 고른 시·군·구(district).
+  const [origin, setOrigin] = useState<Origin | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationNotice, setLocationNotice] = useState<string | null>(null);
 
-  const engine = useTripEngine({ people, safetyFilters, tripPreferences, weatherDemo });
-  const { recommendations, weatherDecisions, regionWeather, weatherLoading, weatherPreset } = engine;
+  const ranking = effectiveRanking({
+    stored: tripPreferences.ranking,
+    touched: rankingTouched,
+    hasOrigin: origin != null,
+    duration: tripPreferences.duration,
+  });
+  const engine = useTripEngine({ people, safetyFilters, tripPreferences, weatherDemo, origin, indoorRetry, ranking });
+  const {
+    recommendations,
+    exploreRecommendations,
+    weatherDecisions,
+    regionWeather,
+    weatherLoading,
+    weatherPreset,
+    weatherRestricted,
+    weatherApplied,
+    distance,
+    distanceExclusions,
+    travelExclusions,
+    weatherExclusions,
+    purposeEmptyItems,
+    excludedByRegion,
+  } = engine;
 
   const requested = searchParams.get("v") as View | null;
   const featuredRegion: Region =
     recommendations[0]?.region ?? [...SAMPLE_REGIONS].sort((a, b) => b.totalVisitors - a.totalVisitors)[0];
   const selectedRegion = SAMPLE_REGIONS.find((region) => region.code === regionCode) ?? null;
-  const selectedItem = recommendations.find((item) => item.region.code === selectedRegion?.code) ?? null;
+  const allItems = [...recommendations, ...exploreRecommendations];
+  const selectedItem = allItems.find((item) => item.region.code === selectedRegion?.code) ?? null;
 
   // 필요한 값이 없는 단계는 지도로 돌려보낸다(새로고침 등).
   let view: View = requested && VIEWS.includes(requested) ? requested : "map";
@@ -105,25 +162,26 @@ export function MobileApp() {
     [setSearchParams],
   );
 
-  function locate() {
+  const clearSelection = () => {
+    setRegionCode(null);
+    setAttraction(null);
+  };
+
+  /** ◎ 내 위치: 허용하면 그 위치가 출발지가 된다(직접 고른 출발지를 바꾼다). */
+  async function locate() {
     setLocationNotice(null);
-    if (!navigator.geolocation) {
-      setLocationNotice("이 브라우저는 위치 기능을 지원하지 않아 예시 위치(서울 중구)를 보여 드려요.");
-      return;
-    }
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setMyPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setLocating(false);
-        if (view === "region") go("map");
-      },
-      () => {
-        setLocationNotice("위치 권한이 없어 예시 위치(서울 중구)를 보여 드려요.");
-        setLocating(false);
-      },
-      { timeout: 8000, maximumAge: 60_000 },
-    );
+    const result = await locateCurrentPosition();
+    setLocating(false);
+    if (result.ok) {
+      setOrigin(result.origin);
+      clearSelection();
+      if (view === "region") go("map");
+    } else {
+      setLocationNotice(
+        "위치를 가져오지 못했어요. 아래 여행 조건의 '출발지'에서 시·군·구를 직접 골라 주세요. 지금 지도는 예시 위치(서울 중구)예요.",
+      );
+    }
   }
 
   function openPlace(region: Region, spot: Attraction) {
@@ -132,16 +190,51 @@ export function MobileApp() {
     go("place");
   }
 
-  const base = myPosition ?? SAMPLE_POSITION;
+  // 지도에 쓰는 날씨(일정 중 가장 나쁜 값). 시연 모드면 예시 날씨.
+  const weatherOf = (code: string) => (weatherDemo ? weatherPreset.weather : regionWeather[code]?.worst ?? null);
+  const party = { withElderly: safetyFilters.withElderly, withChildren: safetyFilters.withChildren };
+  const cardAttractions = (region: Region) =>
+    allItems.find((item) => item.region.code === region.code)?.topAttractions.map(({ attraction: a }) => a) ?? [];
+  /** 준비물: 결과 화면은 공통, 장소 상세는 공통 → 지역 → 관광지 순서로 쌓는다. */
+  const checklistFor = (focus: ChecklistFocus): Checklist => {
+    const focusRegion = focus.kind === "common" ? null : focus.region;
+    return buildChecklist({
+      preferences: tripPreferences,
+      party,
+      commonWeather: worstOf(
+        recommendations.map(({ region }) => weatherOf(region.code)).filter((w): w is NonNullable<typeof w> => w != null),
+      ),
+      regionWeather: focusRegion ? weatherOf(focusRegion.code) : null,
+      regionWeatherTips: focusRegion && !weatherDemo ? regionWeather[focusRegion.code]?.tips ?? [] : [],
+      accessTip: null,
+      travelHours: !origin
+        ? null
+        : focus.kind === "attraction"
+          ? travelHours(haversineKm(origin, focus.attraction), tripPreferences.transport)
+          : focus.kind === "region"
+            ? (() => {
+                const item = allItems.find((i) => i.region.code === focus.region.code);
+                const km = item ? nearestAttractionKm(item, origin) : null;
+                return km != null ? travelHours(km, tripPreferences.transport) : null;
+              })()
+            : null,
+      focus,
+    });
+  };
+
+  const base = origin ?? SAMPLE_POSITION;
+  const originMarkerLabel = origin ? (origin.source === "gps" ? "현재 위치" : `출발지 · ${origin.label}`) : "현재 위치 · 서울 중구 (예시)";
   const mapMarkers = ((): MobileMapMarker[] => {
     if (view === "results") {
-      return recommendations.map((item) => ({
+      const markers: MobileMapMarker[] = recommendations.map((item) => ({
         id: item.region.code,
         lat: item.region.lat,
         lng: item.region.lng,
         label: item.region.name,
         tone: "region" as const,
       }));
+      if (origin) markers.push({ id: "me", lat: origin.lat, lng: origin.lng, label: originMarkerLabel, tone: "me" });
+      return markers;
     }
     const markers: MobileMapMarker[] = [];
     if (view === "region" && selectedRegion) {
@@ -153,37 +246,55 @@ export function MobileApp() {
         tone: "selected",
       });
     } else {
-      markers.push({ id: "me", lat: base.lat, lng: base.lng, label: "현재 위치", tone: "me" });
-      markers.push({ id: "me-label", lat: base.lat, lng: base.lng, label: myPosition ? "현재 위치" : "현재 위치 · 서울 중구", tone: "region" });
+      markers.push({ id: "me", lat: base.lat, lng: base.lng, label: originMarkerLabel, tone: "me" });
+      markers.push({ id: "me-label", lat: base.lat, lng: base.lng, label: originMarkerLabel, tone: "region" });
     }
     return markers;
   })();
+  const accuracyCircle =
+    origin?.source === "gps" && origin.accuracy != null ? { lat: origin.lat, lng: origin.lng, radius: origin.accuracy } : null;
+  const lowAccuracy = isLowAccuracy(origin);
+  const accuracyNotice = lowAccuracy && origin?.accuracy != null && (
+    <p className="m-status m-warning" role="status">
+      {LOW_ACCURACY_MESSAGE} (오차 {formatKm(origin.accuracy / 1000)}). 아래 &apos;출발지&apos;에서 시·군·구를
+      직접 고르면 더 정확해요.
+    </p>
+  );
 
   const form = (
     <div id="m-form" className="m-form">
       <CompanionForm
         regions={SAMPLE_REGIONS}
-        preferences={tripPreferences}
+        preferences={{ ...tripPreferences, ranking }}
         weatherDemo={weatherDemo}
+        origin={origin}
+        onOriginChange={(next) => {
+          setOrigin(next);
+          setLocationNotice(null);
+          clearSelection();
+        }}
+        showOriginLocate={false}
         onPreferencesChange={(preferences) => {
+          if (preferences.ranking !== ranking) setRankingTouched(true);
           setTripPreferences(preferences);
-          setRegionCode(null);
-          setAttraction(null);
+          setIndoorRetry(false);
+          clearSelection();
         }}
         onSubmit={(next, filters) => {
           setPeople(next);
           setSafetyFilters(filters);
-          setRegionCode(null);
-          setAttraction(null);
+          clearSelection();
           go("results");
         }}
       />
+      {origin?.source === "gps" && <p className="m-hint m-hint-small">출발지: 현재 위치(◎ 내 위치). 다른 곳에서 출발하면 위에서 시·군·구를 골라 주세요.</p>}
     </div>
   );
+  const season = tripSeason(tripPreferences);
 
   if (view === "done" && attraction && selectedRegion) {
     return (
-      <div className="m-shell" data-season={getSeason(tripPreferences.month)}>
+      <div className="m-shell" data-season={season}>
         <MobileHeader showNav />
         <main className="m-main">
           <Breadcrumb current="길찾기 실행 완료" />
@@ -202,15 +313,15 @@ export function MobileApp() {
 
   if (view === "place" && attraction && selectedRegion) {
     const decision = weatherDecisions[selectedRegion.code];
-    const party = { withElderly: safetyFilters.withElderly, withChildren: safetyFilters.withChildren };
-    const worst = weatherDemo ? weatherPreset.weather : regionWeather[selectedRegion.code]?.worst ?? null;
-    const tips = mergeTips(getPreparationTips(attraction, tripPreferences), [
-      ...weatherTipSentences(weatherDemo ? [] : regionWeather[selectedRegion.code]?.tips ?? []),
-      ...airTips(worst),
-      ...terrainTips([attraction], party),
-    ]);
+    const km = origin ? haversineKm(origin, attraction) : null;
+    const checklist = checklistFor({
+      kind: "attraction",
+      region: selectedRegion,
+      attractions: cardAttractions(selectedRegion),
+      attraction,
+    });
     return (
-      <div className="m-shell" data-season={getSeason(tripPreferences.month)}>
+      <div className="m-shell" data-season={season}>
         <MobileHeader showNav />
         <main className="m-main">
           <Breadcrumb current="장소 상세" />
@@ -218,9 +329,10 @@ export function MobileApp() {
             attraction={attraction}
             region={selectedRegion}
             preferences={tripPreferences}
+            distanceLabel={km != null ? `출발지에서 ${travelLabel(km, tripPreferences.transport)}` : null}
             weatherSummary={people != null ? decision?.summary ?? null : null}
             weatherLoading={weatherLoading}
-            tips={tips}
+            checklist={checklist}
             onBack={() => go("results")}
             onDirections={() => setDirectionsOpen(true)}
           />
@@ -246,18 +358,24 @@ export function MobileApp() {
     const ageLabels = people.length
       ? people.map((person) => AGE_GROUP_LABELS[person.ageGroup]).join(" · ")
       : "연령대 입력 없음";
+    const resultsMap = areaView(mapArea);
+    const emptyMessage =
+      distance.limitKm != null && origin && weatherApplied.length > 0
+        ? NO_NEARBY_MESSAGE
+        : weatherRestricted
+          ? "방문일 날씨 기준에 맞는 관광지가 이 조건에는 없어요. 목적을 넓히거나 다른 날짜를 골라 보세요."
+          : "현재 조건에 맞는 여행지가 없어요. 목적이나 스타일을 넓혀 보세요.";
     return (
-      <div className="m-shell" data-season={getSeason(tripPreferences.month)}>
+      <div className="m-shell" data-season={season}>
         <MobileHeader />
         <main className="m-main">
           <h1 className="m-page-title">여행 추천 결과</h1>
           <section className="m-card m-summary" aria-label="여행 조건 요약">
             <strong>
-              {formatDate(tripPreferences.visitDate)} · {tripPreferences.month}월 · {durationLabel(tripPreferences)}
+              {formatDate(tripPreferences.visitDate)} · {durationLabel(tripPreferences)}
             </strong>
             <p>
-              {tripPreferences.province === "all" ? "전국" : tripPreferences.province} ·{" "}
-              {TRANSPORT_LABELS[tripPreferences.transport]} · {ageLabels}
+              {origin ? `출발 ${origin.label}` : "출발지 미정"} · {transportLabel(tripPreferences.transport)} · {ageLabels}
             </p>
             <button
               type="button"
@@ -268,22 +386,58 @@ export function MobileApp() {
             </button>
           </section>
 
-          <MobileMap center={KOREA_CENTER} level={13} markers={mapMarkers} height={200} />
+          <div className="m-area-picker">
+            <MapAreaPicker area={mapArea} onChange={setMapArea} />
+          </div>
+          <MobileMap center={resultsMap.center} level={resultsMap.level} markers={mapMarkers} height={200} />
 
           {weatherLoading && <p className="m-status" role="status">방문일 날씨를 확인하는 중…</p>}
+          {distance.needsOrigin && (
+            <p className="m-status m-warning" role="status">
+              {NEEDS_ORIGIN_MESSAGE}. 지도 화면의 ◎ 내 위치를 누르거나 아래 &apos;출발지&apos;를 골라 주세요.
+            </p>
+          )}
+          {accuracyNotice}
+          {indoorRetry && <p className="m-status">실내 관광지만으로 다시 추천했어요. 여행 조건을 바꾸면 원래대로 추천해요.</p>}
           {recommendations.length === 0 && !weatherLoading ? (
-            <p className="m-status">현재 조건에 맞는 여행지가 없어요. 목적이나 지역 범위를 넓히거나 다른 날짜를 골라 보세요.</p>
+            <>
+              <p className="m-status">{emptyMessage}</p>
+              {purposeEmptyItems.length > 0 && (
+                <button
+                  type="button"
+                  className="m-primary-button"
+                  onClick={() => {
+                    // 목적을 '전체'로 바꾸고 실내 관광지만으로 다시 추천한다(PC와 같다).
+                    setTripPreferences((current) => ({ ...current, purpose: "all" }));
+                    setIndoorRetry(true);
+                    clearSelection();
+                  }}
+                >
+                  {INDOOR_RETRY_LABEL}
+                </button>
+              )}
+            </>
           ) : (
             <ol className="m-results">
               {recommendations.flatMap((item, index) => {
                 const top = item.topAttractions[0]?.attraction;
                 if (!top) return [];
                 const weather = weatherDecisions[item.region.code]?.summary;
+                const excluded = excludedByRegion.get(item.region.code) ?? [];
+                const chips = categoryChips([
+                  ...item.topAttractions.map(({ attraction: a }) => a),
+                  ...excluded.map(({ attraction: a }) => a),
+                ]);
+                const nearestKm = origin ? nearestAttractionKm(item, origin) : null;
+                const far = isFarForDayTrip(
+                  nearestKm != null ? travelHours(nearestKm, tripPreferences.transport) : null,
+                  tripPreferences.duration,
+                );
                 return (
                   <li key={item.region.code} className="m-card m-result">
                     <div className="m-result-thumb">
                       <div className="m-result-head">
-                        <span>{top.category}</span>
+                        <span>{attractionMeta(top)}</span>
                         <span>{String(index + 1).padStart(2, "0")}</span>
                       </div>
                       <p className="m-result-title">{top.name}</p>
@@ -294,6 +448,19 @@ export function MobileApp() {
                     <h2 className="m-result-sub">
                       {item.region.name} · {top.name}
                     </h2>
+                    {chips.length > 0 && (
+                      <ul className="m-chips" aria-label="이 지역 관광지 카테고리">
+                        {chips.map((chip) => (
+                          <li key={chip}>{chip}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {nearestKm != null && (
+                      <p className="m-result-distance">
+                        가장 가까운 관광지까지 {travelLabel(nearestKm, tripPreferences.transport)}
+                        {far && <span className="m-badge">{FAR_DAY_TRIP_BADGE}</span>}
+                      </p>
+                    )}
                     <p className="m-result-body">
                       {item.evidence.slice(0, 2).join(" ")}
                       {weather && (
@@ -303,11 +470,37 @@ export function MobileApp() {
                         </>
                       )}
                     </p>
+                    {item.topAttractions.length > 1 && (
+                      <ul className="m-spot-list" aria-label={`${item.region.name} 추천 관광지`}>
+                        {item.topAttractions.slice(0, 4).map(({ attraction: spot }) => (
+                          <li key={spot.name}>
+                            <button type="button" onClick={() => openPlace(item.region, spot)}>
+                              <strong>{spot.name}</strong>
+                              <span>
+                                {attractionMeta(spot)}
+                                {origin && ` · ${travelLabel(haversineKm(origin, spot), tripPreferences.transport)}`}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {excluded.length > 0 && (
+                      <p className="m-note">
+                        {excluded.map(({ attraction: a, label }) => `${a.name}(${label})`).join(", ")}
+                      </p>
+                    )}
                   </li>
                 );
               })}
             </ol>
           )}
+          <div className="m-excluded">
+            <WeatherExcludedList items={weatherExclusions} />
+            <DistanceExcludedList items={distanceExclusions} limitKm={distance.limitKm} />
+            <TravelTimeExcludedList items={travelExclusions} maxHours={tripPreferences.maxTravelHours} />
+          </div>
+          {recommendations.length > 0 && <MobileChecklist checklist={checklistFor({ kind: "common" })} />}
           {form}
         </main>
         <MobileFooter />
@@ -318,10 +511,13 @@ export function MobileApp() {
   // 02 현재 위치 지도 / 03 추천 지역 지도
   const inRegion = view === "region" && selectedRegion;
   const cardRegion = inRegion ? selectedRegion : featuredRegion;
-  const cardTop = (inRegion ? selectedItem?.topAttractions[0]?.attraction : null) ?? cardRegion.attractions[0] ?? null;
+  // 아이·청소년 동반이면 카지노 등은 예시 카드에도 보이지 않게 동행자 기준으로 거른다.
+  const regionSpots = cardRegion.attractions.filter((spot) => allowedForParty(spot, people ?? [], safetyFilters));
+  const cardTop = (inRegion ? selectedItem?.topAttractions[0]?.attraction : null) ?? regionSpots[0] ?? null;
   const cardWeather = inRegion && people != null ? weatherDecisions[cardRegion.code]?.summary : null;
+  const cardChips = categoryChips(selectedItem && inRegion ? selectedItem.topAttractions.map(({ attraction: a }) => a) : regionSpots);
   return (
-    <div className="m-shell m-has-tabs" data-season={getSeason(tripPreferences.month)}>
+    <div className="m-shell m-has-tabs" data-season={season}>
       <MobileHeader />
       <main className="m-main m-main-flush">
         <div className="m-pad">
@@ -329,36 +525,49 @@ export function MobileApp() {
           <p className="m-subtle">
             {inRegion
               ? `${selectedRegion.province} ${selectedRegion.name} · 선택한 추천 지역`
-              : myPosition
-                ? "현재 위치 · 위치는 이 기기에서만 사용해요"
+              : origin
+                ? origin.source === "gps"
+                  ? "현재 위치 · 위치는 이 기기에서만 사용해요"
+                  : `출발지 · ${origin.label}`
                 : "현재 위치 · 서울특별시 중구 (예시)"}
           </p>
         </div>
         <MobileMap
           center={inRegion ? { lat: selectedRegion.lat, lng: selectedRegion.lng } : base}
-          level={inRegion ? 7 : 8}
+          level={inRegion ? 7 : lowAccuracy ? 9 : 8}
           markers={mapMarkers}
           locating={locating}
-          onMyLocation={locate}
+          onMyLocation={() => void locate()}
           onWholeKorea={() => setRegionCode(null)}
+          accuracy={inRegion ? null : accuracyCircle}
         />
         {locationNotice && <p className="m-status m-pad" role="status">{locationNotice}</p>}
+        {!inRegion && accuracyNotice && <div className="m-pad">{accuracyNotice}</div>}
 
         <section className="m-pad m-region-panel" aria-labelledby="m-region-title">
           <h2 id="m-region-title" className="m-section-title">
-            내 위치에서 시작하는 여행
+            {origin?.source === "district" ? "고른 출발지에서 시작하는 여행" : "내 위치에서 시작하는 여행"}
           </h2>
-          <p className="m-subtle">{myPosition ? "현재 위치 기준" : "서울 중구 기준 · 위치 예시"}</p>
+          <p className="m-subtle">
+            {origin ? `${origin.source === "gps" ? "현재 위치" : origin.label} 기준` : "서울 중구 기준 · 위치 예시"}
+          </p>
           <h3 className="m-ask">어디로 떠나볼까요?</h3>
           <article className="m-card m-region-card m-tinted">
             <p className="m-eyebrow m-blue">{inRegion ? "선택한 추천 지역" : "추천 지역"}</p>
             <p className="m-region-name">{cardRegion.name}</p>
-            <p className="m-region-line">{cardRegion.highlight}</p>
+            {cardChips.length > 0 && (
+              <ul className="m-chips" aria-label="이 지역 관광지 카테고리">
+                {cardChips.map((chip) => (
+                  <li key={chip}>{chip}</li>
+                ))}
+              </ul>
+            )}
             {inRegion && cardTop && (
               <>
                 <p className="m-region-spot">
                   {cardRegion.name} · {cardTop.name}
                 </p>
+                <p className="m-region-line">{attractionMeta(cardTop)}</p>
                 {selectedItem && <p className="m-region-line">{selectedItem.evidence.slice(0, 2).join(" ")}</p>}
                 {cardWeather && <p className="m-region-weather">{cardWeather}</p>}
                 {!selectedItem && <p className="m-region-note">추천 정보 예시</p>}
@@ -383,7 +592,7 @@ export function MobileApp() {
           </p>
           <p className="m-hint m-hint-small">
             지역을 선택해도 여행 조건은 유지돼요.
-            <br />◎ 내 위치 버튼으로 언제든 돌아올 수 있어요. 위치는 서버에 저장하지 않아요.
+            <br />◎ 내 위치를 누르면 그 위치가 출발지가 돼요. 위치는 서버에 저장하지 않아요.
           </p>
         </section>
 
@@ -408,6 +617,37 @@ export function MobileApp() {
   );
 }
 
+/** 준비물 체크리스트(공통 → 지역 → 관광지). PC의 TripPreparation과 같은 buildChecklist 결과를 모바일 카드로 그린다. */
+function MobileChecklist({ checklist }: { checklist: Checklist }) {
+  let number = 0;
+  return (
+    <section className="m-card m-block" aria-labelledby="m-checklist-title">
+      <h2 id="m-checklist-title">
+        방문 전 체크
+        {checklist.scopeLabel && <span className="m-scope">{checklist.scopeLabel}</span>}
+      </h2>
+      {checklist.sections.map((section, index) => (
+        <div key={section.title} className="m-checklist-section">
+          {checklist.sections.length > 1 && <h3>{index === 0 ? "공통" : section.title}</h3>}
+          <ol className="m-checklist">
+            {section.lines.map((line) => {
+              number += 1;
+              return (
+                <li key={line}>
+                  <span>{String(number).padStart(2, "0")}</span>
+                  {line}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      ))}
+      {checklist.hint && <p className="m-note">{checklist.hint.replace("지역이나 관광지를 누르면", "관광지를 누르면")}</p>}
+      <p className="m-note">준비물과 이동 정보는 일반 안내예요. 운영 시간·교통편·날씨를 출발 전에 다시 확인해 주세요.</p>
+    </section>
+  );
+}
+
 function Breadcrumb({ current }: { current: string }) {
   return (
     <nav className="m-breadcrumb" aria-label="현재 위치">
@@ -420,18 +660,20 @@ function PlaceScreen({
   attraction,
   region,
   preferences,
+  distanceLabel,
   weatherSummary,
   weatherLoading,
-  tips,
+  checklist,
   onBack,
   onDirections,
 }: {
   attraction: Attraction;
   region: Region;
   preferences: TripPreferences;
+  distanceLabel: string | null;
   weatherSummary: string | null;
   weatherLoading: boolean;
-  tips: string[];
+  checklist: Checklist;
   onBack: () => void;
   onDirections: () => void;
 }) {
@@ -442,12 +684,18 @@ function PlaceScreen({
       </button>
       <h1 className="m-place-title">{attraction.name}</h1>
       <p className="m-subtle">
-        {region.province} {region.name} · {attraction.category} · {durationLabel(preferences)}
+        {region.province} {region.name} · {attractionMeta(attraction)} · {durationLabel(preferences)}
       </p>
 
       <section className="m-card m-block">
         <h2>{region.name}에서 만나는 곳</h2>
-        <p>{region.highlight}</p>
+        <ul className="m-chips" aria-label="카테고리">
+          {categoryChips([attraction]).map((chip) => (
+            <li key={chip}>{chip}</li>
+          ))}
+          <li>{attractionMeta(attraction).split(" · ").pop()}</li>
+        </ul>
+        {distanceLabel && <p>{distanceLabel}</p>}
         <p className="m-note">운영 시간과 매장 운영 여부는 방문 전에 확인해 주세요.</p>
       </section>
 
@@ -462,17 +710,7 @@ function PlaceScreen({
         )
       )}
 
-      <section className="m-card m-block">
-        <h2>방문 전 체크</h2>
-        <ol className="m-checklist">
-          {tips.map((tip, index) => (
-            <li key={tip}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              {tip}
-            </li>
-          ))}
-        </ol>
-      </section>
+      <MobileChecklist checklist={checklist} />
 
       <section className="m-card m-block">
         <h2>주변 안전 정보</h2>
@@ -582,7 +820,7 @@ function DirectionsDone({
         <span>선택한 여행지</span>
         <strong>{attraction.name}</strong>
         <small>
-          {region.name} · {durationLabel(preferences)} · {TRANSPORT_LABELS[preferences.transport]}
+          {region.name} · {durationLabel(preferences)} · {transportLabel(preferences.transport)}
         </small>
       </div>
       <div className="m-recheck">
