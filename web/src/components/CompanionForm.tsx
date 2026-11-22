@@ -2,9 +2,14 @@ import { useState } from "react";
 import { AGE_GROUPS, AGE_GROUP_LABELS, type AgeGroup, type Person, type Region } from "../lib/types";
 import type { SafetyDisplayFilters } from "../lib/safetyPriority";
 import { WEATHER_PRESETS } from "../lib/weatherPresets";
+import { NEAREST_NEEDS_ORIGIN, NEEDS_ORIGIN_MESSAGE, type Origin } from "../lib/origin";
+import { MAX_DISTANCE_KM } from "../config/travelDistance";
+import { OriginPicker } from "./OriginPicker";
+import { MAX_TRAVEL_HOURS_OPTIONS } from "../config/travelTime";
+import { MAX_TRAVEL_NEEDS_ORIGIN, TRAVEL_HINT, TRAVEL_HINT_BUTTON, travelHintState } from "../lib/travelTime";
 import {
   addDaysIso,
-  getSeason,
+  tripSeason,
   NIGHTS_OPTIONS,
   PURPOSE_OPTIONS,
   SEASON_LABELS,
@@ -16,13 +21,17 @@ import {
 
 interface Props {
   onSubmit: (people: Person[], safetyFilters: SafetyDisplayFilters) => void;
+  /** 맞춤 추천 시범 지역 (추천은 항상 이 지역 전체에서 고른다) */
   regions: Region[];
-  /** 전국 데이터에 있는 시도 목록 — 맞춤 추천 시범 지역이 없는 시도도 지도에서 볼 수 있게 한다. */
-  provinces?: string[];
   preferences: TripPreferences;
   onPreferencesChange: (preferences: TripPreferences) => void;
   /** 주소에 ?demo=weather가 있을 때만 켜지고, 그때만 예시 날씨 선택이 보인다. */
   weatherDemo: boolean;
+  /** 출발지(선택). 거리 표시와 도보·자전거 거르기에만 쓴다. */
+  origin: Origin | null;
+  onOriginChange: (origin: Origin | null) => void;
+  /** false면 출발지의 "현재 위치" 버튼을 숨긴다(모바일은 지도의 "◎ 내 위치"와 같은 출발지를 쓴다) */
+  showOriginLocate?: boolean;
 }
 
 function PersonPicker({
@@ -58,7 +67,7 @@ function PersonPicker({
   );
 }
 
-export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [], preferences, onPreferencesChange, weatherDemo }: Props) {
+export function CompanionForm({ onSubmit, regions, preferences, onPreferencesChange, weatherDemo, origin, onOriginChange, showOriginLocate = true }: Props) {
   const [skipSelf, setSkipSelf] = useState(false);
   const [self, setSelf] = useState<Person>({ ageGroup: "20s" });
   const [companions, setCompanions] = useState<Person[]>([]);
@@ -67,19 +76,12 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
 
   const people = skipSelf ? companions : [self, ...companions];
   const withElderly = people.some((p) => p.ageGroup === "60plus");
-  const provinces = [...new Set([...allProvinces, ...regions.map((region) => region.province)])];
-  const pilotProvinces = new Set(regions.map((region) => region.province));
-  const availableRegions = regions.filter(
-    (region) => preferences.province === "all" || region.province === preferences.province,
-  );
-  const season = getSeason(preferences.month);
+  // 60대 이상이나 아이 동반이면 '최대 이동 시간' 아래에 2시간 권장 안내(자동으로 바꾸지 않는다)
+  const travelHint = travelHintState({ withElderly, withChildren, maxTravelHours: preferences.maxTravelHours, hasOrigin: origin != null });
+  const season = tripSeason(preferences);
 
   function updatePreference<K extends keyof TripPreferences>(key: K, value: TripPreferences[K]) {
-    onPreferencesChange({
-      ...preferences,
-      [key]: value,
-      ...(key === "province" ? { regionCode: "all" } : {}),
-    });
+    onPreferencesChange({ ...preferences, [key]: value });
   }
 
   return (
@@ -97,18 +99,17 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
           <h3 className="form-section-title" id="trip-conditions-heading">여행 조건</h3>
           <div className="travel-filter-grid">
             <label>
-              <span className="field-title">방문일</span>
+              <span className="field-title">
+                방문일
+                <span className="season-indicator" data-season={season}>{SEASON_LABELS[season]} 테마</span>
+              </span>
               <input
                 type="date"
                 value={preferences.visitDate}
                 min={todayIso()}
                 onChange={(e) => {
                   if (!e.target.value) return;
-                  onPreferencesChange({
-                    ...preferences,
-                    visitDate: e.target.value,
-                    month: Number(e.target.value.slice(5, 7)),
-                  });
+                  updatePreference("visitDate", e.target.value);
                 }}
               />
             </label>
@@ -120,21 +121,6 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
                 </select>
               </label>
             )}
-            <label>
-              <span className="field-title">
-                여행 월
-                <span className="season-indicator" data-season={season}>{SEASON_LABELS[season]} 테마</span>
-              </span>
-              <select
-                id="travel-month"
-                value={preferences.month}
-                onChange={(e) => updatePreference("month", Number(e.target.value))}
-              >
-                {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                  <option key={month} value={month}>{month}월</option>
-                ))}
-              </select>
-            </label>
             <label>
               <span className="field-title">여행 목적</span>
               <select value={preferences.purpose} onChange={(e) => updatePreference("purpose", e.target.value as TripPreferences["purpose"])}>
@@ -148,35 +134,42 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
               </select>
             </label>
             <label>
-              <span className="field-title">도</span>
-              <select value={preferences.province} onChange={(e) => updatePreference("province", e.target.value)}>
-                <option value="all">전국</option>
-                {provinces.map((province) => (
-                  <option key={province} value={province}>
-                    {province}{pilotProvinces.has(province) ? " · 맞춤 추천" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="field-title">시·군·구</span>
-              <select value={preferences.regionCode} onChange={(e) => updatePreference("regionCode", e.target.value)}>
-                <option value="all">전체</option>
-                {availableRegions.map((region) => <option key={region.code} value={region.code}>{region.name}</option>)}
-              </select>
-            </label>
-            <label>
               <span className="field-title">교통편</span>
               <select value={preferences.transport} onChange={(e) => updatePreference("transport", e.target.value as TripPreferences["transport"])}>
                 {TRANSPORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </label>
             <label>
+              <span className="field-title">최대 이동 시간</span>
+              <select
+                value={preferences.maxTravelHours ?? ""}
+                disabled={!origin}
+                onChange={(e) => updatePreference("maxTravelHours", e.target.value === "" ? null : Number(e.target.value))}
+              >
+                {MAX_TRAVEL_HOURS_OPTIONS.map((option) => (
+                  <option key={option.label} value={option.value ?? ""}>{option.label}</option>
+                ))}
+              </select>
+              {!origin && <span className="field-note">최대 이동 시간은 {MAX_TRAVEL_NEEDS_ORIGIN}</span>}
+              {travelHint.show && (
+                <span className="travel-hint">
+                  {TRAVEL_HINT}
+                  {travelHint.showButton && (
+                    <button type="button" className="pill-mini ghost" onClick={() => updatePreference("maxTravelHours", 2)}>
+                      {TRAVEL_HINT_BUTTON}
+                    </button>
+                  )}
+                </span>
+              )}
+            </label>
+            <label>
               <span className="field-title">추천 순서</span>
               <select value={preferences.ranking} onChange={(e) => updatePreference("ranking", e.target.value as TripPreferences["ranking"])}>
                 <option value="companion">연령대·동행 선호</option>
                 <option value="popular">전체 인기 순</option>
+                <option value="nearest" disabled={!origin}>가까운 순{origin ? "" : " (출발지 필요)"}</option>
               </select>
+              {!origin && <span className="field-note">가까운 순은 {NEAREST_NEEDS_ORIGIN}</span>}
             </label>
             <fieldset className="duration-field">
               <legend className="field-title">여행 일정</legend>
@@ -215,10 +208,14 @@ export function CompanionForm({ onSubmit, regions, provinces: allProvinces = [],
                 </div>
               </fieldset>
             )}
+            <OriginPicker origin={origin} onChange={onOriginChange} showLocateButton={showOriginLocate} />
           </div>
-          <p className="form-hint" title="맞춤 추천은 시범 지역(충남·충북·강원)만 제공하고, 지도에는 전국 관광지·대피소를 보여줘요.">
+          {MAX_DISTANCE_KM[preferences.transport] != null && !origin && (
+            <p className="origin-needed">{NEEDS_ORIGIN_MESSAGE}</p>
+          )}
+          <p className="form-hint" title={`시범 지역: ${regions.map((region) => region.name).join(", ")}. 지도에서 볼 지역은 지도 위에서 따로 고를 수 있어요.`}>
             <span aria-hidden="true">i</span>
-            맞춤 추천 <strong>충남·충북·강원</strong> · 지도는 <strong>전국</strong>
+            맞춤 추천은 시범 {regions.length}개 지역에서 골라요
           </p>
         </section>
 

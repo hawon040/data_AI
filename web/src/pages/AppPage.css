@@ -95,6 +95,8 @@
   font-size: 16px;
 }
 .transport-chip {
+  flex: none;
+  white-space: nowrap;
   padding: 6px 10px;
   border-radius: 999px;
   background: var(--surface-raised);
@@ -110,6 +112,36 @@
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.6;
+}
+.scope-chip {
+  display: inline-block;
+  white-space: nowrap;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(8, 127, 117, 0.1);
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.trip-preparation-section-title {
+  margin: 14px 0 0;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.trip-preparation-section + .trip-preparation-section ul {
+  margin-top: 6px;
+}
+.trip-preparation-section-title + ul {
+  margin-top: 6px;
+}
+.trip-preparation-hint {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
 }
 .trip-preparation-note {
   margin: 12px 0 0;
@@ -405,7 +437,8 @@
   --control-height: 40px;
 }
 .companion-form select,
-.companion-form input[type="date"] {
+.companion-form input[type="date"],
+.map-area-picker select {
   height: var(--control-height);
   padding: 0 10px;
   border: 1px solid var(--border);
@@ -417,6 +450,7 @@
   font-weight: 500;
 }
 .companion-form select:focus-visible,
+.map-area-picker select:focus-visible,
 .companion-form input[type="date"]:focus-visible,
 .segmented label:has(input:focus-visible) {
   outline: 2px solid var(--blue);
@@ -466,6 +500,64 @@
   margin: 0;
   padding: 0;
   border: 0;
+}
+/* 출발지(선택): 시·도 → 시·군·구, 현재 위치 */
+.origin-field {
+  grid-column: span 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.origin-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.origin-controls select {
+  flex: 1;
+}
+.origin-controls .pill-mini {
+  flex: none;
+  white-space: nowrap;
+}
+.field-optional {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+.origin-state,
+.origin-error,
+.origin-needed {
+  margin: 6px 0 0;
+  font-size: 11px;
+}
+.origin-state {
+  color: var(--text-secondary);
+}
+.origin-error {
+  color: #b42318;
+  font-weight: 600;
+}
+.origin-needed {
+  color: var(--teal);
+  font-weight: 600;
+}
+.distance-line {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.distance-notice {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
 }
 .segmented {
   display: grid;
@@ -763,11 +855,102 @@
 .card-head > div:nth-child(2) {
   flex: 1;
 }
-.highlight {
-  font-size: 12px;
-  color: var(--text-secondary);
+/* 추천 카드: 그 지역 관광지 카테고리 칩(많은 순 최대 3개) */
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
   margin: 8px 0;
-  font-weight: 300;
+}
+.category-chip {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(53, 99, 217, 0.08);
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+}
+.empty-state .pill-mini {
+  margin-top: 8px;
+}
+.list-notice {
+  margin: 0 0 8px;
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
+}
+/* 날씨 때문에 목적에 맞는 관광지가 모두 빠진 지역 카드의 안내 */
+.empty-note {
+  margin: 6px 0;
+  color: #b54708;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ad-age-note {
+  margin: 6px 0 0;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 700;
+}
+.estimate-note {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+.far-badge {
+  display: inline-block;
+  margin: 4px 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(181, 71, 8, 0.1);
+  color: #b54708;
+  font-size: 11px;
+  font-weight: 700;
+}
+.travel-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--teal);
+  font-size: 10px;
+  font-weight: 700;
+}
+/* 관광지 버튼: 이름·분류·이동 시간은 각각 한 덩어리로, 넘치면 덩어리째 다음 줄로 */
+.attraction-chip {
+  flex-wrap: wrap;
+  white-space: nowrap;
+  row-gap: 1px;
+}
+.attraction-distance {
+  color: var(--teal);
+  font-size: 10px;
+  font-weight: 700;
+}
+.field-note {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+/* 관광지 버튼 옆 "카테고리 · 실내/야외" */
+.attraction-meta {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+/* 날씨 때문에 빠진 관광지: 흐리게, 누르면 상세는 열린다 */
+.is-excluded-list {
+  margin-top: 6px;
+}
+.attraction-chip.is-excluded {
+  opacity: 0.55;
+  border-style: dashed;
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+}
+.attraction-chip.is-excluded .attraction-meta {
+  text-decoration: none;
 }
 .evidence-list {
   margin: 0;
@@ -884,6 +1067,27 @@
   color: var(--text-secondary);
 }
 
+/* 지도 바로 위 "지도에서 볼 지역" — 지도만 바뀌고 추천은 그대로 */
+.map-area-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.map-area-picker .field-title {
+  margin: 0;
+}
+.map-area-picker select {
+  min-width: 140px;
+}
+.map-area-note {
+  color: var(--text-muted);
+  font-size: 11px;
+}
 .map-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(260px, 32%, 340px);

@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { loadKakaoSdk } from "../lib/kakaoSdk";
-
-const KAKAO_KEY = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
+import { KAKAO_MAP_KEY as KAKAO_KEY, loadKakaoSdk } from "../lib/kakaoMapSdk";
 
 export interface MobileMapMarker {
   id: string;
@@ -24,6 +22,7 @@ export function MobileMap({
   onWholeKorea,
   locating = false,
   height = 420,
+  accuracy = null,
 }: {
   center: { lat: number; lng: number };
   level: number;
@@ -32,10 +31,13 @@ export function MobileMap({
   onWholeKorea?: () => void;
   locating?: boolean;
   height?: number;
+  /** 내 위치의 오차 반경(coords.accuracy, m). 지도에 반투명 원으로 그린다 */
+  accuracy?: { lat: number; lng: number; radius: number } | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const overlaysRef = useRef<any[]>([]);
+  const circleRef = useRef<any>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "no-key" | "error">(KAKAO_KEY ? "loading" : "no-key");
 
   useEffect(() => {
@@ -85,6 +87,26 @@ export function MobileMap({
     });
   }, [status, markersKey]);
 
+  // 내 위치 오차 원: 반경이 바뀌거나 위치가 바뀌면 다시 그린다.
+  const accuracyKey = accuracy ? `${accuracy.lat},${accuracy.lng},${accuracy.radius}` : "";
+  useEffect(() => {
+    if (status !== "ready" || !mapRef.current) return;
+    circleRef.current?.setMap(null);
+    circleRef.current = null;
+    if (!accuracyKey) return;
+    const [lat, lng, radius] = accuracyKey.split(",").map(Number);
+    circleRef.current = new window.kakao.maps.Circle({
+      center: new window.kakao.maps.LatLng(lat, lng),
+      radius,
+      strokeWeight: 1,
+      strokeColor: "#2f6fed",
+      strokeOpacity: 0.6,
+      fillColor: "#2f6fed",
+      fillOpacity: 0.12,
+    });
+    circleRef.current.setMap(mapRef.current);
+  }, [status, accuracyKey]);
+
   function zoom(delta: number) {
     if (status === "ready" && mapRef.current) mapRef.current.setLevel(mapRef.current.getLevel() + delta);
   }
@@ -101,6 +123,7 @@ export function MobileMap({
                 ? "지도를 불러오지 못했어요."
                 : "지도 키가 설정되지 않아 지도를 표시하지 못해요."}
           </p>
+          {accuracy && <p>내 위치 오차 약 {Math.round(accuracy.radius).toLocaleString("ko-KR")}m</p>}
           <ul>
             {markers
               .filter((marker) => marker.tone !== "me")

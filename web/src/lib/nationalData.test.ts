@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitRecommendedSpots, type NationalSpot } from "./nationalData";
+import { sortSpotsByDistance, splitRecommendedSpots, type NationalSpot } from "./nationalData";
 
 function spot(name: string, province: string, district: string, capacity: number | null): NationalSpot {
   return {
@@ -54,5 +54,15 @@ describe("splitRecommendedSpots (지도 대신 나오는 목록 순서)", () => 
     const { recommended, others } = splitRecommendedSpots([gangneung, busan], []);
     expect(recommended).toEqual([]);
     expect(names(others)).toEqual(["을숙도", "경포대"]);
+  });
+});
+
+describe("[H6] 출발지에서 가까운 순 (지도 지역 '전국')", () => {
+  it("출발지에서 가까운 관광지부터 보여 준다", () => {
+    const cheonanOrigin = { lat: 36.8151, lng: 127.1139 };
+    const near = { ...spot("태조산관광지", "충청남도", "천안시", 10), lat: 36.83, lng: 127.19 };
+    const mid = { ...spot("청남대", "충청북도", "청주시", 99999), lat: 36.46, lng: 127.49 };
+    const far = { ...spot("을숙도", "부산광역시", "사하구", 4500000), lat: 35.1, lng: 128.94 };
+    expect(sortSpotsByDistance([far, mid, near], cheonanOrigin).map((s) => s.name)).toEqual(["태조산관광지", "청남대", "을숙도"]);
   });
 });

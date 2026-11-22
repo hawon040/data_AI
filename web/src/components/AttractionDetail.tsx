@@ -15,6 +15,7 @@ const TAG_LABELS: Record<string, string> = {
   theme_park: "테마파크",
   resort: "리조트",
   view: "전망",
+  casino: "카지노",
 };
 
 export function AttractionDetail({
@@ -24,6 +25,7 @@ export function AttractionDetail({
   seasonalTiming,
   seasonalDescription,
   party,
+  distanceLabel,
 }: {
   attraction: Attraction;
   region: Region | null;
@@ -32,6 +34,8 @@ export function AttractionDetail({
   seasonalDescription?: string;
   /** 주면 "이용 편의 정보" 칸(한국관광공사 무장애 여행정보)을 함께 보여 준다 */
   party?: AccessParty;
+  /** 출발지가 있으면 "출발지에서 약 12km" (관광지까지 직선거리) */
+  distanceLabel?: string | null;
 }) {
   const [lookup, setLookup] = useState<{ attraction: Attraction; place: PlaceDetail | null } | null>(null);
   const place = lookup?.attraction === attraction ? lookup.place : undefined;
@@ -60,8 +64,10 @@ export function AttractionDetail({
       {(locationLabel || region) && (
         <p className="ad-location">{locationLabel ?? `${region?.province} · ${region?.name}`}</p>
       )}
+      {distanceLabel && <p className="distance-line">{distanceLabel}</p>}
       {seasonalTiming && <p className="ad-location">{seasonalTiming}</p>}
       {seasonalDescription && <p className="ad-hint">{seasonalDescription}</p>}
+      {attraction.tags.includes("casino") && <p className="ad-age-note">카지노는 만 19세 이상 입장</p>}
       <div className="ad-facts">
         {attraction.popularityScore > 0 && (
           <span>인기 지표 <strong>{Math.round(attraction.popularityScore)}/100</strong></span>
