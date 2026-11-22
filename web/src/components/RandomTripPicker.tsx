@@ -38,9 +38,8 @@ function PenIllustration({
   );
 }
 
-function throwDuration(): number {
-  // 모션 줄이기 설정을 켠 사용자는 애니메이션 없이 거의 바로 결과를 본다.
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 150 : THROW_MS;
+function reducedMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 }
 
 export function RandomTripPicker({
@@ -48,6 +47,8 @@ export function RandomTripPicker({
   people,
   withChildren = false,
   onPick,
+  onOpen,
+  className,
 }: {
   regions: Region[];
   /** 동행자 정보 — 비어 있으면 인기 지표만으로 가중치를 준다. */
@@ -56,6 +57,10 @@ export function RandomTripPicker({
   withChildren?: boolean;
   /** 뽑힌 결과를 지도·상세 패널에 반영하기 위한 콜백. */
   onPick: (region: Region, attraction: Attraction) => void;
+  /** 주면 뽑힌 관광지를 눌러 상세 화면으로 갈 수 있다(모바일). */
+  onOpen?: (region: Region, attraction: Attraction) => void;
+  /** 바깥 화면에 맞춘 추가 클래스(예: 모바일 카드) */
+  className?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<TripCandidate | null>(null);
@@ -72,15 +77,21 @@ export function RandomTripPicker({
     if (!picked) return;
     setResult(picked);
     setSeen((prev) => new Set(prev).add(candidateKey(picked)));
+    // 모션 줄이기 설정을 켠 사용자는 날아가는 펜 없이 결과만 바로 본다.
+    if (reducedMotion()) {
+      setPhase("done");
+      onPick(picked.region, picked.attraction);
+      return;
+    }
     setPhase("throwing");
     timer.current = window.setTimeout(() => {
       setPhase("done");
       onPick(picked.region, picked.attraction);
-    }, throwDuration());
+    }, THROW_MS);
   };
 
   return (
-    <section className="random-trip" aria-label="랜덤 여행">
+    <section className={`random-trip${className ? ` ${className}` : ""}`} aria-label="랜덤 여행">
       <h3>랜덤 여행 · 펜 던지기</h3>
       <p className="rt-note">
         시범 지역의 관광지 중 한 곳을 무작위로 뽑아요. 안전 정보는 뽑힌 여행지에서 확인할 수 있어요.
@@ -152,7 +163,13 @@ export function RandomTripPicker({
             {result.region.province} {result.region.name} · {result.attraction.category}
           </div>
           <p className="rt-result-reason">{tripReason(result, people)}</p>
-          <p className="rt-result-hint">지도와 아래 상세 정보에서 길찾기를 확인할 수 있어요.</p>
+          {onOpen ? (
+            <button type="button" className="rt-result-open" onClick={() => onOpen(result.region, result.attraction)}>
+              {result.attraction.name} 장소·안전 정보 보기 →
+            </button>
+          ) : (
+            <p className="rt-result-hint">지도와 아래 상세 정보에서 길찾기를 확인할 수 있어요.</p>
+          )}
         </div>
       )}
     </section>

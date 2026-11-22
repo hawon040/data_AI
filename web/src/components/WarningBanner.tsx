@@ -9,11 +9,14 @@ export function WarningBanner({
   here,
   nearby,
   terrainExcluded,
+  nameNearby = false,
 }: {
   regionName: string;
   here: string[];
   nearby: string[];
   terrainExcluded: boolean;
+  /** 여러 지역 배너를 함께 보여 줄 때(모바일 결과) 인근 특보 줄에도 지역 이름을 붙인다 */
+  nameNearby?: boolean;
 }) {
   if (here.length > 0) {
     return (
@@ -31,7 +34,7 @@ export function WarningBanner({
   if (nearby.length > 0) {
     return (
       <p className="warning-banner is-nearby" role="status">
-        인근 시군 특보 있음 · {nearby.join(", ")}
+        {nameNearby ? `${regionName} ` : ""}인근 시군 특보 있음 · {nearby.join(", ")}
       </p>
     );
   }

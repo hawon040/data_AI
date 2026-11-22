@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { AccessibilityInfo } from "../components/AccessibilityInfo";
 import { CompanionForm } from "../components/CompanionForm";
 import { DistanceExcludedList } from "../components/DistanceExcludedList";
 import { MapAreaPicker } from "../components/MapAreaPicker";
+import { RandomTripPicker } from "../components/RandomTripPicker";
 import { TravelTimeExcludedList } from "../components/TravelTimeExcludedList";
+import { WarningBanner } from "../components/WarningBanner";
 import { WeatherExcludedList } from "../components/WeatherExcludedList";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
 import { SIGUNGU } from "../data/sigungu";
 import { attractionMeta, categoryChips } from "../lib/cardInfo";
 import { buildChecklist, type Checklist, type ChecklistFocus } from "../lib/checklist";
 import { kakaoDirectionsUrl } from "../lib/kakaoLocal";
+import { toAccessSummary, useAttractionAccessMap, type AccessParty } from "../lib/liveAccess";
 import { worstOf } from "../lib/liveWeather";
 import { NATIONWIDE, type MapArea } from "../lib/mapArea";
 import {
@@ -35,6 +39,7 @@ import {
 } from "../lib/tripPreferences";
 import { AGE_GROUP_LABELS, type Attraction, type Person, type Region } from "../lib/types";
 import { useTripEngine } from "../lib/useTripEngine";
+import { weatherBrief, type WeatherBrief } from "../lib/weatherBrief";
 import { INDOOR_RETRY_LABEL } from "../lib/weatherExclusions";
 import { MobileFooter } from "./MobileHome";
 import { MobileHeader } from "./MobileHeader";
@@ -192,9 +197,26 @@ export function MobileApp() {
 
   // 지도에 쓰는 날씨(일정 중 가장 나쁜 값). 시연 모드면 예시 날씨.
   const weatherOf = (code: string) => (weatherDemo ? weatherPreset.weather : regionWeather[code]?.worst ?? null);
-  const party = { withElderly: safetyFilters.withElderly, withChildren: safetyFilters.withChildren };
+  /** 결과 카드·장소 상세의 날씨 한 줄(하늘·기온·강수확률·미세먼지). 판정 문장과 별개로 항상 보여 준다. */
+  const briefOf = (code: string): WeatherBrief => weatherBrief(regionWeather[code], weatherDemo ? weatherPreset.weather : null);
+  const { withElderly, withChildren } = safetyFilters;
+  const party: AccessParty = useMemo(() => ({ withElderly, withChildren }), [withElderly, withChildren]);
   const cardAttractions = (region: Region) =>
     allItems.find((item) => item.region.code === region.code)?.topAttractions.map(({ attraction: a }) => a) ?? [];
+
+  // 무장애 편의 정보(한국관광공사, PC와 같은 lib/liveAccess.ts): 결과 카드 배지·장소 상세 칸·준비물 한 줄. 추천 순서는 바꾸지 않는다.
+  const accessTargets = useMemo(() => {
+    const byName = new Map<string, Attraction>();
+    if (people != null) {
+      for (const item of [...recommendations, ...exploreRecommendations]) {
+        for (const { attraction: a } of item.topAttractions) byName.set(a.name, a);
+      }
+    }
+    if (attraction) byName.set(attraction.name, attraction);
+    return [...byName.values()];
+  }, [people, recommendations, exploreRecommendations, attraction]);
+  const accessMap = useAttractionAccessMap(accessTargets, party);
+  const accessBadge = (spot: Attraction) => toAccessSummary(spot.name, accessMap[spot.name]).hasInfo;
   /** 준비물: 결과 화면은 공통, 장소 상세는 공통 → 지역 → 관광지 순서로 쌓는다. */
   const checklistFor = (focus: ChecklistFocus): Checklist => {
     const focusRegion = focus.kind === "common" ? null : focus.region;
@@ -206,7 +228,11 @@ export function MobileApp() {
       ),
       regionWeather: focusRegion ? weatherOf(focusRegion.code) : null,
       regionWeatherTips: focusRegion && !weatherDemo ? regionWeather[focusRegion.code]?.tips ?? [] : [],
-      accessTip: null,
+      // PC와 같이 어르신(60대 이상)·아이 동반일 때만 필요한 시설 한 줄을 넣는다.
+      accessTip:
+        focus.kind === "attraction" && (withElderly || withChildren)
+          ? toAccessSummary(focus.attraction.name, accessMap[focus.attraction.name]).prepTip
+          : null,
       travelHours: !origin
         ? null
         : focus.kind === "attraction"
@@ -330,8 +356,14 @@ export function MobileApp() {
             region={selectedRegion}
             preferences={tripPreferences}
             distanceLabel={km != null ? `출발지에서 ${travelLabel(km, tripPreferences.transport)}` : null}
-            weatherSummary={people != null ? decision?.summary ?? null : null}
-            weatherLoading={weatherLoading}
+            weather={
+              people == null
+                ? null
+                : weatherLoading
+                  ? "loading"
+                  : { brief: briefOf(selectedRegion.code), summary: decision?.summary ?? null }
+            }
+            party={party}
             checklist={checklist}
             onBack={() => go("results")}
             onDirections={() => setDirectionsOpen(true)}
@@ -365,11 +397,42 @@ export function MobileApp() {
         : weatherRestricted
           ? "방문일 날씨 기준에 맞는 관광지가 이 조건에는 없어요. 목적을 넓히거나 다른 날짜를 골라 보세요."
           : "현재 조건에 맞는 여행지가 없어요. 목적이나 스타일을 넓혀 보세요.";
+    // 기상특보 배너(PC와 같은 WarningBanner): 추천 지역마다 그 시군구 특보, 없으면 같은 시도 인근 시군 특보.
+    // 시연 모드는 예시 날씨 하나를 모든 지역에 쓰므로 1위 지역 하나만 보여 준다. 같은 인근 특보는 한 번만 보여 준다.
+    const warningRegions = weatherDemo ? recommendations.slice(0, 1) : recommendations;
+    const shownNearby = new Set<string>();
+    const warningBanners = warningRegions.flatMap(({ region }) => {
+      const days = regionWeather[region.code]?.days ?? [];
+      const here = weatherDemo
+        ? weatherPreset.weather.warnings.map((kind) => `${kind}특보`)
+        : [...new Set(days.flatMap((day) => day.warningsHere))];
+      const nearby = weatherDemo ? [] : [...new Set(days.flatMap((day) => day.warningsNearby))];
+      if (here.length === 0) {
+        const key = `${region.province}|${nearby.join(",")}`;
+        if (nearby.length === 0 || shownNearby.has(key)) return [];
+        shownNearby.add(key);
+      }
+      return [
+        <WarningBanner
+          key={region.code}
+          regionName={region.name}
+          here={here}
+          nearby={nearby}
+          terrainExcluded={(weatherDecisions[region.code]?.excludedTerrains.length ?? 0) > 0}
+          nameNearby
+        />,
+      ];
+    });
     return (
       <div className="m-shell" data-season={season}>
         <MobileHeader />
         <main className="m-main">
           <h1 className="m-page-title">여행 추천 결과</h1>
+          {warningBanners.length > 0 && (
+            <div className="m-warnings" aria-label="기상특보">
+              {warningBanners}
+            </div>
+          )}
           <section className="m-card m-summary" aria-label="여행 조건 요약">
             <strong>
               {formatDate(tripPreferences.visitDate)} · {durationLabel(tripPreferences)}
@@ -399,6 +462,14 @@ export function MobileApp() {
           )}
           {accuracyNotice}
           {indoorRetry && <p className="m-status">실내 관광지만으로 다시 추천했어요. 여행 조건을 바꾸면 원래대로 추천해요.</p>}
+          <RandomTripPicker
+            className="m-pen"
+            regions={SAMPLE_REGIONS}
+            people={people}
+            withChildren={safetyFilters.withChildren}
+            onPick={() => {}}
+            onOpen={openPlace}
+          />
           {recommendations.length === 0 && !weatherLoading ? (
             <>
               <p className="m-status">{emptyMessage}</p>
@@ -423,6 +494,7 @@ export function MobileApp() {
                 const top = item.topAttractions[0]?.attraction;
                 if (!top) return [];
                 const weather = weatherDecisions[item.region.code]?.summary;
+                const brief = briefOf(item.region.code);
                 const excluded = excludedByRegion.get(item.region.code) ?? [];
                 const chips = categoryChips([
                   ...item.topAttractions.map(({ attraction: a }) => a),
@@ -447,6 +519,7 @@ export function MobileApp() {
                     </div>
                     <h2 className="m-result-sub">
                       {item.region.name} · {top.name}
+                      {accessBadge(top) && <span className="m-badge m-badge-access">편의 정보</span>}
                     </h2>
                     {chips.length > 0 && (
                       <ul className="m-chips" aria-label="이 지역 관광지 카테고리">
@@ -461,21 +534,20 @@ export function MobileApp() {
                         {far && <span className="m-badge">{FAR_DAY_TRIP_BADGE}</span>}
                       </p>
                     )}
-                    <p className="m-result-body">
-                      {item.evidence.slice(0, 2).join(" ")}
-                      {weather && (
-                        <>
-                          <br />
-                          {weather}
-                        </>
-                      )}
+                    <p className={`m-result-weather${weatherLoading || brief.kind !== "ok" ? " is-muted" : ""}`}>
+                      {weatherLoading ? "방문일 날씨를 확인하는 중…" : brief.text}
+                      {!weatherLoading && weather && <span className="m-result-weather-rule">{weather}</span>}
                     </p>
+                    <p className="m-result-body">{item.evidence.slice(0, 2).join(" ")}</p>
                     {item.topAttractions.length > 1 && (
                       <ul className="m-spot-list" aria-label={`${item.region.name} 추천 관광지`}>
                         {item.topAttractions.slice(0, 4).map(({ attraction: spot }) => (
                           <li key={spot.name}>
                             <button type="button" onClick={() => openPlace(item.region, spot)}>
-                              <strong>{spot.name}</strong>
+                              <strong>
+                                {spot.name}
+                                {accessBadge(spot) && <span className="m-badge m-badge-access">편의 정보</span>}
+                              </strong>
                               <span>
                                 {attractionMeta(spot)}
                                 {origin && ` · ${travelLabel(haversineKm(origin, spot), tripPreferences.transport)}`}
@@ -661,8 +733,8 @@ function PlaceScreen({
   region,
   preferences,
   distanceLabel,
-  weatherSummary,
-  weatherLoading,
+  weather,
+  party,
   checklist,
   onBack,
   onDirections,
@@ -671,8 +743,9 @@ function PlaceScreen({
   region: Region;
   preferences: TripPreferences;
   distanceLabel: string | null;
-  weatherSummary: string | null;
-  weatherLoading: boolean;
+  /** 추천받기 전이면 null, 불러오는 중이면 "loading" */
+  weather: null | "loading" | { brief: WeatherBrief; summary: string | null };
+  party: AccessParty;
   checklist: Checklist;
   onBack: () => void;
   onDirections: () => void;
@@ -699,16 +772,29 @@ function PlaceScreen({
         <p className="m-note">운영 시간과 매장 운영 여부는 방문 전에 확인해 주세요.</p>
       </section>
 
-      {weatherLoading ? (
+      {weather === "loading" ? (
         <p className="m-status" role="status">방문일 날씨를 확인하는 중…</p>
       ) : (
-        weatherSummary && (
-          <section className="m-card m-callout" aria-label="방문일 날씨">
-            <strong>{weatherSummary}</strong>
+        weather && (
+          <section
+            className={`m-card m-callout${weather.brief.kind === "ok" ? "" : " is-muted"}`}
+            aria-label={`${region.name} 방문일 날씨`}
+          >
+            <p className="m-eyebrow">{region.name} 방문일 날씨</p>
+            <strong>{weather.brief.text}</strong>
+            {weather.summary && <p className="m-callout-rule">{weather.summary}</p>}
             <p>추천 결과 기준이에요. 출발 전 최신 날씨를 확인해 주세요.</p>
           </section>
         )
       )}
+
+      <AccessibilityInfo
+        attraction={attraction}
+        party={party}
+        hideWhenEmpty
+        headingLevel="h2"
+        className="m-card m-block m-access"
+      />
 
       <MobileChecklist checklist={checklist} />
 

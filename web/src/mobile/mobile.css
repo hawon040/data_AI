@@ -51,14 +51,31 @@
 .m-back { margin: 12px 0 0; }
 
 /* 01 홈 */
+/* 메인 사진은 lib/heroSlides.ts의 계절 사진(PC 랜딩과 같다)을 <img>로 깔고, 글자가 읽히도록 위에 어두운 막을 덮는다. */
 .m-hero {
-  position: relative; min-height: 380px; padding: 120px 20px 24px; color: #fff;
-  background: linear-gradient(180deg, rgba(10, 30, 70, 0.25), rgba(10, 30, 70, 0.55)), url("/seasonal/kogl-gosangol-autumn-landscape.jpg") center / cover;
+  position: relative; isolation: isolate; overflow: hidden; min-height: 380px; padding: 120px 20px 12px; color: #fff;
+  background: #1c2a44;
+}
+.m-hero::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(10, 30, 70, 0.25), rgba(10, 30, 70, 0.62));
+}
+.m-hero-photo {
+  position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center 48%;
+  animation: m-hero-fade 900ms ease both;
+}
+@keyframes m-hero-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .m-hero-photo { animation: none; } }
+.m-hero-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 22px; }
+.m-hero .m-hero-credit { display: grid; gap: 2px; min-width: 0; margin: 0; font-size: 11px; line-height: 1.4; opacity: 0.92; }
+.m-hero-credit a { color: #fff; }
+.m-hero-pause {
+  flex: none; min-height: 32px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, 0.7); border-radius: 16px;
+  background: rgba(10, 20, 40, 0.35); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
 }
 .m-hero h1 { margin: 0 0 14px; font-size: 30px; line-height: 1.3; font-weight: 800; }
 .m-hero p { margin: 0 0 18px; font-size: 14px; line-height: 1.5; }
 .m-hero-button { display: flex; align-items: center; justify-content: center; min-height: 48px; background: #fff; color: var(--blue); border-radius: 28px; font-weight: 800; text-decoration: none; }
-.m-hero .m-hero-credit { position: absolute; right: 12px; bottom: 6px; margin: 0; font-size: 10px; opacity: 0.85; }
 .m-home .m-section { padding: 0 20px; }
 .m-section-head { display: flex; align-items: baseline; justify-content: space-between; }
 .m-more { font-size: 14px; color: var(--text-secondary); text-decoration: none; }
@@ -175,3 +192,62 @@
 .m-checklist-section h3 { margin: 14px 0 6px; font-size: 14px; color: var(--text-secondary); }
 .m-scope { margin-left: 8px; padding: 2px 8px; border-radius: 10px; background: #eef3ff; color: var(--blue); font-size: 12px; font-weight: 700; vertical-align: middle; }
 p.m-status.m-warning { color: #8a4b00; }
+
+/* PC 기능 옮김: 기상특보·펜 던지기·날씨 한 줄·날씨 제외 목록·무장애 편의 정보.
+   PC 컴포넌트를 그대로 쓰고 모양만 모바일 카드에 맞춘다(AppPage.css는 모바일에서 불러오지 않는다). */
+.m-warnings { display: grid; gap: 8px; margin: 4px 0 14px; }
+.m-shell .warning-banner {
+  display: grid; gap: 4px; margin: 0; padding: 12px 14px; border: 1px solid var(--grade-4); border-left: 4px solid var(--grade-4);
+  border-radius: 12px; background: var(--surface); color: var(--text-secondary); font-size: 13px; line-height: 1.5;
+}
+.m-shell .warning-banner strong { color: var(--text-primary); font-size: 15px; }
+.m-shell .warning-banner-source { color: var(--text-muted); font-size: 11px; }
+.m-shell .warning-banner.is-nearby { display: block; padding: 8px 12px; border-color: var(--border); border-left-width: 1px; color: var(--text-secondary); font-size: 12px; }
+
+.m-result-weather { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; background: #eaf1ff; color: var(--blue); font-size: 13px; font-weight: 700; line-height: 1.5; }
+.m-result-weather.is-muted { background: #f1f4fa; color: var(--text-secondary); font-weight: 600; }
+.m-result-weather-rule { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.m-callout .m-eyebrow { margin: 0 0 6px; }
+.m-callout.is-muted { background: #f1f4fa; border-color: var(--border); }
+.m-callout.is-muted strong { color: var(--text-secondary); font-size: 15px; }
+.m-callout .m-callout-rule { margin: 6px 0 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.m-badge-access { background: #e2f4ef; color: #0a6a5c; vertical-align: middle; }
+
+.m-shell .weather-excluded { padding: 12px 14px; border: 1px dashed var(--border-strong); border-radius: 12px; background: var(--surface); font-size: 13px; }
+.m-shell .weather-excluded summary { min-height: 28px; color: var(--text-secondary); font-weight: 700; cursor: pointer; }
+.m-shell .weather-excluded ul { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.m-shell .weather-excluded li { display: flex; flex-wrap: wrap; gap: 2px 8px; color: var(--text-muted); font-size: 12px; }
+.m-shell .weather-excluded li strong { color: var(--text-primary); font-size: 13px; }
+.m-shell .weather-excluded-reason { flex-basis: 100%; }
+
+/* 펜 던지기(RandomTripPicker) */
+.m-shell .random-trip.m-pen { margin: 4px 0 16px; padding: 18px; border-radius: 14px; }
+.m-pen h3 { font-size: 18px; }
+.m-pen .rt-board { height: 300px; }
+.m-pen .submit-btn {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; margin-top: 12px;
+  border: 0; border-radius: 12px; background: var(--blue); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.m-pen .submit-btn:disabled { opacity: 0.7; cursor: default; }
+.m-pen .rt-result { overflow-wrap: anywhere; }
+.m-pen .rt-result-open {
+  display: flex; align-items: center; width: 100%; min-height: 44px; margin-top: 10px; padding: 10px 0 0;
+  border: 0; border-top: 1px solid var(--border); background: none; color: var(--blue); font-size: 14px; font-weight: 700; text-align: left; cursor: pointer;
+}
+
+/* 장소 상세 '이용 편의 정보'(AccessibilityInfo) */
+.m-shell .accessibility-info.m-access { margin-top: 14px; padding: 18px; border-top: 1px solid var(--border); }
+.m-access h2 { margin: 0 0 8px; font-size: 20px; }
+.m-access .accessibility-note { margin: 8px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.m-access .accessibility-fit { margin-top: 10px; padding: 12px; border-radius: 10px; background: #e9f5f0; font-size: 14px; color: var(--text-secondary); }
+.m-access .accessibility-fit p { margin: 4px 0 0; font-size: 14px; }
+.m-access .accessibility-fit strong { color: #0a6a5c; }
+.m-access .accessibility-have { color: var(--text-primary); font-weight: 700; }
+.m-access .accessibility-missing { color: var(--text-muted); }
+.m-access .accessibility-details { margin-top: 10px; font-size: 13px; }
+.m-access .accessibility-details summary { min-height: 32px; color: var(--teal); font-weight: 700; cursor: pointer; }
+.m-access .accessibility-list { display: grid; gap: 8px; margin: 10px 0 0; }
+.m-access .accessibility-list div { display: grid; gap: 2px; }
+.m-access .accessibility-list dt { color: var(--text-primary); font-weight: 700; font-size: 13px; }
+.m-access .accessibility-list dd { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.m-access .accessibility-source { margin: 10px 0 0; color: var(--text-muted); font-size: 11px; }
