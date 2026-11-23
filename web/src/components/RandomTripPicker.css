@@ -20,6 +20,8 @@
   position: relative;
   display: grid;
   height: 390px;
+  /* 맨 위 관광지(속초 등)에 꽂힌 펜(48px)이 잘리지 않게 지도 위쪽에 여백 */
+  padding-top: 36px;
   overflow: hidden;
   place-items: center;
   border-radius: 12px;
