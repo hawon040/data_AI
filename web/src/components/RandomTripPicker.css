@@ -67,7 +67,8 @@
   z-index: 2;
   width: 18px;
   height: 48px;
-  margin: -24px 0 0 -9px;
+  margin: -48px 0 0 -9px;
+  transform-origin: 50% 100%;
   transform: rotate(-8deg);
 }
 .rt-pen-cap {
