@@ -41,6 +41,8 @@ interface WeatherResponse {
     precip: string[];
     tmin: number | null;
     tmax: number | null;
+    /** 하늘 상태 (단기: "맑음"·"구름많음"·"흐림", 중기: "맑음 / 구름많고 비" 같은 오전/오후 문구) */
+    sky?: string | null;
     issued?: string;
   } | null;
   air: { pm10Grade?: number | null; pm25Grade?: number | null; time?: string | null } | null;
@@ -79,6 +81,8 @@ export interface DayWeather {
   date: string;
   /** 예보가 없으면(범위 밖·서버 오류) null — 화면에는 "예보 확인 필요" */
   snapshot: WeatherSnapshot | null;
+  /** 하늘 상태(예: "맑음", "구름많음"). 판정에는 쓰지 않고 화면 요약에만 쓴다. 모르면 null */
+  sky: string | null;
   /** 예: "기상청 단기예보 11월 7일 14:00 발표 · 에어코리아 11월 7일 14:00 측정" */
   source: string | null;
   /** 초단기실황. 방문일이 오늘이 아니거나 못 불러오면 null */
@@ -157,7 +161,7 @@ export function toDayWeather(date: string, response: WeatherResponse): DayWeathe
   const warningsNearby = response.warnings?.elsewhereInSido ?? [];
   const tips = response.recommend?.tips ?? [];
   if (!forecast) {
-    return { date, snapshot: null, source: null, now, airObservedAt, warningsHere, warningsNearby, tips, failed, unreachable: false };
+    return { date, snapshot: null, sky: null, source: null, now, airObservedAt, warningsHere, warningsNearby, tips, failed, unreachable: false };
   }
   const issued = monthDayTime(forecast.issued ?? "");
   const sources = [`기상청 ${forecast.source}${issued ? ` ${issued}` : ""} 발표`];
@@ -175,6 +179,7 @@ export function toDayWeather(date: string, response: WeatherResponse): DayWeathe
       pm10Grade: response.air?.pm10Grade ?? null,
       pm25Grade: response.air?.pm25Grade ?? null,
     },
+    sky: forecast.sky?.trim().replace(/^\/\s*|\s*\/$/g, "") || null,
     source: sources.join(" · "),
     now,
     airObservedAt,
@@ -241,7 +246,7 @@ function loadDay(region: Region, date: string, withParam: string): Promise<DayWe
         // 서버가 꺼졌거나 오류면 이 날은 "예보 확인 필요". 자세한 원인은 콘솔에만 남긴다.
         console.warn(`날씨 예보를 불러오지 못함 (${region.name} ${date})`, error);
         dayRequests.delete(key);
-        return { date, snapshot: null, source: null, now: null, airObservedAt: null, warningsHere: [], warningsNearby: [], tips: [], failed: [], unreachable: true };
+        return { date, snapshot: null, sky: null, source: null, now: null, airObservedAt: null, warningsHere: [], warningsNearby: [], tips: [], failed: [], unreachable: true };
       });
     dayRequests.set(key, { at: Date.now(), request });
   }

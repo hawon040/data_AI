@@ -9,7 +9,21 @@ import {
 import type { Attraction } from "../lib/types";
 
 /** 관광지 상세 패널의 "이용 편의 정보" 칸(한국관광공사 무장애 여행정보). 추천 순위에는 영향을 주지 않는다. */
-export function AccessibilityInfo({ attraction, party }: { attraction: Attraction; party: AccessParty }) {
+export function AccessibilityInfo({
+  attraction,
+  party,
+  hideWhenEmpty = false,
+  headingLevel = "h5",
+  className,
+}: {
+  attraction: Attraction;
+  party: AccessParty;
+  /** true면 불러오는 중·실패·미등록·등록 정보 없음일 때 칸 전체를 숨긴다(모바일 장소 상세) */
+  hideWhenEmpty?: boolean;
+  headingLevel?: "h2" | "h5";
+  /** 바깥 화면에 맞춘 추가 클래스(예: 모바일 카드) */
+  className?: string;
+}) {
   const requestKey = `${attraction.name}|${party.withElderly}|${party.withChildren}`;
   const [state, setState] = useState<{ key: string; data?: AttractionAccess; error?: string } | null>(null);
 
@@ -28,10 +42,12 @@ export function AccessibilityInfo({ attraction, party }: { attraction: Attractio
   const current = state?.key === requestKey ? state : null;
   const data = current?.data;
   const summary = toAccessSummary(attraction.name, data);
+  if (hideWhenEmpty && !(data?.matched && summary.hasInfo)) return null;
+  const Heading = headingLevel;
 
   return (
-    <section className="accessibility-info" aria-labelledby="accessibility-heading">
-      <h5 id="accessibility-heading">이용 편의 정보</h5>
+    <section className={`accessibility-info${className ? ` ${className}` : ""}`} aria-labelledby="accessibility-heading">
+      <Heading id="accessibility-heading">이용 편의 정보</Heading>
       {!current && <p className="accessibility-note">불러오는 중…</p>}
       {current?.error && <p className="accessibility-note">{current.error}</p>}
       {data && !data.matched && (

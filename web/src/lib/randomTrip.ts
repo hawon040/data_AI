@@ -33,18 +33,15 @@ export function buildCandidatePool(regions: Region[], people: Person[], party?: 
   return pool;
 }
 
-const KOREA_MAP_BOUNDS = {
-  minLat: 33,
-  maxLat: 39.5,
-  minLng: 124.5,
-  maxLng: 132,
-};
-
-/** Coordinates as percentages within the locally bundled South Korea map image. */
+/**
+ * public/korea-map.svg(800x1200) 위의 위치를 퍼센트로 돌려준다.
+ * 제주도·동해안 끝의 실제 좌표에 맞춘 식: 경도 1도 = 174px, 위도 1도 = 212.5px,
+ * 경도 126.16°가 x=111px, 위도 38.61°가 y=21px.
+ */
 export function projectToKoreaMap(lat: number, lng: number): { x: number; y: number } {
   return {
-    x: 7 + ((lng - KOREA_MAP_BOUNDS.minLng) / (KOREA_MAP_BOUNDS.maxLng - KOREA_MAP_BOUNDS.minLng)) * 86,
-    y: 5 + ((KOREA_MAP_BOUNDS.maxLat - lat) / (KOREA_MAP_BOUNDS.maxLat - KOREA_MAP_BOUNDS.minLat)) * 90,
+    x: (111 + 174 * (lng - 126.16)) / 8,
+    y: (21 + 212.5 * (38.61 - lat)) / 12,
   };
 }
 

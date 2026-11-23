@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SAMPLE_REGIONS } from "../data/sampleRegions";
+import { HERO_SLIDES, heroSlideIndexForMonth, prefersReducedMotion } from "../lib/heroSlides";
 import { MobileHeader } from "./MobileHeader";
 import "./mobile.css";
+
+const SLIDE_MS = 6000;
 
 const PROVINCES = [...new Set(SAMPLE_REGIONS.map((region) => region.province))];
 
@@ -18,12 +21,24 @@ export function MobileHome() {
   const navigate = useNavigate();
   const [province, setProvince] = useState("all");
   const [duration, setDuration] = useState<"day" | "overnight">("day");
+  // 메인 사진: PC 랜딩과 같은 계절 사진(lib/heroSlides.ts). 이번 달 사진부터 6초마다 넘긴다.
+  const [slideIndex, setSlideIndex] = useState(() => heroSlideIndexForMonth(new Date().getMonth() + 1));
+  const [paused, setPaused] = useState(false);
+  const [reducedMotion] = useState(prefersReducedMotion);
+  const autoplay = !paused && !reducedMotion;
+  const slide = HERO_SLIDES[slideIndex];
+  useEffect(() => {
+    if (!autoplay) return;
+    const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % HERO_SLIDES.length), SLIDE_MS);
+    return () => window.clearInterval(timer);
+  }, [autoplay]);
 
   return (
     <div className="m-shell m-home">
       <MobileHeader />
 
       <section className="m-hero" aria-labelledby="m-hero-title">
+        <img key={slide.id} className="m-hero-photo" src={slide.image} alt="" aria-hidden="true" />
         <div className="m-hero-text">
           <h1 id="m-hero-title">
             여행을 떠나요
@@ -37,12 +52,34 @@ export function MobileHome() {
             관광지 추천받기
           </Link>
         </div>
-        <p className="m-hero-credit">
-          사진: 대구광역시 남구, 공공누리 제1유형 ·{" "}
-          <a href="https://www.kogl.or.kr/recommend/recommendDivDetail.do?recommendIdx=177293" target="_blank" rel="noreferrer">
-            출처
-          </a>
-        </p>
+        <div className="m-hero-foot">
+          <p className="m-hero-credit" aria-live={autoplay ? "off" : "polite"}>
+            <span>
+              {slide.month}월 · {slide.title}
+            </span>
+            <span>
+              사진: {slide.creator} ·{" "}
+              <a href={slide.sourceUrl} target="_blank" rel="noreferrer">
+                출처
+              </a>{" "}
+              ·{" "}
+              <a href={slide.licenseUrl} target="_blank" rel="noreferrer">
+                {slide.license}
+              </a>
+            </span>
+          </p>
+          {!reducedMotion && (
+            <button
+              type="button"
+              className="m-hero-pause"
+              aria-pressed={paused}
+              aria-label={paused ? "사진 넘기기 다시 시작" : "사진 넘기기 멈춤"}
+              onClick={() => setPaused((value) => !value)}
+            >
+              {paused ? "▶ 재생" : "❚❚ 멈춤"}
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="m-section" aria-labelledby="m-finder-title">
